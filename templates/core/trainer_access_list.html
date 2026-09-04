@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} · TMS{% endblock %}
+{% block content %}
+
+<div class="topbar">
+  <div>
+    <h1>{{ title }}</h1>
+    <div class="subtitle">
+      {{ page_obj.paginator.count|default:access_rows|length }} trainer{{ access_rows|length|pluralize }} ·
+      Grant, renew or revoke access to the Scheme of Work / Lesson Plan / Assessment Plan generators.
+    </div>
+  </div>
+  <div class="d-flex align-items-center gap-2 flex-wrap">
+    <div class="table-search-wrap">
+      <i class="fa-solid fa-magnifying-glass"></i>
+      <input type="text" id="tableSearch" class="form-control" placeholder="Quick search...">
+    </div>
+  </div>
+</div>
+
+<div class="card-panel table-panel">
+  {% if access_rows %}
+  <div class="table-responsive">
+    <table class="table align-middle">
+      <thead>
+        <tr>
+          <th>Trainer</th>
+          <th>Username</th>
+          <th>Free Generation</th>
+          <th>Paid Access</th>
+          <th>Expires</th>
+          <th>Payment Reference</th>
+          <th>Status</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for access in access_rows %}
+        <tr data-searchable>
+          <td>{{ access.trainer.full_name }}</td>
+          <td>{{ access.trainer.username }}</td>
+          <td>
+            {% if access.free_generation_used %}
+              <span class="badge bg-secondary">Used</span>
+            {% else %}
+              <span class="badge bg-info text-dark">Available</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if access.is_paid %}
+              <span class="badge bg-success">Paid</span>
+            {% else %}
+              <span class="badge bg-secondary">Not paid</span>
+            {% endif %}
+          </td>
+          <td>{{ access.paid_until|default:"—" }}</td>
+          <td>{{ access.payment_reference|default:"—" }}</td>
+          <td>
+            {% if access.has_access %}
+              <span class="badge bg-success">Can generate</span>
+            {% else %}
+              <span class="badge bg-danger">Blocked</span>
+            {% endif %}
+          </td>
+          <td class="text-end">
+            <form method="post" action="{% url 'traineraccess-grant' pk=access.pk %}" class="d-inline">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-sm btn-outline-success" title="Grant/renew {{ grant_days }} days of paid access">
+                <i class="fa-solid fa-unlock"></i> Grant / Renew ({{ grant_days }}d)
+              </button>
+            </form>
+            {% if access.is_paid %}
+            <form method="post" action="{% url 'traineraccess-revoke' pk=access.pk %}" class="d-inline"
+                  onclick="return confirm('Revoke paid access for {{ access.trainer.full_name }}? They will need the free generation (if unused) or a new grant to generate again.');">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-sm btn-outline-danger" title="Revoke paid access">
+                <i class="fa-solid fa-lock"></i> Revoke
+              </button>
+            </form>
+            {% endif %}
+            <a href="{% url 'traineraccess-edit' pk=access.pk %}" class="action-icon edit" title="Edit (custom date, note, reset free generation)">
+              <i class="fa-solid fa-pen"></i>
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div id="tableSearchEmpty" class="empty-state d-none">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <div>No records match your search.</div>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <i class="fa-solid fa-inbox"></i>
+    <div>No trainers yet. Add a trainer first — their access record is created automatically.</div>
+  </div>
+  {% endif %}
+</div>
+
+{% if is_paginated %}
+<nav class="mt-3">
+  <ul class="pagination">
+    {% if page_obj.has_previous %}
+      <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a></li>
+    {% endif %}
+    <li class="page-item disabled"><span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span></li>
+    {% if page_obj.has_next %}
+      <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a></li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %}
+
+{% endblock %}

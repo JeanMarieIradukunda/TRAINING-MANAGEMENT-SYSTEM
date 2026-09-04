@@ -1,0 +1,284 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Training Management System{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+<div class="app-shell">
+
+  <!-- Identity bar: brand, mobile nav toggle, signed-in user -->
+  <header class="topnav-header">
+    <div class="topnav-header-inner">
+      <a href="{% url 'landing' %}" class="topnav-brand">
+        <span class="dot"><i class="fa-solid fa-graduation-cap"></i></span>
+        <div>
+          TMS
+          <small>Training Management</small>
+        </div>
+      </a>
+
+      <button type="button" class="topnav-toggle" id="topnavToggleBtn" aria-label="Toggle navigation" aria-expanded="false" aria-controls="topnavMenu">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+
+      {% if user.is_authenticated %}
+      <div class="topnav-user">
+        <div class="user-chip">
+          <div class="avatar">{{ user.username|slice:':1'|upper }}</div>
+          <div>
+            <div class="name">{{ user.username }}</div>
+            <div class="role">{% if user.trainer_profile %}Trainer{% else %}Administrator{% endif %}</div>
+          </div>
+        </div>
+        <form method="post" action="{% url 'logout' %}" class="topnav-logout-form">
+          {% csrf_token %}
+          <button type="submit" class="btn-logout" title="Log out">
+            <i class="fa-solid fa-right-from-bracket"></i><span class="btn-logout-label">Log out</span>
+          </button>
+        </form>
+      </div>
+      {% endif %}
+    </div>
+  </header>
+
+  <!-- Horizontal primary navigation (replaces the old left sidebar) -->
+  <nav class="topnav" id="topnavMenu">
+    <div class="topnav-inner">
+
+      <a href="{% url 'landing' %}" class="topnav-link">
+        <i class="fa-solid fa-house"></i> Home
+      </a>
+      <a href="{% url 'dashboard' %}" class="topnav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+        <i class="fa-solid fa-gauge-high"></i> Dashboard
+      </a>
+
+      {% if request.user.trainer_profile %}
+        <!-- Trainer account: only the two sections they're allowed into.
+             (Server-side access is enforced by TrainerAccessMixin in
+             views.py - this is just so trainers aren't shown links to
+             sections that would 403.) -->
+        <a href="{% url 'outcome-list' %}" class="topnav-link {% if 'outcome' in request.resolver_match.url_name %}active{% endif %}">
+          <i class="fa-solid fa-list-check"></i> Learning Outcomes
+        </a>
+        <a href="{% url 'content-list' %}" class="topnav-link {% if 'content' in request.resolver_match.url_name %}active{% endif %}">
+          <i class="fa-solid fa-file-lines"></i> Indicative Contents
+        </a>
+      {% else %}
+      <details class="topnav-dropdown {% if request.resolver_match.url_name in 'sector-list,sector-create,sector-edit,sector-delete,trade-list,trade-create,trade-edit,trade-delete,level-list,level-create,level-edit,level-delete,tradelevel-list,tradelevel-create,tradelevel-edit,tradelevel-delete,module-list,module-create,module-edit,module-delete,outcome-list,outcome-create,outcome-bulk-create,outcome-edit,outcome-delete,content-list,content-create,content-bulk-create,content-edit,content-delete' %}open has-active{% endif %}">
+        <summary class="topnav-link">
+          <i class="fa-solid fa-diagram-project"></i> Curriculum Data <i class="fa-solid fa-chevron-down topnav-caret"></i>
+        </summary>
+        <div class="topnav-dropdown-menu">
+          <a href="{% url 'sector-list' %}" class="topnav-dropdown-item {% if 'sector' in request.resolver_match.url_name %}active{% endif %}">
+            <i class="fa-solid fa-industry"></i> Sectors
+          </a>
+          <a href="{% url 'trade-list' %}" class="topnav-dropdown-item {% if request.resolver_match.url_name|slice:':5' == 'trade' %}active{% endif %}">
+            <i class="fa-solid fa-toolbox"></i> Trades
+          </a>
+          <a href="{% url 'level-list' %}" class="topnav-dropdown-item {% if request.resolver_match.url_name|slice:':5' == 'level' %}active{% endif %}">
+            <i class="fa-solid fa-layer-group"></i> Levels
+          </a>
+          <a href="{% url 'tradelevel-list' %}" class="topnav-dropdown-item {% if 'tradelevel' in request.resolver_match.url_name %}active{% endif %}">
+            <i class="fa-solid fa-diagram-project"></i> Trade Levels
+          </a>
+          <a href="{% url 'module-list' %}" class="topnav-dropdown-item {% if 'module' in request.resolver_match.url_name %}active{% endif %}">
+            <i class="fa-solid fa-book-open"></i> Modules
+          </a>
+          <a href="{% url 'outcome-list' %}" class="topnav-dropdown-item {% if 'outcome' in request.resolver_match.url_name %}active{% endif %}">
+            <i class="fa-solid fa-list-check"></i> Learning Outcomes
+          </a>
+          <a href="{% url 'content-list' %}" class="topnav-dropdown-item {% if 'content' in request.resolver_match.url_name %}active{% endif %}">
+            <i class="fa-solid fa-file-lines"></i> Indicative Contents
+          </a>
+        </div>
+      </details>
+
+      <details class="topnav-dropdown {% if 'trainer' in request.resolver_match.url_name %}open has-active{% endif %}">
+        <summary class="topnav-link">
+          <i class="fa-solid fa-users"></i> People <i class="fa-solid fa-chevron-down topnav-caret"></i>
+        </summary>
+        <div class="topnav-dropdown-menu">
+          <a href="{% url 'trainer-list' %}" class="topnav-dropdown-item {% if request.resolver_match.url_name|slice:':8' == 'trainer-' %}active{% endif %}">
+            <i class="fa-solid fa-chalkboard-user"></i> Trainers
+          </a>
+          <a href="{% url 'traineraccess-list' %}" class="topnav-dropdown-item {% if 'traineraccess' in request.resolver_match.url_name %}active{% endif %}">
+            <i class="fa-solid fa-unlock-keyhole"></i> Trainer Access
+          </a>
+        </div>
+      </details>
+
+      <details class="topnav-dropdown {% if 'lessonplan' in request.resolver_match.url_name or 'assessmentplan' in request.resolver_match.url_name or 'logo' in request.resolver_match.url_name %}open has-active{% endif %}">
+        <summary class="topnav-link">
+          <i class="fa-solid fa-folder-open"></i> Documents &amp; Media <i class="fa-solid fa-chevron-down topnav-caret"></i>
+        </summary>
+        <div class="topnav-dropdown-menu">
+          <a href="{% url 'lessonplan-list' %}" class="topnav-dropdown-item {% if 'lessonplan' in request.resolver_match.url_name %}active{% endif %}">
+            <i class="fa-solid fa-chalkboard"></i> Lesson Plans
+          </a>
+          <a href="{% url 'assessmentplan-list' %}" class="topnav-dropdown-item {% if 'assessmentplan' in request.resolver_match.url_name %}active{% endif %}">
+            <i class="fa-solid fa-clipboard-check"></i> Assessment Plans
+          </a>
+          <a href="{% url 'logo-list' %}" class="topnav-dropdown-item {% if 'logo' in request.resolver_match.url_name %}active{% endif %}">
+            <i class="fa-solid fa-image"></i> Logos
+          </a>
+        </div>
+      </details>
+      {% endif %}
+
+    </div>
+  </nav>
+
+  <main class="main-content">
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="{% static 'js/main.js' %}"></script>
+<script>
+  // Self-contained top navigation behaviour. Does not depend on main.js
+  // so this keeps working even if that file still has old sidebar wiring.
+  (function () {
+    var toggleBtn = document.getElementById('topnavToggleBtn');
+    var menu = document.getElementById('topnavMenu');
+    var dropdowns = document.querySelectorAll('.topnav-dropdown');
+    var desktopQuery = window.matchMedia('(min-width: 901px)');
+
+    // ---- Mobile hamburger toggle ----
+    if (toggleBtn) {
+      toggleBtn.addEventListener('click', function () {
+        var isOpen = document.body.classList.toggle('topnav-open');
+        toggleBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+      });
+    }
+
+    if (menu) {
+      menu.querySelectorAll('a.topnav-link, a.topnav-dropdown-item').forEach(function (link) {
+        link.addEventListener('click', function () {
+          document.body.classList.remove('topnav-open');
+          if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'false');
+        });
+      });
+    }
+
+    // ---- Desktop dropdowns ----
+    // Rendered with position: fixed (see style.css) so they overlay the
+    // page content instead of being clipped by the nav bar's own
+    // horizontal-scroll container. Position is computed here from the
+    // trigger's on-screen location.
+    function getMenu(details) {
+      return details.querySelector('.topnav-dropdown-menu');
+    }
+
+    function positionMenu(details) {
+      var summary = details.querySelector('summary.topnav-link');
+      var dmenu = getMenu(details);
+      if (!summary || !dmenu) return;
+      var rect = summary.getBoundingClientRect();
+      var left = rect.left;
+      var maxLeft = window.innerWidth - dmenu.offsetWidth - 12;
+      if (left > maxLeft) left = Math.max(12, maxLeft);
+      dmenu.style.top = (rect.bottom + 8) + 'px';
+      dmenu.style.left = left + 'px';
+    }
+
+    function closeDropdown(details) {
+      var dmenu = getMenu(details);
+      if (dmenu) dmenu.classList.remove('is-open');
+      details.removeAttribute('open');
+    }
+
+    function closeAllExcept(except) {
+      dropdowns.forEach(function (d) {
+        if (d !== except) closeDropdown(d);
+      });
+    }
+
+    function openDropdown(details) {
+      closeAllExcept(details);
+      details.setAttribute('open', '');
+      positionMenu(details);
+      var dmenu = getMenu(details);
+      if (dmenu) {
+        // Force layout before adding the class so the opacity/transform
+        // transition actually plays.
+        requestAnimationFrame(function () { dmenu.classList.add('is-open'); });
+      }
+    }
+
+    dropdowns.forEach(function (details) {
+      var summary = details.querySelector('summary.topnav-link');
+      if (!summary) return;
+
+      details.addEventListener('mouseenter', function () {
+        if (desktopQuery.matches) openDropdown(details);
+      });
+      details.addEventListener('mouseleave', function () {
+        if (desktopQuery.matches) closeDropdown(details);
+      });
+
+      summary.addEventListener('click', function (e) {
+        if (desktopQuery.matches) {
+          // Take over from the native <details> toggle on desktop so we
+          // control the fixed-position overlay ourselves (keyboard users
+          // activating the summary still get an accessible open/close).
+          e.preventDefault();
+          if (details.hasAttribute('open')) {
+            closeDropdown(details);
+          } else {
+            openDropdown(details);
+          }
+        }
+        // On mobile, do nothing extra — let native <details> toggling
+        // expand the menu inline underneath the label.
+      });
+    });
+
+    window.addEventListener('resize', function () {
+      dropdowns.forEach(function (d) {
+        if (d.hasAttribute('open') && desktopQuery.matches) positionMenu(d);
+      });
+    });
+
+    window.addEventListener('scroll', function () {
+      dropdowns.forEach(function (d) {
+        if (d.hasAttribute('open') && desktopQuery.matches) positionMenu(d);
+      });
+    }, true);
+
+    document.addEventListener('click', function (e) {
+      if (!desktopQuery.matches) return;
+      dropdowns.forEach(function (d) {
+        if (d.hasAttribute('open') && !d.contains(e.target)) closeDropdown(d);
+      });
+    });
+
+    // Switching from mobile to desktop (or back) mid-session shouldn't
+    // leave a stale open/fixed-position menu behind.
+    desktopQuery.addEventListener('change', function () {
+      dropdowns.forEach(function (d) { closeDropdown(d); });
+    });
+  })();
+</script>
+{% block extra_scripts %}{% endblock %}
+</body>
+</html>

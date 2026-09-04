@@ -1,0 +1,1330 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Assessment Plan Building · Training Management System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}">
+  <style>
+    /* ============================================================
+       PROFESSIONAL DOCUMENT DESIGN SYSTEM
+       Assessment Plan — screen + print (A4)
+       Palette: deep navy / institutional gold / teal accent
+       Typeface: Inter (UI + document body), Sora (display headings)
+       Same design language as Scheme of Work / Lesson Plan so all
+       three generator documents look consistent when printed.
+       ============================================================ */
+
+    :root {
+      --ap-navy:        #0f1b3d;
+      --ap-navy-deep:   #0a1330;
+      --ap-navy-soft:   #1c2b52;
+      --ap-gold:        #c9a227;
+      --ap-gold-soft:   #e8d9a8;
+      --ap-teal:        #2dd4bf;
+      --ap-ink:         #1c2230;
+      --ap-body:        #303a4d;
+      --ap-muted:       #6b7280;
+      --ap-line:        #d7dbe4;
+      --ap-line-soft:   #e9ecf2;
+      --ap-row-alt:     #f6f8fb;
+      --ap-bg-card:     #ffffff;
+    }
+
+    body.gen-body {
+      color: var(--ap-body);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .gen-shell {
+      max-width: 100% !important;
+      width: 100%;
+      margin-left: 0 !important;
+      margin-right: 0 !important;
+      padding-left: 1.25rem;
+      padding-right: 1.25rem;
+      box-sizing: border-box;
+    }
+
+    .gen-doc {
+      background: var(--ap-bg-card);
+      border: 1px solid var(--ap-line);
+      border-radius: 10px;
+      box-shadow: 0 1px 3px rgba(15, 27, 61, 0.06), 0 10px 30px rgba(15, 27, 61, 0.06);
+      padding: 2rem 2.25rem 1.75rem;
+      font-family: 'Inter', sans-serif;
+      font-size: 10pt;
+      color: var(--ap-ink);
+      line-height: 1.25;
+    }
+
+    .gen-doc-logos {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1.75rem;
+      margin-bottom: 0.75rem;
+    }
+    .gen-doc-logos img { height: 58px; width: auto; object-fit: contain; }
+
+    .gen-doc-title {
+      text-align: center;
+      padding-bottom: 0.9rem;
+      margin-bottom: 1.1rem;
+      border-bottom: 3px solid var(--ap-navy);
+      position: relative;
+    }
+    .gen-doc-title::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      bottom: -3px;
+      transform: translateX(-50%);
+      width: 96px;
+      height: 3px;
+      background: var(--ap-gold);
+    }
+    .gen-doc-kicker {
+      font-family: 'Inter', sans-serif;
+      font-size: 8.5pt;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--ap-navy-soft);
+      margin-bottom: 0.3rem;
+    }
+    .gen-doc-title h3 {
+      font-family: 'Inter', sans-serif;
+      font-weight: 800;
+      font-size: 17pt;
+      letter-spacing: 0.005em;
+      color: var(--ap-navy);
+      margin: 0.1rem 0 0.35rem;
+      text-transform: uppercase;
+    }
+    .gen-doc-title p { font-size: 9pt; color: var(--ap-muted); margin: 0; }
+
+    .gen-section-title {
+      font-family: 'Inter', sans-serif;
+      font-weight: 700;
+      font-size: 10.5pt;
+      color: var(--ap-navy);
+      margin: 1.1rem 0 0.5rem;
+      letter-spacing: 0.005em;
+    }
+    .gen-section-title i { color: var(--ap-gold); font-size: 0.9em; }
+
+    .gen-table-wrap {
+      border: 1px solid var(--ap-line);
+      border-radius: 8px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      margin-bottom: 2.1rem;
+    }
+
+    .gen-table-v2 {
+      table-layout: auto;
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-family: 'Inter', 'Aptos', 'Calibri', sans-serif;
+      font-size: 9pt;
+    }
+    .gen-table-v2 col.col-no        { width: 1%; }
+    .gen-table-v2 col.col-module    { width: 12%; }
+    .gen-table-v2 col.col-modtype   { width: 6%; }
+    .gen-table-v2 col.col-lo        { width: 16%; }
+    .gen-table-v2 col.col-asstype   { width: 8%; }
+    .gen-table-v2 col.col-trainer   { width: 8%; }
+    .gen-table-v2 col.col-candidates { width: 6%; }
+    .gen-table-v2 col.col-invig     { width: 6%; }
+    .gen-table-v2 col.col-date      { width: 7%; }
+    .gen-table-v2 col.col-resources { width: 12%; }
+    .gen-table-v2 col.col-place     { width: 6%; }
+    .gen-table-v2 col.col-pubdate   { width: 7%; }
+    .gen-table-v2 col.col-obs       { width: 30%; }
+
+    .gen-table-v2 thead th {
+      background: var(--ap-navy);
+      background-image: linear-gradient(180deg, var(--ap-navy) 0%, var(--ap-navy-deep) 100%);
+      color: #ffffff;
+      font-family: 'Inter', 'Aptos', 'Calibri', sans-serif;
+      font-size: 8.7pt;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      text-align: center;
+      vertical-align: middle;
+      padding: 0.22rem 0.3rem;
+      line-height: 1.15;
+      border-bottom: 2px solid var(--ap-gold);
+      text-transform: none;
+      white-space: normal;
+    }
+    .gen-table-v2 thead th:not(:last-child) {
+      border-right: 1px solid rgba(255, 255, 255, 0.14);
+    }
+
+    .gen-table-v2 th, .gen-table-v2 td {
+      font-size: 9pt;
+      vertical-align: middle;
+      text-align: left;
+      word-break: break-word;
+      padding: 0.22rem 0.3rem;
+      border-bottom: 1px solid var(--ap-line-soft);
+      border-right: 1px solid var(--ap-line-soft);
+      line-height: 1.2;
+    }
+    .gen-table-v2 td:last-child, .gen-table-v2 th:last-child { border-right: none; }
+    .gen-table-v2 tbody tr:last-child td { border-bottom: none; }
+
+    .gen-table-v2 th:nth-child(1), .gen-table-v2 td:nth-child(1) {
+      width: 1%;
+      white-space: nowrap;
+      text-align: center;
+    }
+
+    .gen-table-v2 tbody tr:nth-child(even) td { background: var(--ap-row-alt); }
+    .gen-table-v2 tbody tr:nth-child(odd) td  { background: #ffffff; }
+
+    .gen-table-v2 tbody tr { break-inside: avoid; page-break-inside: avoid; }
+    .gen-table-v2 thead { display: table-header-group; }
+
+    .gen-editable-cell {
+      background: rgba(45, 212, 191, 0.05);
+      outline-offset: 2px;
+      cursor: text;
+      position: relative;
+    }
+    .gen-editable-cell:hover { background: rgba(45, 212, 191, 0.1); }
+    .gen-editable-cell:focus {
+      outline: 1.5px dashed var(--ap-teal, #2dd4bf);
+      background: rgba(45, 212, 191, 0.12);
+      box-shadow: none;
+    }
+
+    .gen-placeholder-text {
+      color: #9aa3b8;
+      font-style: italic;
+      font-size: 8.5pt;
+      line-height: 1.2;
+    }
+    .gen-editable-cell:focus .gen-placeholder-text { color: inherit; font-style: normal; }
+
+    .gen-row-input {
+      width: 100%;
+      border: none;
+      background: transparent;
+      font-size: 9pt;
+      font-family: inherit;
+      color: var(--ap-ink);
+      padding: 0.05rem 0.1rem;
+    }
+    .gen-row-input:focus {
+      outline: 1.5px dashed var(--ap-teal, #2dd4bf);
+      outline-offset: 1px;
+      background: rgba(45, 212, 191, 0.08);
+    }
+    select.gen-row-input { cursor: pointer; }
+
+    /* Auto-filled fields (Number of Invigilators/Assessors, Place) get a
+       faint amber tint so it's clear at a glance that a value was
+       calculated automatically rather than typed in — same visual language
+       as the purple "AI" tint used for AI-drafted cells, just a different
+       hue so the two auto-sources stay distinguishable. Overriding by hand
+       (see the dblclick handler on the Invigilators input, and the Place
+       input which is never locked) always still works. */
+    .gen-row-input.gen-auto-filled {
+      background: rgba(201, 162, 39, 0.1);
+    }
+    .gen-row-input.gen-auto-filled:focus {
+      background: rgba(45, 212, 191, 0.08);
+    }
+    .gen-row-input[readonly] {
+      cursor: not-allowed;
+    }
+
+    .gen-ai-toolbar-btn.is-loading { pointer-events: none; opacity: 0.7; }
+
+    .gen-ai-loading-text {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      color: #6b7280;
+      font-style: italic;
+      font-size: 8.5pt;
+    }
+    .gen-ai-loading-text .fa-spin { font-size: 0.75rem; }
+
+    .gen-editable-cell.gen-ai-filled { background: rgba(124, 58, 237, 0.06); }
+    .gen-editable-cell.gen-ai-filled:hover { background: rgba(124, 58, 237, 0.1); }
+
+    .gen-ai-badge {
+      position: absolute;
+      top: 2px;
+      right: 4px;
+      font-size: 0.58rem;
+      letter-spacing: 0.03em;
+      color: #7c3aed;
+      background: rgba(124, 58, 237, 0.12);
+      border-radius: 999px;
+      padding: 0 5px;
+      line-height: 1.3;
+      pointer-events: none;
+    }
+
+    .gen-ai-error-text {
+      color: #b42318;
+      font-style: italic;
+      font-size: 8.5pt;
+    }
+
+    .gen-signoff-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+      margin: 1.6rem 0 1.4rem;
+      padding-top: 1.1rem;
+      border-top: 1px solid var(--ap-line);
+    }
+    .gen-signoff-grid .gen-signoff-line {
+      font-size: 10pt;
+      font-weight: 600;
+      color: var(--ap-navy-soft);
+      border-top: none;
+      padding-top: 0;
+    }
+    .gen-signoff-line span[contenteditable] {
+      display: inline-block;
+      min-width: 140px;
+      border-bottom: 1px solid var(--ap-line);
+      margin-left: 0.35rem;
+      padding: 0.1rem 0.2rem;
+      font-weight: 400;
+      color: var(--ap-ink);
+    }
+    .gen-signoff-line span[contenteditable]:focus {
+      outline: none;
+      border-bottom: 1.5px solid var(--ap-teal);
+    }
+
+    .gen-doc-footer {
+      display: flex;
+      justify-content: space-between;
+      font-size: 8.7pt;
+      color: var(--ap-muted);
+      letter-spacing: 0.02em;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--ap-line-soft);
+    }
+    .gen-doc-footer span:first-child { font-weight: 700; color: var(--ap-navy-soft); }
+
+    .gen-hero {
+      background: linear-gradient(135deg, var(--ap-navy-deep) 0%, var(--ap-navy) 55%, var(--ap-navy-soft) 100%);
+    }
+    .gen-eyebrow { color: var(--ap-gold-soft); }
+    .gen-hero h1 { font-family: 'Sora', sans-serif; letter-spacing: 0.01em; }
+
+    .gen-card {
+      border-radius: 10px;
+      box-shadow: 0 1px 2px rgba(15, 27, 61, 0.05), 0 8px 24px rgba(15, 27, 61, 0.05);
+    }
+
+    .gen-toolbar {
+      background: #ffffff;
+      border: 1px solid var(--ap-line);
+      border-radius: 8px;
+      padding: 0.85rem 1.1rem;
+      margin-bottom: 1.1rem;
+    }
+
+    .gen-save-note {
+      font-size: 0.85rem;
+      color: var(--ap-muted);
+      background: var(--ap-row-alt);
+      border: 1px solid var(--ap-line-soft);
+      border-radius: 8px;
+      padding: 0.9rem 1.1rem;
+      margin-top: 1.1rem;
+    }
+
+@page {
+  size: auto;
+  margin: 15mm 13mm 16mm;
+}
+
+@media print {
+  html, body, body.gen-body {
+    background: #fff !important;
+    color: #000 !important;
+    width: auto !important;
+    height: auto !important;
+    overflow: visible !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+    position: static !important;
+  }
+
+  .no-print, .gen-ai-badge, ::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .gen-placeholder-text,
+  .gen-ai-loading-text,
+  .gen-ai-error-text {
+    display: none !important;
+  }
+
+  .gen-shell {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    overflow: visible !important;
+  }
+
+  .gen-doc {
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    overflow: visible !important;
+  }
+
+  .gen-table-wrap {
+    border-radius: 0;
+    border: 1px solid #999;
+    overflow: visible !important;
+    max-height: none !important;
+    width: 100% !important;
+    display: table !important;
+  }
+
+  table, .gen-table-v2 {
+    width: 100% !important;
+    table-layout: auto !important;
+    border-collapse: collapse !important;
+    page-break-inside: auto;
+  }
+
+  tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  thead {
+    display: table-header-group !important;
+  }
+
+  .gen-doc-title,
+  .gen-section-title,
+  .gen-signoff-grid,
+  h1, h2, h3, h4, h5, h6 {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    page-break-after: avoid !important;
+  }
+
+  .gen-table-v2 thead th {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    background: var(--ap-navy, #002060) !important;
+    color: #fff !important;
+  }
+
+  .gen-table-v2 tbody tr:nth-child(even) td {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    background: #f6f8fb !important;
+  }
+
+  .gen-editable-cell { background: none !important; outline: none !important; border: none !important; }
+  .gen-row-input { background: none !important; outline: none !important; border: none !important; }
+  .gen-row-input.gen-auto-filled { background: none !important; }
+}
+  </style>
+</head>
+<body class="gen-body">
+
+  <!-- ==================== HERO ==================== -->
+  <header class="gen-hero">
+    <div class="gen-hero-top">
+      <a href="{% url 'landing' %}" class="gen-back-link">
+        <i class="fa-solid fa-arrow-left-long"></i> Back to home
+      </a>
+      <a href="{% url 'dashboard' %}" class="gen-back-link">
+        <i class="fa-solid fa-gauge"></i> Dashboard
+      </a>
+    </div>
+    <div class="gen-hero-heading">
+      <div class="gen-eyebrow">
+        <i class="fa-solid fa-user-check"></i>
+        Signed in as {{ request.user.username }}
+        {% if is_trainer %}
+          · {{ assigned_module_count }} module{{ assigned_module_count|pluralize }} assigned to you
+        {% else %}
+          · Administrator access · {{ assigned_module_count }} module{{ assigned_module_count|pluralize }} in the system
+        {% endif %}
+      </div>
+      <h1>Assessment Plan Generator</h1>
+    </div>
+  </header>
+
+  <div class="gen-shell">
+
+    <!-- ==================== SELECTOR ==================== -->
+    <section class="gen-card no-print" id="selectorCard">
+      <h2>1. Choose trade, level &amp; module</h2>
+      <p class="gen-card-sub">The level and module lists narrow down automatically based on what you pick.</p>
+
+      <div id="noDataAlert" class="gen-alert-empty d-none">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <div>
+          No trades have been set up in the system yet. Please ask an administrator to add
+          sectors, trades and modules before an assessment plan can be generated.
+        </div>
+      </div>
+
+      <div id="selectorFields">
+        <div class="gen-field-grid">
+          <div>
+            <label class="form-label" for="tradeSelect">Trade <span class="req">*</span></label>
+            <select class="form-select" id="tradeSelect">
+              <option value="">Select trade</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="form-label" for="levelSelect">Level <span class="req">*</span></label>
+            <select class="form-select" id="levelSelect" disabled>
+              <option value="">Select trade first</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="form-label" for="moduleSelect">Module <span class="req">*</span></label>
+            <select class="form-select" id="moduleSelect" disabled>
+              <option value="">Select level first</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="gen-actions-row">
+          <button type="button" class="btn btn-gold" id="generateBtn">
+            <i class="fa-solid fa-wand-magic-sparkles me-1"></i> Generate assessment plan
+          </button>
+          <button type="button" class="btn btn-outline-secondary" id="resetBtn">
+            <i class="fa-solid fa-rotate-left me-1"></i> Reset
+          </button>
+        </div>
+        <p class="gen-hint">One row is created per learning outcome of the selected module.</p>
+      </div>
+    </section>
+
+    <!-- ==================== ACCESS BLOCKED (payment required) ==================== -->
+    <div id="accessBlockedAlert" class="gen-alert-empty d-none">
+      <i class="fa-solid fa-lock"></i>
+      <div id="accessBlockedMessage" style="white-space: pre-line;"></div>
+    </div>
+
+    <!-- ==================== GENERATED DOCUMENT ==================== -->
+    <section id="docSection" class="d-none">
+
+      <div class="gen-toolbar no-print">
+        <div class="gen-toolbar-note">
+          <i class="fa-solid fa-pen me-1"></i>
+          Every cell in this table is editable — click any cell to fill it in or adjust the
+          AI draft before printing. Number of Invigilators/Assessors and Place fill in
+          automatically as you type, but you can always overwrite them by hand.
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+          <button type="button" class="btn btn-outline-secondary btn-sm" id="editSelectionBtn">
+            <i class="fa-solid fa-sliders me-1"></i> Edit selection
+          </button>
+          <button type="button" class="btn btn-outline-primary btn-sm gen-ai-toolbar-btn" id="aiGenerateBtn">
+            <i class="fa-solid fa-robot me-1"></i> Generate with AI
+          </button>
+          <button type="button" class="btn btn-gold btn-sm" id="printBtn">
+            <i class="fa-solid fa-print me-1"></i> Print / save as PDF
+          </button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" id="exportXlsxBtn">
+            <i class="fa-solid fa-file-excel me-1"></i> Download as Excel
+          </button>
+        </div>
+      </div>
+
+      <article class="gen-doc" id="genDoc">
+        <div class="gen-doc-logos" id="docLogos"></div>
+
+        <div class="gen-doc-title">
+          <h3 id="docTitleText">Assessment Plan</h3>
+          <p id="docGeneratedOn"></p>
+        </div>
+
+        <dl class="gen-meta-grid" id="docMeta"></dl>
+
+        <div class="gen-table-wrap">
+          <table class="gen-table gen-table-v2">
+            <colgroup>
+              <col class="col-no">
+              <col class="col-module">
+              <col class="col-modtype">
+              <col class="col-lo">
+              <col class="col-asstype">
+              <col class="col-trainer">
+              <col class="col-candidates">
+              <col class="col-invig">
+              <col class="col-date">
+              <col class="col-resources">
+              <col class="col-place">
+              <col class="col-pubdate">
+              <col class="col-obs">
+            </colgroup>
+            <thead>
+              <tr>
+                <th>No.</th>
+                <th>Module (Code &amp; Name)</th>
+                <th>Type of Module</th>
+                <th>LO</th>
+                <th>Type of Assessment</th>
+                <th>Responsible Trainer</th>
+                <th>Number of Candidates</th>
+                <th>Number of Invigilators/Assessors</th>
+                <th>Date</th>
+                <th>Resources</th>
+                <th>Place</th>
+                <th>Time for Publication of Assessment Results</th>
+                <th>Observation</th>
+              </tr>
+            </thead>
+            <tbody id="docTableBody"></tbody>
+          </table>
+        </div>
+
+        <div class="gen-signoff-grid">
+          <div class="gen-signoff-line">
+            <div>Prepared by:</div>
+            <div contenteditable="true" id="docPreparedBy">&nbsp;</div>
+            <div class="gen-signature-space" contenteditable="true">&nbsp;</div>
+          </div>
+          <div class="gen-signoff-line">
+            <div>Verified by:</div>
+            <div contenteditable="true"><b>DOS</b> - HABIYAREMYE Fabien</div>
+            <div class="gen-signature-space" contenteditable="true">&nbsp;</div>
+          </div>
+          <div class="gen-signoff-line">
+            <div>Approved by:</div>
+            <div contenteditable="true"><b>School Manager</b> - Fr. Innocent HARERIMANA</div>
+            <div class="gen-signature-space" contenteditable="true">&nbsp;</div>
+          </div>
+        </div>
+
+        <div class="gen-doc-footer">
+          <span>Assessment Plan · <span id="docFooterModule"></span></span>
+        </div>
+      </article>
+
+      <div class="gen-save-note no-print">
+        <i class="fa-solid fa-circle-info"></i>
+        <div>
+          This preview is generated on the fly and isn't saved anywhere automatically — use
+          "Print / save as PDF" to keep a copy. AI-drafted cells are marked with a small
+          <strong>AI</strong> badge and stay fully editable so a trainer can review and adjust
+          them before printing. Staff can
+          <a href="{% url 'login' %}">sign in</a> to manage the underlying modules, outcomes
+          and indicative content directly.
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <script type="application/json" id="tms-data">{{ tms_data_json|safe }}</script>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="{% static 'js/main.js' %}"></script>
+  <script src="{% static 'js/generator.js' %}"></script>
+  <script>
+    (function () {
+      'use strict';
+
+      var AI_ENDPOINT = '/api/assessment-plan/ai-generate/';
+
+      var DEFAULT_DOC_TITLE = 'Assessment Plan';
+
+      var MODULE_TYPE_OPTIONS = [
+        { value: '', label: 'Select…' },
+        { value: 'specific', label: 'Specific' },
+        { value: 'general', label: 'General' },
+        { value: 'complementary', label: 'Complementary' },
+      ];
+
+      // ------------------------------------------------------------------
+      // Auto-detect Module Type from the module's code:
+      //   - starts with "GEN"           -> General
+      //   - starts with "CC"            -> Complementary
+      //   - otherwise starts with a letter (not a digit/symbol) -> Specific
+      //   - otherwise (starts with a digit/symbol) -> left blank for the
+      //     trainer to choose manually, since no rule covers it.
+      // This is a pre-fill, not a lock - the dropdown stays a normal
+      // <select> the trainer can always change by hand.
+      // ------------------------------------------------------------------
+      function detectModuleType(modCode) {
+        var code = (modCode || '').trim();
+        if (!code) return '';
+        var upper = code.toUpperCase();
+        if (upper.indexOf('GEN') === 0) return 'general';
+        if (upper.indexOf('CC') === 0) return 'complementary';
+        if (/^[A-Za-z]/.test(code)) return 'specific';
+        return '';
+      }
+
+      // ------------------------------------------------------------------
+      // Auto-calculation rules
+      //
+      // - Invigilators/Assessors scale with Number of Candidates: 1 per
+      //   every 40 candidates or part thereof (1-40 -> 1, 41-80 -> 2,
+      //   81-120 -> 3, and so on).
+      // - Place follows the assessment type: Written -> Classroom,
+      //   Practical -> Computer Lab. Oral/Assignment (or anything the
+      //   auto-rule doesn't recognise) is left blank for the trainer to
+      //   fill in, since there's no single obvious default for those.
+      //
+      // Both are pre-fills, not permanent locks - the fields they touch
+      // stay editable so a trainer can always override them by hand.
+      // ------------------------------------------------------------------
+      var CANDIDATES_PER_INVIGILATOR = 40;
+
+      function computeInvigilators(candidatesValue) {
+        var n = parseInt(candidatesValue, 10);
+        if (!n || n <= 0) return '';
+        return Math.ceil(n / CANDIDATES_PER_INVIGILATOR);
+      }
+
+      function placeForAssessmentType(text) {
+        var t = (text || '').toLowerCase();
+        var hasWritten = t.indexOf('written') !== -1;
+        var hasPractical = t.indexOf('practical') !== -1;
+        if (hasPractical && hasWritten) return 'Classroom, Computer Lab';
+        if (hasPractical) return 'Computer Lab';
+        if (hasWritten) return 'Classroom';
+        return '';
+      }
+
+      /** Recomputes Number of Invigilators/Assessors for one row from its
+       *  current Number of Candidates value. */
+      function applyAutoInvigilators(row) {
+        if (!row) return;
+        var candidatesInput = row.querySelector('[data-role="num_candidates"]');
+        var invigilatorInput = row.querySelector('[data-role="num_invigilators"]');
+        if (!candidatesInput || !invigilatorInput) return;
+        // Never overwrite a value the trainer deliberately unlocked and
+        // typed by hand (see the dblclick override handler below).
+        if (invigilatorInput.dataset.overridden === '1') return;
+        invigilatorInput.value = computeInvigilators(candidatesInput.value);
+        invigilatorInput.classList.toggle('gen-auto-filled', invigilatorInput.value !== '');
+      }
+
+      /** Recomputes Place for one row from its current Type of Assessment
+       *  cell text. */
+      function applyAutoPlace(row, assessmentTypeText) {
+        if (!row) return;
+        var placeInput = row.querySelector('[data-role="place"]');
+        if (!placeInput) return;
+        if (placeInput.dataset.overridden === '1') return;
+        var suggested = placeForAssessmentType(assessmentTypeText);
+        if (suggested) {
+          placeInput.value = suggested;
+          placeInput.classList.add('gen-auto-filled');
+        }
+      }
+
+      /**
+       * Wires up both auto-calculations once on the (persistent) tbody
+       * element, using event delegation so it keeps working after
+       * renderTable() replaces the rows' innerHTML on every generate.
+       */
+      function attachRowAutomationListeners(tbody) {
+        // Candidates typed/changed -> recompute invigilators for that row.
+        tbody.addEventListener('input', function (e) {
+          var target = e.target;
+          if (target.matches && target.matches('[data-role="num_candidates"]')) {
+            applyAutoInvigilators(target.closest('tr'));
+          }
+          // Trainer typed directly into Place by hand -> stop auto-filling
+          // it for this row so their edit isn't clobbered later.
+          if (target.matches && target.matches('[data-role="place"]')) {
+            target.dataset.overridden = '1';
+            target.classList.remove('gen-auto-filled');
+          }
+        });
+
+        // Assessment type cell edited by hand and left -> recompute place
+        // for that row. (AI-filled assessment types trigger this directly
+        // from fillRowWithAiResult instead, since setting innerHTML never
+        // fires a DOM blur/focusout event.)
+        tbody.addEventListener('focusout', function (e) {
+          var target = e.target;
+          if (target.matches && target.matches('[data-field="assessment_type"]')) {
+            applyAutoPlace(target.closest('tr'), target.textContent);
+          }
+        });
+
+        // Let a trainer unlock and hand-edit an auto-calculated
+        // Invigilators/Assessors count for a session that doesn't fit the
+        // standard 1-per-40 ratio.
+        tbody.addEventListener('dblclick', function (e) {
+          var target = e.target;
+          if (target.matches && target.matches('[data-role="num_invigilators"]')) {
+            target.readOnly = false;
+            target.dataset.overridden = '1';
+            target.classList.remove('gen-auto-filled');
+            target.focus();
+          }
+        });
+      }
+
+      var data = TMSGen.readData() || {
+        sectors: [], trades: [], levels: [], trade_levels: [],
+        modules: [], outcomes: [], contents: [], trainers: [], logos: [],
+      };
+
+      var tradeSelect = document.getElementById('tradeSelect');
+      var levelSelect = document.getElementById('levelSelect');
+      var moduleSelect = document.getElementById('moduleSelect');
+      var generateBtn = document.getElementById('generateBtn');
+      var resetBtn = document.getElementById('resetBtn');
+      var editSelectionBtn = document.getElementById('editSelectionBtn');
+      var printBtn = document.getElementById('printBtn');
+      var exportXlsxBtn = document.getElementById('exportXlsxBtn');
+      var aiGenerateBtn = document.getElementById('aiGenerateBtn');
+      var docSection = document.getElementById('docSection');
+      var noDataAlert = document.getElementById('noDataAlert');
+      var accessBlockedAlert = document.getElementById('accessBlockedAlert');
+      var accessBlockedMessage = document.getElementById('accessBlockedMessage');
+      var selectorFields = document.getElementById('selectorFields');
+      var docTitleText = document.getElementById('docTitleText');
+
+      var sectorsById = indexBy(data.sectors, 'id');
+      var modulesById = indexBy(data.modules, 'id');
+
+      var currentContext = null; // { mod, trade, level, sector, outcomes }
+
+      function indexBy(list, key) {
+        var map = {};
+        (list || []).forEach(function (item) { map[item[key]] = item; });
+        return map;
+      }
+
+      function buildDocTitle(mod) {
+        if (!mod) return DEFAULT_DOC_TITLE;
+        var parts = [DEFAULT_DOC_TITLE];
+        if (mod.mod_code) parts.push(mod.mod_code);
+        if (mod.mod_name) parts.push(mod.mod_name);
+        return parts.join(' \u2014 ');
+      }
+
+      function setDocTitle(mod) {
+        if (!docTitleText) return;
+        docTitleText.textContent = buildDocTitle(mod);
+      }
+
+      function slugifyForFilename(str) {
+        return (str || '')
+          .replace(/[\\/:*?"<>|]+/g, '')
+          .replace(/\s+/g, ' ')
+          .trim();
+      }
+
+      function printWithFilename() {
+        var originalTitle = document.title;
+        var suggested = currentContext
+          ? slugifyForFilename(buildDocTitle(currentContext.mod))
+          : slugifyForFilename(DEFAULT_DOC_TITLE);
+
+        document.title = suggested;
+        TMSGen.print();
+
+        var restore = function () {
+          document.title = originalTitle;
+          window.removeEventListener('afterprint', restore);
+        };
+        window.addEventListener('afterprint', restore);
+        setTimeout(restore, 5000);
+      }
+
+      /**
+       * "Download as Excel" — reads the currently-rendered assessment plan
+       * straight out of the DOM (via TMSGen.collectExportPayload, same
+       * data the trainer sees/has edited on screen) and POSTs it to the
+       * export endpoint, which streams back an .xlsx file.
+       */
+      function exportAssessmentPlanAsXlsx() {
+        if (!exportXlsxBtn) return;
+        var genDoc = document.getElementById('genDoc');
+        var payload = TMSGen.collectExportPayload(genDoc);
+        var filename = TMSGen.filenameSafe(payload.title, 'Assessment Plan') + '.xlsx';
+
+        var originalHtml = exportXlsxBtn.innerHTML;
+        exportXlsxBtn.disabled = true;
+        exportXlsxBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Preparing…';
+
+        TMSGen.exportDocument('{% url "assessmentplan-export-xlsx" %}', payload, filename)
+          .catch(function (err) {
+            TMS.toast(err && err.message ? err.message : 'Could not generate the Excel file.', 'danger');
+          })
+          .finally(function () {
+            exportXlsxBtn.disabled = false;
+            exportXlsxBtn.innerHTML = originalHtml;
+          });
+      }
+
+      function init() {
+        if (!data.trades || data.trades.length === 0) {
+          noDataAlert.classList.remove('d-none');
+          selectorFields.classList.add('d-none');
+          return;
+        }
+
+        TMSGen.populateSelect(tradeSelect, data.trades, {
+          valueKey: 'id',
+          labelFn: function (t) { return t.trade_name; },
+          placeholder: 'Select trade',
+        });
+
+        tradeSelect.addEventListener('change', onTradeChange);
+        levelSelect.addEventListener('change', onLevelChange);
+        generateBtn.addEventListener('click', onGenerate);
+        resetBtn.addEventListener('click', onReset);
+        editSelectionBtn.addEventListener('click', function () {
+          selectorFields.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+        printBtn.addEventListener('click', printWithFilename);
+        if (exportXlsxBtn) exportXlsxBtn.addEventListener('click', exportAssessmentPlanAsXlsx);
+        aiGenerateBtn.addEventListener('click', onAiGenerate);
+
+        // Attached once, on the persistent tbody node - renderTable() only
+        // ever replaces the rows' innerHTML, never the tbody element itself,
+        // so this keeps working across every "Generate assessment plan" run.
+        attachRowAutomationListeners(document.getElementById('docTableBody'));
+      }
+
+      function onTradeChange() {
+        var tradeId = tradeSelect.value ? Number(tradeSelect.value) : null;
+        moduleSelect.innerHTML = '<option value="">Select level first</option>';
+        moduleSelect.disabled = true;
+
+        if (!tradeId) {
+          levelSelect.innerHTML = '<option value="">Select trade first</option>';
+          levelSelect.disabled = true;
+          return;
+        }
+
+        var levelIds = data.trade_levels
+          .filter(function (tl) { return tl.trade_id === tradeId; })
+          .map(function (tl) { return tl.level_id; });
+
+        var levels = data.levels.filter(function (lvl) { return levelIds.indexOf(lvl.id) !== -1; });
+
+        TMSGen.populateSelect(levelSelect, levels, {
+          valueKey: 'id',
+          labelFn: function (l) { return l.class_level; },
+          placeholder: levels.length ? 'Select level' : 'No levels linked to this trade',
+        });
+      }
+
+      function onLevelChange() {
+        var tradeId = tradeSelect.value ? Number(tradeSelect.value) : null;
+        var levelId = levelSelect.value ? Number(levelSelect.value) : null;
+
+        if (!tradeId || !levelId) {
+          moduleSelect.innerHTML = '<option value="">Select level first</option>';
+          moduleSelect.disabled = true;
+          return;
+        }
+
+        var modules = data.modules.filter(function (m) {
+          return m.trade_id === tradeId && m.level_id === levelId;
+        });
+
+        TMSGen.populateSelect(moduleSelect, modules, {
+          valueKey: 'id',
+          labelFn: function (m) { return m.mod_code + ' — ' + m.mod_name; },
+          placeholder: modules.length ? 'Select module' : 'No modules for this trade & level',
+        });
+      }
+
+      function onReset() {
+        tradeSelect.value = '';
+        onTradeChange();
+        docSection.classList.add('d-none');
+        accessBlockedAlert.classList.add('d-none');
+        currentContext = null;
+        setDocTitle(null);
+      }
+
+      function contentsForOutcome(outcomeId) {
+        return data.contents
+          .filter(function (c) { return c.outcome_id === outcomeId; })
+          .map(function (c) { return c.indic_name; });
+      }
+
+      // Shows the payment-required message in place of the document area,
+      // reusing the same "empty state" visual language (.gen-alert-empty)
+      // already used above for noDataAlert - no new visual language.
+      function showAccessBlocked(message) {
+        docSection.classList.add('d-none');
+        accessBlockedMessage.textContent = message ||
+          'You need active paid access to generate this document.';
+        accessBlockedAlert.classList.remove('d-none');
+        accessBlockedAlert.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+
+      // Checks the trainer's free/paid generation access before any
+      // document is rendered. Consumes the free generation server-side the
+      // first time it's used - see core/views.py: check_generation_access.
+      function checkGenerationAccess(callback) {
+        fetch('/api/generation/check-access/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken'),
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+        })
+          .then(function (response) { return response.json(); })
+          .then(function (resp) {
+            if (resp && resp.allowed) {
+              callback(true, null);
+            } else {
+              callback(false, (resp && resp.message) ||
+                'You need active paid access to generate this document.');
+            }
+          })
+          .catch(function (err) {
+            console.error(err);
+            callback(false, 'Could not verify your generation access. Please try again.');
+          });
+      }
+
+      function onGenerate() {
+        var moduleId = moduleSelect.value ? Number(moduleSelect.value) : null;
+        if (!moduleId) {
+          TMS.toast('Please select a trade, level and module first.', 'danger');
+          return;
+        }
+
+        checkGenerationAccess(function (allowed, message) {
+          if (!allowed) {
+            showAccessBlocked(message);
+            return;
+          }
+          accessBlockedAlert.classList.add('d-none');
+          performGenerate(moduleId);
+        });
+      }
+
+      function performGenerate(moduleId) {
+        var mod = modulesById[moduleId];
+        var trade = data.trades.find(function (t) { return t.id === mod.trade_id; });
+        var level = data.levels.find(function (l) { return l.id === mod.level_id; });
+        var sector = trade ? sectorsById[trade.sector_id] : null;
+
+        var outcomes = data.outcomes
+          .filter(function (o) { return o.module_id === moduleId; })
+          .sort(function (a, b) { return a.id - b.id; });
+
+        currentContext = { mod: mod, trade: trade, level: level, sector: sector, outcomes: outcomes };
+
+        renderLogos(data.logos);
+        renderMeta({
+          sector: sector ? sector.sector_name : '\u2014',
+          trade: trade ? trade.trade_name : '\u2014',
+          level: level ? level.class_level : '\u2014',
+          mod: mod,
+        });
+        renderTable(mod, outcomes);
+
+        document.getElementById('docPreparedBy').textContent = mod.trainer_name || '';
+        document.getElementById('docFooterModule').textContent = mod.mod_code + ' \u2014 ' + mod.mod_name;
+
+        setDocTitle(mod);
+
+        docSection.classList.remove('d-none');
+        docSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+
+      function renderLogos(logos) {
+        var wrap = document.getElementById('docLogos');
+        wrap.innerHTML = '';
+        (logos || []).forEach(function (logo) {
+          var img = document.createElement('img');
+          img.src = logo.image;
+          img.alt = logo.name;
+          wrap.appendChild(img);
+        });
+      }
+
+      function renderMeta(ctx) {
+        var mod = ctx.mod;
+        var rows = [
+          ['Sector', ctx.sector],
+          ['Trade', ctx.trade],
+          ['Level', ctx.level],
+          ['Module', mod.mod_code + ' — ' + mod.mod_name],
+          ['Generated on', TMSGen.todayLong()],
+        ];
+        var el = document.getElementById('docMeta');
+        el.innerHTML = rows.map(function (r) {
+          return '<div><dt>' + TMSGen.escapeHtml(r[0]) + '</dt><dd>' + TMSGen.escapeHtml(r[1]) + '</dd></div>';
+        }).join('');
+        document.getElementById('docGeneratedOn').textContent = '';
+      }
+
+      function moduleTypeSelectHtml(rowIndex, selectedValue) {
+        var opts = MODULE_TYPE_OPTIONS.map(function (o) {
+          var isSelected = selectedValue && o.value === selectedValue ? ' selected' : '';
+          return '<option value="' + o.value + '"' + isSelected + '>' + o.label + '</option>';
+        }).join('');
+        var autoClass = selectedValue ? ' gen-auto-filled' : '';
+        return '<select class="gen-row-input' + autoClass + '" data-role="module-type" data-row="' + rowIndex +
+          '" title="Auto-detected from the module code — change if needed">' + opts + '</select>';
+      }
+
+      function emptyInputHtml(type, role, rowIndex, extraAttrs) {
+        return '<input type="' + type + '" class="gen-row-input" data-role="' + role +
+          '" data-row="' + rowIndex + '"' + (extraAttrs || '') + '>';
+      }
+
+      function renderTable(mod, outcomes) {
+        var tbody = document.getElementById('docTableBody');
+        if (!outcomes.length) {
+          tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted py-3">' +
+            'This module has no learning outcomes recorded yet.</td></tr>';
+          return;
+        }
+
+        var moduleLabel = TMSGen.escapeHtml(mod.mod_code + ' — ' + mod.mod_name);
+        var trainerName = TMSGen.escapeHtml(mod.trainer_name || '');
+        // Same module for every row in this table, so the auto-detected
+        // Module Type only needs computing once.
+        var autoModuleType = detectModuleType(mod.mod_code);
+
+        var html = outcomes.map(function (outcome, idx) {
+          var rowIndex = idx + 1;
+          return '' +
+            '<tr data-outcome-id="' + outcome.id + '" data-row="' + rowIndex + '">' +
+              '<td>' + rowIndex + '</td>' +
+              '<td>' + moduleLabel + '</td>' +
+              '<td>' + moduleTypeSelectHtml(rowIndex, autoModuleType) + '</td>' +
+              '<td>' + TMSGen.escapeHtml(outcome.outcome_text) + '</td>' +
+              '<td class="gen-editable-cell" contenteditable="true" data-field="assessment_type">' +
+                '<span class="gen-placeholder-text">Click "Generate with AI" or type here</span>' +
+              '</td>' +
+              '<td class="gen-editable-cell" contenteditable="true" data-field="trainer">' +
+                (trainerName || '<span class="gen-placeholder-text">Type here</span>') +
+              '</td>' +
+              '<td>' + emptyInputHtml('number', 'num_candidates', rowIndex, ' min="0" placeholder="0"') + '</td>' +
+              '<td>' + emptyInputHtml('number', 'num_invigilators', rowIndex, ' min="0" readonly title="Auto-calculated from Number of Candidates — double-click to override"') + '</td>' +
+              '<td>' + emptyInputHtml('date', 'assessment_date', rowIndex) + '</td>' +
+              '<td class="gen-editable-cell" contenteditable="true" data-field="resources">' +
+                '<span class="gen-placeholder-text">Click "Generate with AI" or type here</span>' +
+              '</td>' +
+              '<td>' + emptyInputHtml('text', 'place', rowIndex, ' placeholder="Auto from assessment type" title="Fills in automatically from Type of Assessment — type to override"') + '</td>' +
+              '<td>' + emptyInputHtml('date', 'publication_date', rowIndex) + '</td>' +
+              '<td class="gen-editable-cell" contenteditable="true" data-field="observation">' +
+                '<span class="gen-placeholder-text">Click "Generate with AI" or type here</span>' +
+              '</td>' +
+            '</tr>';
+        }).join('');
+
+        tbody.innerHTML = html;
+
+        tbody.querySelectorAll('.gen-editable-cell').forEach(function (cell) {
+          cell.addEventListener('focus', function onFocus() {
+            var placeholder = cell.querySelector('.gen-placeholder-text');
+            if (placeholder) cell.textContent = '';
+          });
+        });
+      }
+
+      function getCookie(name) {
+        var match = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+        return match ? decodeURIComponent(match.pop()) : '';
+      }
+
+      function setAiButtonLoading(isLoading) {
+        aiGenerateBtn.classList.toggle('is-loading', isLoading);
+        aiGenerateBtn.disabled = isLoading;
+        aiGenerateBtn.innerHTML = isLoading
+          ? '<i class="fa-solid fa-spinner fa-spin me-1"></i> Generating…'
+          : '<i class="fa-solid fa-robot me-1"></i> Generate with AI';
+      }
+
+      function markRowsLoading(outcomeIds) {
+        var fields = ['assessment_type', 'resources', 'observation'];
+        outcomeIds.forEach(function (id) {
+          var row = document.querySelector('tr[data-outcome-id="' + id + '"]');
+          if (!row) return;
+          fields.forEach(function (field) {
+            var cell = row.querySelector('[data-field="' + field + '"]');
+            if (!cell) return;
+            cell.innerHTML = '<span class="gen-ai-loading-text"><i class="fa-solid fa-circle-notch fa-spin"></i> Drafting…</span>';
+          });
+        });
+      }
+
+      function toItemList(value) {
+        if (Array.isArray(value)) {
+          return value.map(function (v) { return (v || '').toString().trim(); }).filter(Boolean);
+        }
+        if (typeof value === 'string' && value.trim()) {
+          return value.split(/\r?\n|;|,/)
+            .map(function (s) { return s.trim(); })
+            .filter(Boolean);
+        }
+        return [];
+      }
+
+      function toCsvLine(value, maxItems) {
+        var items = toItemList(value);
+        if (maxItems) items = items.slice(0, maxItems);
+        return items.join(', ');
+      }
+
+      function fillRowWithAiResult(outcomeId, result) {
+        var row = document.querySelector('tr[data-outcome-id="' + outcomeId + '"]');
+        if (!row) return;
+
+        var csvFieldConfig = {
+          assessment_type: { value: result.assessment_type, maxItems: 2 },
+          resources: { value: result.resources, maxItems: null },
+        };
+
+        Object.keys(csvFieldConfig).forEach(function (field) {
+          var cell = row.querySelector('[data-field="' + field + '"]');
+          if (!cell) return;
+          var cfg = csvFieldConfig[field];
+          var line = toCsvLine(cfg.value, cfg.maxItems);
+          if (!line) {
+            cell.innerHTML = '<span class="gen-ai-error-text">AI did not return content — click to fill in manually.</span>';
+            return;
+          }
+          cell.innerHTML = TMSGen.escapeHtml(line) + '<span class="gen-ai-badge">AI</span>';
+          cell.classList.add('gen-ai-filled');
+
+          // The AI just supplied the assessment type for this row - setting
+          // innerHTML never fires a DOM blur/focusout event, so trigger the
+          // Place auto-calculation directly here instead of relying on the
+          // focusout listener (which only covers manual typing).
+          if (field === 'assessment_type') {
+            applyAutoPlace(row, line);
+          }
+        });
+
+        var obsCell = row.querySelector('[data-field="observation"]');
+        if (obsCell) {
+          var obsText = (result.observation || '').toString().trim();
+          if (!obsText) {
+            obsCell.innerHTML = '<span class="gen-ai-error-text">AI did not return content — click to fill in manually.</span>';
+          } else {
+            obsCell.innerHTML = TMSGen.escapeHtml(obsText) + '<span class="gen-ai-badge">AI</span>';
+            obsCell.classList.add('gen-ai-filled');
+          }
+        }
+      }
+
+      function markRowFailed(outcomeId) {
+        var row = document.querySelector('tr[data-outcome-id="' + outcomeId + '"]');
+        if (!row) return;
+        var fields = ['assessment_type', 'resources', 'observation'];
+        fields.forEach(function (field) {
+          var cell = row.querySelector('[data-field="' + field + '"]');
+          if (!cell) return;
+          cell.innerHTML = '<span class="gen-ai-error-text">Couldn\'t generate this — click to fill in manually.</span>';
+        });
+      }
+
+      function onAiGenerate() {
+        if (!currentContext) {
+          TMS.toast('Generate an assessment plan first.', 'danger');
+          return;
+        }
+
+        var ctx = currentContext;
+        var outcomeIds = ctx.outcomes.map(function (o) { return o.id; });
+        if (!outcomeIds.length) {
+          TMS.toast('This module has no learning outcomes to generate content for.', 'danger');
+          return;
+        }
+
+        var payload = {
+          sector: ctx.sector ? ctx.sector.sector_name : null,
+          trade: ctx.trade ? ctx.trade.trade_name : null,
+          level: ctx.level ? ctx.level.class_level : null,
+          module_code: ctx.mod.mod_code,
+          module_name: ctx.mod.mod_name,
+          outcomes: ctx.outcomes.map(function (o) {
+            return {
+              outcome_id: o.id,
+              learning_unit: TMSGen.shortOutcomeText(o.outcome_text),
+              indicative_content: contentsForOutcome(o.id),
+            };
+          }),
+        };
+
+        setAiButtonLoading(true);
+        markRowsLoading(outcomeIds);
+
+        fetch(AI_ENDPOINT, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken'),
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+          body: JSON.stringify(payload),
+        })
+          .then(function (response) {
+            if (!response.ok) {
+              throw new Error('AI request failed with status ' + response.status);
+            }
+            return response.json();
+          })
+          .then(function (data) {
+            var results = (data && data.results) || [];
+            var resultsById = {};
+            results.forEach(function (r) { resultsById[r.outcome_id] = r; });
+
+            outcomeIds.forEach(function (id) {
+              if (resultsById[id]) {
+                fillRowWithAiResult(id, resultsById[id]);
+              } else {
+                markRowFailed(id);
+              }
+            });
+
+            TMS.toast('AI draft added — review and edit any cell before printing.', 'success');
+          })
+          .catch(function (err) {
+            outcomeIds.forEach(markRowFailed);
+            TMS.toast('Could not reach the AI service. Please try again or fill the fields manually.', 'danger');
+            console.error(err);
+          })
+          .finally(function () {
+            setAiButtonLoading(false);
+          });
+      }
+
+      init();
+    })();
+  </script>
+</body>
+</html>

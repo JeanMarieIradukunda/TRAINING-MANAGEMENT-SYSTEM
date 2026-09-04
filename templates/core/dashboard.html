@@ -1,0 +1,379 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · TMS{% endblock %}
+{% block content %}
+
+<div class="db-page">
+
+{% if is_trainer %}
+  <!-- ===================== Trainer Dashboard ===================== -->
+  <!-- Same template/URL as the admin Dashboard - just a smaller slice:
+       only Learning Outcomes / Indicative Contents, scoped to this
+       trainer's own modules (see DashboardView.get_context_data). -->
+  <div class="db-hero">
+    <div class="db-hero-intro">
+      <p class="db-hero-eyebrow">Dashboard</p>
+      <h1>Welcome back, {{ request.user.username|title }} 👋</h1>
+      <p class="db-hero-sub">Learning outcomes and indicative contents for your assigned modules.</p>
+    </div>
+  </div>
+
+  <div class="db-kpi-rail">
+    <div class="db-kpi-card db-kpi-1">
+      <div class="db-kpi-top">
+        <div class="db-kpi-icon"><i class="fa-solid fa-book-open"></i></div>
+      </div>
+      <div class="db-kpi-value">{{ module_count }}</div>
+      <div class="db-kpi-label">Assigned Modules</div>
+    </div>
+    <div class="db-kpi-card db-kpi-2">
+      <div class="db-kpi-top">
+        <div class="db-kpi-icon"><i class="fa-solid fa-list-check"></i></div>
+      </div>
+      <div class="db-kpi-value">{{ outcome_count }}</div>
+      <div class="db-kpi-label">Learning Outcomes</div>
+    </div>
+    <div class="db-kpi-card db-kpi-3">
+      <div class="db-kpi-top">
+        <div class="db-kpi-icon"><i class="fa-solid fa-file-lines"></i></div>
+      </div>
+      <div class="db-kpi-value">{{ content_count }}</div>
+      <div class="db-kpi-label">Indicative Contents</div>
+    </div>
+  </div>
+
+  <section class="db-section">
+    <div class="db-section-head">
+      <h2 class="db-section-title">Browse your data</h2>
+    </div>
+    <div class="db-nav-grid">
+      <a href="{% url 'outcome-list' %}" class="db-nav-card db-accent-teal">
+        <div class="db-nav-icon"><i class="fa-solid fa-list-check"></i></div>
+        <div>
+          <div class="db-nav-title">Learning Outcomes</div>
+          <div class="db-nav-sub">{{ outcome_count }} record{{ outcome_count|pluralize }}</div>
+        </div>
+      </a>
+      <a href="{% url 'content-list' %}" class="db-nav-card db-accent-teal">
+        <div class="db-nav-icon"><i class="fa-solid fa-file-lines"></i></div>
+        <div>
+          <div class="db-nav-title">Indicative Contents</div>
+          <div class="db-nav-sub">{{ content_count }} record{{ content_count|pluralize }}</div>
+        </div>
+      </a>
+    </div>
+  </section>
+
+  <section class="db-section">
+    <div class="db-section-head">
+      <h2 class="db-section-title">Recent activity</h2>
+    </div>
+    <div class="db-activity-grid">
+      <div class="card-panel db-activity-panel">
+        <div class="db-activity-panel-title">
+          <i class="fa-solid fa-list-check"></i> Latest learning outcomes
+        </div>
+        {% if recent_outcomes %}
+        <ul class="db-timeline">
+          {% for outcome in recent_outcomes %}
+          <li>
+            <div class="db-timeline-title">{{ outcome.outcome_text|truncatechars:60 }}</div>
+            <div class="db-timeline-sub">{{ outcome.module }}</div>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <div class="db-activity-empty">No learning outcomes yet for your modules.</div>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+
+{% else %}
+  <!-- ===================== Admin Dashboard ===================== -->
+
+  <!-- Hero: greeting + the most-used actions, right where you land -->
+  <div class="db-hero">
+    <div class="db-hero-intro">
+      <p class="db-hero-eyebrow">Dashboard</p>
+      <h1>Welcome back, {{ request.user.username|title }} 👋</h1>
+      <p class="db-hero-sub">Here's what's happening across your training programme.</p>
+    </div>
+    <div class="db-hero-actions">
+      <a href="{% url 'outcome-bulk-create' %}" class="db-hero-action db-hero-action-primary">
+        <i class="fa-solid fa-layer-group"></i> Add multiple Outcomes
+      </a>
+      <a href="{% url 'content-bulk-create' %}" class="db-hero-action">
+        <i class="fa-solid fa-layer-group"></i> Add multiple Contents
+      </a>
+      <a href="{% url 'module-create' %}" class="db-hero-action">
+        <i class="fa-solid fa-book-open"></i> Add a Module
+      </a>
+    </div>
+  </div>
+
+  <!-- KPI bento rail: glanceable counts across the whole programme -->
+  <div class="db-kpi-rail">
+    <div class="db-kpi-card db-kpi-1">
+      <div class="db-kpi-top">
+        <div class="db-kpi-icon"><i class="fa-solid fa-industry"></i></div>
+      </div>
+      <div class="db-kpi-value">{{ sector_count }}</div>
+      <div class="db-kpi-label">Sectors</div>
+    </div>
+    <div class="db-kpi-card db-kpi-2">
+      <div class="db-kpi-top">
+        <div class="db-kpi-icon"><i class="fa-solid fa-toolbox"></i></div>
+      </div>
+      <div class="db-kpi-value">{{ trade_count }}</div>
+      <div class="db-kpi-label">Trades</div>
+    </div>
+    <div class="db-kpi-card db-kpi-3">
+      <div class="db-kpi-top">
+        <div class="db-kpi-icon"><i class="fa-solid fa-layer-group"></i></div>
+      </div>
+      <div class="db-kpi-value">{{ level_count }}</div>
+      <div class="db-kpi-label">Levels</div>
+    </div>
+    <div class="db-kpi-card db-kpi-4">
+      <div class="db-kpi-top">
+        <div class="db-kpi-icon"><i class="fa-solid fa-book-open"></i></div>
+      </div>
+      <div class="db-kpi-value">{{ module_count }}</div>
+      <div class="db-kpi-label">Modules</div>
+    </div>
+    <div class="db-kpi-card db-kpi-5">
+      <div class="db-kpi-top">
+        <div class="db-kpi-icon"><i class="fa-solid fa-chalkboard-user"></i></div>
+      </div>
+      <div class="db-kpi-value">{{ trainer_count }}</div>
+      <div class="db-kpi-label">Trainers</div>
+    </div>
+    <div class="db-kpi-card db-kpi-6">
+      <div class="db-kpi-top">
+        <div class="db-kpi-icon"><i class="fa-solid fa-chalkboard"></i></div>
+      </div>
+      <div class="db-kpi-value">{{ lesson_plan_count }}</div>
+      <div class="db-kpi-label">Lesson Plans</div>
+    </div>
+    <a href="{% url 'traineraccess-list' %}" class="db-kpi-card db-kpi-1 {% if pending_access_count %}db-kpi-alert{% endif %}">
+      <div class="db-kpi-top">
+        <div class="db-kpi-icon"><i class="fa-solid fa-unlock-keyhole"></i></div>
+      </div>
+      <div class="db-kpi-value">{{ pending_access_count }}</div>
+      <div class="db-kpi-label">Trainers Awaiting Access</div>
+    </a>
+  </div>
+
+  {% if pending_access_count %}
+  <div class="alert alert-warning d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div>
+      <strong>{{ pending_access_count }} trainer{{ pending_access_count|pluralize }}</strong>
+      used their free generation and now need{{ pending_access_count|pluralize:",s" }} paid access
+      granted to keep generating Schemes of Work, Lesson Plans or Assessment Plans
+      {% if pending_access_trainers %}
+        (e.g. {% for t in pending_access_trainers %}{{ t.full_name }}{% if not forloop.last %}, {% endif %}{% endfor %}{% if pending_access_count > pending_access_trainers|length %}, …{% endif %}).
+      {% else %}.{% endif %}
+    </div>
+    <a href="{% url 'traineraccess-list' %}" class="btn btn-sm btn-gold">
+      <i class="fa-solid fa-unlock me-1"></i> Review Trainer Access
+    </a>
+  </div>
+  {% endif %}
+
+  <!-- Browse by category: tabbed switcher instead of stacked accordions -->
+  <section class="db-section">
+    <div class="db-section-head">
+      <h2 class="db-section-title">Browse your data</h2>
+      <div class="db-tabs" role="tablist">
+        <button type="button" class="db-tab-btn active" data-db-tab="curriculum">
+          <i class="fa-solid fa-diagram-project"></i> Curriculum Data
+        </button>
+        <button type="button" class="db-tab-btn" data-db-tab="people">
+          <i class="fa-solid fa-users"></i> People
+        </button>
+        <button type="button" class="db-tab-btn" data-db-tab="documents">
+          <i class="fa-solid fa-folder-open"></i> Documents &amp; Media
+        </button>
+      </div>
+    </div>
+
+    <div class="db-tab-panel active" data-db-panel="curriculum">
+      <div class="db-nav-grid">
+        <a href="{% url 'sector-list' %}" class="db-nav-card db-accent-teal">
+          <div class="db-nav-icon"><i class="fa-solid fa-industry"></i></div>
+          <div>
+            <div class="db-nav-title">Sectors</div>
+            <div class="db-nav-sub">{{ sector_count }} record{{ sector_count|pluralize }}</div>
+          </div>
+        </a>
+        <a href="{% url 'trade-list' %}" class="db-nav-card db-accent-teal">
+          <div class="db-nav-icon"><i class="fa-solid fa-toolbox"></i></div>
+          <div>
+            <div class="db-nav-title">Trades</div>
+            <div class="db-nav-sub">{{ trade_count }} record{{ trade_count|pluralize }}</div>
+          </div>
+        </a>
+        <a href="{% url 'level-list' %}" class="db-nav-card db-accent-teal">
+          <div class="db-nav-icon"><i class="fa-solid fa-layer-group"></i></div>
+          <div>
+            <div class="db-nav-title">Levels</div>
+            <div class="db-nav-sub">{{ level_count }} record{{ level_count|pluralize }}</div>
+          </div>
+        </a>
+        <a href="{% url 'tradelevel-list' %}" class="db-nav-card db-accent-teal">
+          <div class="db-nav-icon"><i class="fa-solid fa-diagram-project"></i></div>
+          <div>
+            <div class="db-nav-title">Trade Levels</div>
+            <div class="db-nav-sub">Mappings</div>
+          </div>
+        </a>
+        <a href="{% url 'module-list' %}" class="db-nav-card db-accent-teal">
+          <div class="db-nav-icon"><i class="fa-solid fa-book-open"></i></div>
+          <div>
+            <div class="db-nav-title">Modules</div>
+            <div class="db-nav-sub">{{ module_count }} record{{ module_count|pluralize }}</div>
+          </div>
+        </a>
+        <a href="{% url 'outcome-list' %}" class="db-nav-card db-accent-teal">
+          <div class="db-nav-icon"><i class="fa-solid fa-list-check"></i></div>
+          <div>
+            <div class="db-nav-title">Learning Outcomes</div>
+            <div class="db-nav-sub">{{ outcome_count }} record{{ outcome_count|pluralize }}</div>
+          </div>
+        </a>
+        <a href="{% url 'content-list' %}" class="db-nav-card db-accent-teal">
+          <div class="db-nav-icon"><i class="fa-solid fa-file-lines"></i></div>
+          <div>
+            <div class="db-nav-title">Indicative Contents</div>
+            <div class="db-nav-sub">{{ content_count }} record{{ content_count|pluralize }}</div>
+          </div>
+        </a>
+      </div>
+    </div>
+
+    <div class="db-tab-panel" data-db-panel="people">
+      <div class="db-nav-grid">
+        <a href="{% url 'trainer-list' %}" class="db-nav-card db-accent-gold">
+          <div class="db-nav-icon"><i class="fa-solid fa-chalkboard-user"></i></div>
+          <div>
+            <div class="db-nav-title">Trainers</div>
+            <div class="db-nav-sub">{{ trainer_count }} record{{ trainer_count|pluralize }}</div>
+          </div>
+        </a>
+        <a href="{% url 'traineraccess-list' %}" class="db-nav-card db-accent-gold">
+          <div class="db-nav-icon"><i class="fa-solid fa-unlock-keyhole"></i></div>
+          <div>
+            <div class="db-nav-title">Trainer Access</div>
+            <div class="db-nav-sub">
+              {% if pending_access_count %}{{ pending_access_count }} awaiting access{% else %}All up to date{% endif %}
+            </div>
+          </div>
+        </a>
+      </div>
+    </div>
+
+    <div class="db-tab-panel" data-db-panel="documents">
+      <div class="db-nav-grid">
+        <a href="{% url 'lessonplan-list' %}" class="db-nav-card db-accent-purple">
+          <div class="db-nav-icon"><i class="fa-solid fa-chalkboard"></i></div>
+          <div>
+            <div class="db-nav-title">Lesson Plans</div>
+            <div class="db-nav-sub">{{ lesson_plan_count }} record{{ lesson_plan_count|pluralize }}</div>
+          </div>
+        </a>
+        <a href="{% url 'assessmentplan-list' %}" class="db-nav-card db-accent-purple">
+          <div class="db-nav-icon"><i class="fa-solid fa-clipboard-check"></i></div>
+          <div>
+            <div class="db-nav-title">Assessment Plans</div>
+            <div class="db-nav-sub">{{ assessment_plan_count }} record{{ assessment_plan_count|pluralize }}</div>
+          </div>
+        </a>
+        <a href="{% url 'logo-list' %}" class="db-nav-card db-accent-purple">
+          {% if latest_logo and latest_logo.image %}
+            <div class="db-nav-icon db-nav-icon-image"><img src="{{ latest_logo.image }}" alt="{{ latest_logo.name }}"></div>
+          {% else %}
+            <div class="db-nav-icon"><i class="fa-solid fa-image"></i></div>
+          {% endif %}
+          <div>
+            <div class="db-nav-title">Logos</div>
+            <div class="db-nav-sub">{{ logo_count }} record{{ logo_count|pluralize }}</div>
+          </div>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Recent activity: quick way back into whatever was just added -->
+  <section class="db-section">
+    <div class="db-section-head">
+      <h2 class="db-section-title">Recent activity</h2>
+    </div>
+    <div class="db-activity-grid">
+      <div class="card-panel db-activity-panel">
+        <div class="db-activity-panel-title">
+          <i class="fa-solid fa-book-open"></i> Latest modules
+        </div>
+        {% if recent_modules %}
+        <ul class="db-timeline">
+          {% for module in recent_modules %}
+          <li>
+            <a href="{% url 'module-edit' pk=module.pk %}">
+              <div class="db-timeline-title">{{ module.mod_code }} — {{ module.mod_name }}</div>
+              <div class="db-timeline-sub">{{ module.trade.trade_name }} · {{ module.level.class_level }}</div>
+            </a>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <div class="db-activity-empty">No modules yet.</div>
+        {% endif %}
+      </div>
+
+      <div class="card-panel db-activity-panel">
+        <div class="db-activity-panel-title">
+          <i class="fa-solid fa-list-check"></i> Latest learning outcomes
+        </div>
+        {% if recent_outcomes %}
+        <ul class="db-timeline">
+          {% for outcome in recent_outcomes %}
+          <li>
+            <a href="{% url 'outcome-edit' pk=outcome.pk %}">
+              <div class="db-timeline-title">{{ outcome.outcome_text|truncatechars:60 }}</div>
+              <div class="db-timeline-sub">{{ outcome.module }}</div>
+            </a>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <div class="db-activity-empty">No learning outcomes yet.</div>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+
+{% endif %}
+
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  // Simple, self-contained tab switcher for the "Browse your data" section.
+  (function () {
+    var tabs = document.querySelectorAll('.db-tab-btn');
+    tabs.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var target = btn.getAttribute('data-db-tab');
+
+        document.querySelectorAll('.db-tab-btn').forEach(function (b) {
+          b.classList.toggle('active', b === btn);
+        });
+        document.querySelectorAll('.db-tab-panel').forEach(function (panel) {
+          panel.classList.toggle('active', panel.getAttribute('data-db-panel') === target);
+        });
+      });
+    });
+  })();
+</script>
+{% endblock %}

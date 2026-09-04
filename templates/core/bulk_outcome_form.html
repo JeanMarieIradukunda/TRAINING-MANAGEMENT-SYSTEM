@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{{ title }} · TMS{% endblock %}
+{% block content %}
+
+<div class="topbar">
+  <div>
+    <h1>{{ title }}</h1>
+    <div class="subtitle">Pick a module once, then add as many learning outcomes as you need in a single save.</div>
+  </div>
+  <a href="{% url 'outcome-list' %}" class="btn btn-outline-secondary">
+    <i class="fa-solid fa-arrow-left me-1"></i> Back to list
+  </a>
+</div>
+
+<div class="card-panel form-panel bulk-form-panel">
+  <form method="post" class="needs-validation js-loading-submit" novalidate>
+    {% csrf_token %}
+
+    <div class="bulk-step">
+      <div class="bulk-step-label"><span class="bulk-step-num">1</span> Choose the module</div>
+
+      {% if selected_module %}
+        <div class="bulk-parent-lock">
+          <div class="bulk-parent-lock-info">
+            <span class="bulk-parent-lock-icon"><i class="fa-solid fa-book-open"></i></span>
+            <div>
+              <div class="bulk-parent-lock-title">{{ selected_module }}</div>
+              <div class="bulk-parent-lock-sub">{{ selected_module.trade.trade_name }} · {{ selected_module.level.class_level }}</div>
+            </div>
+          </div>
+          <a href="{% url 'outcome-bulk-create' %}" class="bulk-parent-lock-change">Change module</a>
+        </div>
+        <input type="hidden" name="lock_module" value="1">
+        <input type="hidden" name="{{ picker_form.module.html_name }}" value="{{ selected_module.pk }}">
+      {% else %}
+        <div class="mb-1">
+          <label for="{{ picker_form.module.id_for_label }}" class="form-label">
+            Module <span class="text-danger">*</span>
+          </label>
+          {{ picker_form.module }}
+          {% if picker_form.module.errors %}
+            <ul class="errorlist">{% for error in picker_form.module.errors %}<li>{{ error }}</li>{% endfor %}</ul>
+          {% endif %}
+          <div class="form-text">Every outcome you add below will be attached to this module.</div>
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="bulk-step">
+      <div class="bulk-step-label"><span class="bulk-step-num">2</span> Add learning outcomes</div>
+
+      {{ formset.management_form }}
+
+      {% if formset.non_form_errors %}
+        <div class="alert alert-danger">{{ formset.non_form_errors }}</div>
+      {% endif %}
+
+      <div class="bulk-row-list" data-bulk-formset="outcomes">
+        <div data-bulk-row-list>
+          {% for form in formset %}
+          <div class="bulk-row" data-bulk-row>
+            <div class="bulk-row-index" data-bulk-row-index>{{ forloop.counter }}</div>
+            <div class="bulk-row-fields">
+              <div class="bulk-row-field bulk-row-field-grow">
+                <label class="form-label">Outcome</label>
+                {{ form.outcome_text }}
+                {% if form.outcome_text.errors %}<ul class="errorlist">{% for error in form.outcome_text.errors %}<li>{{ error }}</li>{% endfor %}</ul>{% endif %}
+              </div>
+              <div class="bulk-row-field bulk-row-field-narrow">
+                <label class="form-label">Hours</label>
+                {{ form.learning_hours }}
+                {% if form.learning_hours.errors %}<ul class="errorlist">{% for error in form.learning_hours.errors %}<li>{{ error }}</li>{% endfor %}</ul>{% endif %}
+              </div>
+            </div>
+            <button type="button" class="bulk-row-remove" data-bulk-remove title="Remove row">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+            <span class="d-none">{{ form.DELETE }}</span>
+          </div>
+          {% endfor %}
+        </div>
+
+        <template data-bulk-empty>
+          <div class="bulk-row" data-bulk-row>
+            <div class="bulk-row-index" data-bulk-row-index></div>
+            <div class="bulk-row-fields">
+              <div class="bulk-row-field bulk-row-field-grow">
+                <label class="form-label">Outcome</label>
+                {{ formset.empty_form.outcome_text }}
+              </div>
+              <div class="bulk-row-field bulk-row-field-narrow">
+                <label class="form-label">Hours</label>
+                {{ formset.empty_form.learning_hours }}
+              </div>
+            </div>
+            <button type="button" class="bulk-row-remove" data-bulk-remove title="Remove row">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+            <span class="d-none">{{ formset.empty_form.DELETE }}</span>
+          </div>
+        </template>
+
+        <button type="button" class="btn btn-outline-secondary btn-sm bulk-add-row" data-bulk-add>
+          <i class="fa-solid fa-plus me-1"></i> Add another row
+        </button>
+      </div>
+    </div>
+
+    <div class="d-flex gap-2 mt-4">
+      <button type="submit" class="btn btn-gold">
+        <i class="fa-solid fa-floppy-disk me-1"></i> Save all outcomes
+      </button>
+      <a href="{% url 'outcome-list' %}" class="btn btn-outline-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'js/bulk-form.js' %}"></script>
+{% endblock %}

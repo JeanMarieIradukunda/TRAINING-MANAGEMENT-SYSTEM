@@ -1,0 +1,1353 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Session Plan Building · Training Management System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body class="gen-body">
+
+  <!-- ==================== HERO ==================== -->
+  <header class="gen-hero">
+    <div class="gen-hero-top">
+      <a href="{% url 'landing' %}" class="gen-back-link">
+        <i class="fa-solid fa-arrow-left-long"></i> Back to home
+      </a>
+      <a href="{% url 'dashboard' %}" class="gen-back-link">
+        <i class="fa-solid fa-gauge"></i> Dashboard
+      </a>
+    </div>
+    <div class="gen-hero-heading">
+      <div class="gen-eyebrow">
+        <i class="fa-solid fa-user-check"></i>
+        Signed in as {{ request.user.username }}
+        {% if is_trainer %}
+          · {{ assigned_module_count }} module{{ assigned_module_count|pluralize }} assigned to you
+        {% else %}
+          · Administrator access · {{ assigned_module_count }} module{{ assigned_module_count|pluralize }} in the system
+        {% endif %}
+      </div>
+      <h1>Session Plan Generator</h1>
+      <p> Pick a module, learning outcome, and teaching periods to generate a complete, 
+        print-ready competence-based session plan with all key sections.
+      </p>
+    </div>
+  </header>
+
+  <div class="gen-shell">
+
+    <!-- ==================== SELECTOR ==================== -->
+    <section class="gen-card no-print" id="selectorCard">
+      <h2>1. Choose module, outcome &amp; session details</h2>
+      <p class="gen-card-sub">The learning outcome list narrows down automatically once you pick a module. Duration is calculated from the number of periods you choose.</p>
+
+      <div id="noDataAlert" class="gen-alert-empty d-none">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <div>
+          No modules have been set up in the system yet. Please ask an administrator to add
+          trades, modules and learning outcomes before a session plan can be generated.
+        </div>
+      </div>
+
+      <div id="selectorFields">
+        <div class="gen-field-grid">
+          <div>
+            <label class="form-label" for="moduleSelect">Module <span class="req">*</span></label>
+            <select class="form-select" id="moduleSelect">
+              <option value="">Select module</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="form-label" for="outcomeSelect">Learning outcome <span class="req">*</span></label>
+            <select class="form-select" id="outcomeSelect" disabled>
+              <option value="">Select module first</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="form-label" for="trainerSelect">Trainer name(s)</label>
+            <select class="form-select" id="trainerSelect">
+              <option value="">Not assigned</option>
+            </select>
+          </div>
+
+          <div class="gen-field-span-all" id="indicativeContentField" style="display:none;">
+            <label class="form-label" id="indicativeContentLabel">Indicative content <span class="req">*</span></label>
+            <p class="gen-hint" style="margin:0 0 0.5rem;">
+              Ticked items are the content this session actually covers — the Range,
+              Indicative content row and objectives below are built from your selection.
+              Untick anything you're not teaching in this session.
+            </p>
+            <div class="gen-indic-list" id="indicativeContentList"></div>
+          </div>
+
+          <div>
+            <label class="form-label" for="topicInput">Topic of the session</label>
+            <input type="text" class="form-control" id="topicInput" placeholder="Auto-filled from the outcome — edit if you like">
+          </div>
+
+          <div>
+            <label class="form-label" for="rangeInput">Range</label>
+            <input type="text" class="form-control" id="rangeInput" placeholder="Auto-filled from indicative content — edit if you like">
+          </div>
+
+          <div>
+            <label class="form-label" for="weekInput">Week</label>
+            <input type="text" class="form-control" id="weekInput" placeholder="e.g. 3">
+          </div>
+
+          <div>
+            <label class="form-label" for="lessonDateInput">Date</label>
+            <input type="date" class="form-control" id="lessonDateInput">
+          </div>
+
+          <div>
+            <label class="form-label" for="schoolYearInput">School year</label>
+            <input type="text" class="form-control" id="schoolYearInput" placeholder="e.g. 2025 - 2026">
+          </div>
+
+          <div>
+            <label class="form-label" for="classInput">Class(es)</label>
+            <input type="text" class="form-control" id="classInput" placeholder="Auto-filled from Trade + Level — edit if you like">
+          </div>
+
+          <div>
+            <label class="form-label" for="traineesInput">Number of trainees</label>
+            <input type="number" min="0" class="form-control" id="traineesInput" placeholder="e.g. 25">
+          </div>
+
+          <div>
+            <label class="form-label" for="periodsInput">Number of periods <span class="req">*</span></label>
+            <input type="number" min="1" max="12" step="1" class="form-control" id="periodsInput" value="1">
+          </div>
+
+          <div>
+            <label class="form-label" for="periodLengthSelect">Minutes per period <span class="req">*</span></label>
+            <select class="form-select" id="periodLengthSelect">
+              <option value="40">40 minutes</option>
+              <option value="50">50 minutes</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="form-label">Total session duration</label>
+            <input type="text" class="form-control" id="totalDurationDisplay" readonly>
+          </div>
+        </div>
+
+        <div class="gen-actions-row">
+          <button type="button" class="btn btn-gold" id="generateBtn">
+            <i class="fa-solid fa-wand-magic-sparkles me-1"></i> Generate session plan
+          </button>
+          <button type="button" class="btn btn-outline-secondary" id="resetBtn">
+            <i class="fa-solid fa-rotate-left me-1"></i> Reset
+          </button>
+        </div>
+        <p class="gen-hint">Each period must be 40 or 50 minutes. Time is distributed automatically across the introduction, development and conclusion — you can fine-tune every duration afterwards.</p>
+      </div>
+    </section>
+
+    <!-- ==================== ACCESS BLOCKED (payment required) ==================== -->
+    <div id="accessBlockedAlert" class="gen-alert-empty d-none">
+      <i class="fa-solid fa-lock"></i>
+      <div id="accessBlockedMessage" style="white-space: pre-line;"></div>
+    </div>
+
+    <!-- ==================== GENERATED DOCUMENT ==================== -->
+    <section id="docSection" class="d-none">
+
+      <div class="gen-toolbar no-print">
+        <div class="gen-toolbar-note">
+          <i class="fa-solid fa-pen me-1"></i>
+          Every section below is editable — click any text or table cell to fine-tune before printing.
+        </div>
+        <div class="d-flex gap-2">
+          <button type="button" class="btn btn-outline-secondary btn-sm" id="editSelectionBtn">
+            <i class="fa-solid fa-sliders me-1"></i> Edit selection
+          </button>
+          <button type="button" class="btn btn-gold btn-sm" id="printBtn">
+            <i class="fa-solid fa-print me-1"></i> Print / save as PDF
+          </button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" id="exportDocxBtn">
+            <i class="fa-solid fa-file-word me-1"></i> Download as Word
+          </button>
+        </div>
+      </div>
+
+      <article class="gen-doc" id="genDoc">
+        <div class="gen-doc-logos" id="docLogos"></div>
+
+        <div class="gen-doc-title">
+          <h3 id="docTitle">Session Plan</h3>
+        </div>
+
+        <!-- ============ SESSION PLAN — single continuous table,
+             matching the official RTB / competence-based training
+             session-plan layout. 4 base columns; the wide "activity"
+             column of the delivery tables spans 2 of them. ============ -->
+        <div class="gen-table-wrap">
+        <table class="gen-sp-table">
+          <colgroup>
+            <col style="width:25%"><col style="width:25%"><col style="width:25%"><col style="width:25%">
+          </colgroup>
+          <tbody id="docHeaderBody">
+            <tr>
+              <td><strong>Sector:</strong> <span id="spSector"></span></td>
+              <td><strong>Trade:</strong> <span id="spTrade"></span></td>
+              <td><strong>Level:</strong> <span id="spLevel"></span></td>
+              <td><strong>Date:</strong> <span id="spDate"></span></td>
+            </tr>
+            <tr>
+              <td colspan="3"><strong>Trainer name(s):</strong> <span id="spTrainer" contenteditable="true"></span></td>
+              <td><strong>School year:</strong> <span id="spSchoolYear" contenteditable="true"></span></td>
+            </tr>
+            <tr>
+              <td><strong>Module (Code &amp; Name):</strong> <span id="spModule"></span></td>
+              <td><strong>Week:</strong> <span id="spWeek"></span></td>
+              <td><strong>No. Trainees:</strong> <span id="spTrainees" contenteditable="true"></span></td>
+              <td><strong>Class(es):</strong> <span id="spClasses" contenteditable="true"></span></td>
+            </tr>
+            <tr><td colspan="4"><strong>Learning Outcome:</strong> <span id="spOutcome"></span></td></tr>
+            <tr><td colspan="4"><strong>Indicative content:</strong> <span id="spContent" contenteditable="true"></span></td></tr>
+            <tr><td colspan="4"><strong>Topic of the session:</strong> <span id="spTopic" contenteditable="true"></span></td></tr>
+            <tr>
+              <td colspan="2"><strong>Range:</strong> <span id="spRange" contenteditable="true"></span></td>
+              <td colspan="2"><strong>Duration of the session:</strong> <span id="spDuration"></span></td>
+            </tr>
+            <tr>
+              <td colspan="4">
+                <strong>Objectives:</strong> At the end of this session, a learner should be able to:
+                <div contenteditable="true" id="spObjectives" class="gen-sp-editable-block"></div>
+              </td>
+            </tr>
+            <tr>
+              <td colspan="4"><strong>Facilitation technique(s):</strong> <span id="spTechniques" contenteditable="true"></span></td>
+            </tr>
+
+            <tr class="gen-sp-section-row"><td colspan="4">Introduction</td></tr>
+            <tr class="gen-sp-subhead-row"><td colspan="2"></td><td>Resources</td><td>Duration</td></tr>
+            <tr>
+              <td colspan="2">
+                <strong>Trainer's activity:</strong>
+                <div contenteditable="true" id="spIntroTrainer" class="gen-sp-editable-block"></div>
+                <strong>Learner's activity:</strong>
+                <div contenteditable="true" id="spIntroLearner" class="gen-sp-editable-block"></div>
+              </td>
+              <td contenteditable="true" id="spIntroResources"></td>
+              <td contenteditable="true" id="spIntroDuration" class="gen-sp-duration"></td>
+            </tr>
+
+            <tr class="gen-sp-section-row"><td colspan="4">Development / Body</td></tr>
+            <tr class="gen-sp-subhead-row"><td colspan="2"></td><td>Resources</td><td>Duration</td></tr>
+          </tbody>
+          <tbody id="docStepsBody"></tbody>
+          <tbody>
+            <tr class="gen-sp-section-row"><td colspan="4">Conclusion</td></tr>
+            <tr>
+              <td colspan="2"><strong>Summary:</strong>
+                <div contenteditable="true" id="spSummary" class="gen-sp-editable-block"></div>
+              </td>
+              <td>&nbsp;</td>
+              <td>&nbsp;</td>
+            </tr>
+            <tr>
+              <td colspan="2"><strong>Assessment/Assignment:</strong>
+                <div contenteditable="true" id="spAssessment" class="gen-sp-editable-block"></div>
+              </td>
+              <td contenteditable="true" id="spConclusionResources"></td>
+              <td contenteditable="true" id="spConclusionDuration" class="gen-sp-duration"></td>
+            </tr>
+            <tr><td colspan="4"><strong>Questions:</strong>
+              <div contenteditable="true" id="spQuestions" class="gen-sp-editable-block"></div>
+            </td></tr>
+
+            <tr><td colspan="4"><strong>Evaluation of the session:</strong>
+              <div contenteditable="true" id="spEvaluation" class="gen-sp-editable-block"></div>
+            </td></tr>
+            <tr><td colspan="4"><strong>Cross-cutting issue(s):</strong>
+              <div contenteditable="true" id="spCrossCutting" class="gen-sp-editable-block"></div>
+            </td></tr>
+            <tr><td colspan="4"><strong>References:</strong>
+              <div contenteditable="true" id="spReferences" class="gen-sp-editable-block"></div>
+            </td></tr>
+            <tr><td colspan="4"><strong>Appendices:</strong> <span class="gen-optional-note">(where applicable)</span>
+              <div contenteditable="true" id="spAppendices" class="gen-sp-editable-block"></div>
+            </td></tr>
+            <tr><td colspan="4"><strong>Reflection:</strong>
+              <div contenteditable="true" id="spReflection" class="gen-sp-editable-block"></div>
+            </td></tr>
+          </tbody>
+        </table>
+        </div>
+        <p class="gen-hint no-print mt-2">
+          <i class="fa-solid fa-circle-info"></i> Click <button type="button" class="gen-add-row-btn d-inline" id="addStepRowBtn"><i class="fa-solid fa-plus"></i> Add step</button> to insert another Development/Body step — every duration field, including the total above, stays editable.
+        </p>
+      </article>
+
+      <div class="gen-save-note no-print">
+        <i class="fa-solid fa-circle-info"></i>
+        <div>
+          This preview is generated on the fly and isn't saved anywhere automatically — use
+          "Print / save as PDF" to keep a copy. Staff can
+          <a href="{% url 'login' %}">sign in</a> to store this as an official lesson plan
+          record under Lesson Plans.
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- Curriculum snapshot: sectors, trades, levels, trade/level links, modules,
+       learning outcomes, indicative contents, trainers and logos — everything
+       the cascading selects and the document below are built from. -->
+  <script type="application/json" id="tms-data">{{ tms_data_json|safe }}</script>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="{% static 'js/main.js' %}"></script>
+  <script src="{% static 'js/generator.js' %}"></script>
+  <script>
+    (function () {
+      'use strict';
+
+      var data = TMSGen.readData() || {
+        sectors: [], trades: [], levels: [], trade_levels: [],
+        modules: [], outcomes: [], contents: [], trainers: [], logos: [],
+      };
+
+      // The browser's "Save as PDF" dialog uses document.title as the
+      // default file name — we set it to the indicative content once a
+      // plan is generated (see onGenerate) and put it back afterwards so
+      // the browser tab itself doesn't stay renamed.
+      var ORIGINAL_DOCUMENT_TITLE = document.title;
+      window.addEventListener('afterprint', function () {
+        document.title = ORIGINAL_DOCUMENT_TITLE;
+      });
+
+      var moduleSelect = document.getElementById('moduleSelect');
+      var outcomeSelect = document.getElementById('outcomeSelect');
+      var indicativeContentField = document.getElementById('indicativeContentField');
+      var indicativeContentList = document.getElementById('indicativeContentList');
+      var trainerSelect = document.getElementById('trainerSelect');
+      var topicInput = document.getElementById('topicInput');
+      var rangeInput = document.getElementById('rangeInput');
+      var weekInput = document.getElementById('weekInput');
+      var lessonDateInput = document.getElementById('lessonDateInput');
+      var schoolYearInput = document.getElementById('schoolYearInput');
+      var classInput = document.getElementById('classInput');
+      var traineesInput = document.getElementById('traineesInput');
+      var periodsInput = document.getElementById('periodsInput');
+      var periodLengthSelect = document.getElementById('periodLengthSelect');
+      var totalDurationDisplay = document.getElementById('totalDurationDisplay');
+      var generateBtn = document.getElementById('generateBtn');
+      var resetBtn = document.getElementById('resetBtn');
+      var editSelectionBtn = document.getElementById('editSelectionBtn');
+      var printBtn = document.getElementById('printBtn');
+      var exportDocxBtn = document.getElementById('exportDocxBtn');
+      var addStepRowBtn = document.getElementById('addStepRowBtn');
+      var docSection = document.getElementById('docSection');
+      var noDataAlert = document.getElementById('noDataAlert');
+      var accessBlockedAlert = document.getElementById('accessBlockedAlert');
+      var accessBlockedMessage = document.getElementById('accessBlockedMessage');
+      var selectorFields = document.getElementById('selectorFields');
+      var docStepsBody = document.getElementById('docStepsBody');
+
+      // Facilitation Technique(s) + Development/Body steps are drafted
+      // server-side by Groq — see core/views.py: generate_lesson_plan_ai_content.
+      var AI_ENDPOINT = '/api/lesson-plan/ai-generate/';
+
+      var sectorsById = indexBy(data.sectors, 'id');
+      var modulesById = indexBy(data.modules, 'id');
+
+      // Once the trainer types their own value into Class(es) or Range, we
+      // stop overwriting it on every module/outcome change — auto-fill only
+      // ever fills a field the trainer hasn't touched yet.
+      var classTouchedByUser = false;
+      var rangeTouchedByUser = false;
+
+      // Rwandan TVET calendars run on a school year, not a calendar year —
+      // default the field to the current one so trainers don't have to
+      // type it every time; they can still edit it for any other year.
+      var DEFAULT_SCHOOL_YEAR = '2025 - 2026';
+
+      var DEFAULT_CROSS_CUTTING = [
+        'Gender equality', 'Environment and sustainability',
+        'Inclusive education / education for all', 'HIV/AIDS awareness',
+        'Peace and values education', 'Standardisation culture',
+      ];
+
+      function indexBy(list, key) {
+        var map = {};
+        (list || []).forEach(function (item) { map[item[key]] = item; });
+        return map;
+      }
+
+      // "Class(es)" auto-fill: Trade + Level is exactly what identifies a
+      // class group in the curriculum (e.g. "Electrical Installation \u2014 L5"),
+      // so we derive it straight from the module's trade/level instead of
+      // asking the trainer to type it every time.
+      function buildClassLabel(trade, level) {
+        if (trade && level) return trade.trade_name + ' \u2014 ' + level.class_level;
+        if (trade) return trade.trade_name;
+        if (level) return level.class_level;
+        return '';
+      }
+
+      // Trims one indicative-content line down to a short "sub-topic" phrase
+      // for the Range field: cut at the first sentence break, then hard-cap
+      // the length so a handful of them still read as a compact list.
+      function shortenToSubtopic(text) {
+        var t = (text || '').trim();
+        var stop = t.search(/[.;]/);
+        if (stop > 0 && stop < 80) t = t.slice(0, stop);
+        if (t.length > 70) t = t.slice(0, 67).replace(/\s+\S*$/, '') + '\u2026';
+        return t.trim();
+      }
+
+      // "Range" auto-fill: pulls the small sub-topics straight from this
+      // outcome's own indicative content in the database, rather than
+      // leaving the trainer to type the scope limitation from scratch.
+      function buildRangeText(contents) {
+        if (!contents || !contents.length) return '';
+        return contents
+          .slice(0, 5)
+          .map(function (c) { return shortenToSubtopic(TMSGen.shortOutcomeText(c.indic_name)); })
+          .filter(Boolean)
+          .join('; ');
+      }
+
+      /**
+       * "Download as Word" — reads the currently-rendered session plan
+       * straight out of the DOM (via TMSGen.collectExportPayload, same
+       * data the trainer sees/has edited on screen) and POSTs it to the
+       * export endpoint, which streams back a .docx file.
+       */
+      function exportLessonPlanAsDocx() {
+        if (!exportDocxBtn) return;
+        var genDoc = document.getElementById('genDoc');
+        var payload = TMSGen.collectExportPayload(genDoc);
+        var filename = TMSGen.filenameSafe(payload.title, 'Lesson Plan') + '.docx';
+
+        var originalHtml = exportDocxBtn.innerHTML;
+        exportDocxBtn.disabled = true;
+        exportDocxBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Preparing…';
+
+        TMSGen.exportDocument('{% url "lessonplan-export-docx" %}', payload, filename)
+          .catch(function (err) {
+            TMS.toast(err && err.message ? err.message : 'Could not generate the Word document.', 'danger');
+          })
+          .finally(function () {
+            exportDocxBtn.disabled = false;
+            exportDocxBtn.innerHTML = originalHtml;
+          });
+      }
+
+      function init() {
+        if (!data.modules || data.modules.length === 0) {
+          noDataAlert.classList.remove('d-none');
+          selectorFields.classList.add('d-none');
+          return;
+        }
+
+        TMSGen.populateSelect(moduleSelect, data.modules, {
+          valueKey: 'id',
+          labelFn: function (m) { return m.mod_code + ' — ' + m.mod_name; },
+          placeholder: 'Select module',
+        });
+
+        TMSGen.populateSelect(trainerSelect, data.trainers, {
+          valueKey: 'id',
+          labelFn: function (t) { return t.name; },
+          placeholder: 'Not assigned',
+        });
+        trainerSelect.disabled = false;
+
+        // Auto-fill today's date and the current Rwandan school year so
+        // the trainer only has to touch these fields if they need a
+        // different value.
+        lessonDateInput.value = TMSGen.todayISO();
+        schoolYearInput.value = DEFAULT_SCHOOL_YEAR;
+
+        updateTotalDurationDisplay();
+
+        moduleSelect.addEventListener('change', onModuleChange);
+        outcomeSelect.addEventListener('change', onOutcomeChange);
+        classInput.addEventListener('input', function () { classTouchedByUser = true; });
+        rangeInput.addEventListener('input', function () { rangeTouchedByUser = true; });
+        indicativeContentList.addEventListener('change', function (e) {
+          if (e.target && e.target.matches('input[type="checkbox"]')) {
+            onIndicativeContentSelectionChange();
+          }
+        });
+        periodsInput.addEventListener('input', updateTotalDurationDisplay);
+        periodLengthSelect.addEventListener('change', updateTotalDurationDisplay);
+        generateBtn.addEventListener('click', onGenerate);
+        resetBtn.addEventListener('click', onReset);
+        editSelectionBtn.addEventListener('click', function () {
+          selectorFields.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+        printBtn.addEventListener('click', TMSGen.print);
+        if (exportDocxBtn) exportDocxBtn.addEventListener('click', exportLessonPlanAsDocx);
+        addStepRowBtn.addEventListener('click', function () {
+          addStepRow({
+            label: 'Step ' + (docStepsBody.children.length + 1),
+            trainerItems: [''],
+            learnerItems: [''],
+            resources: '',
+            duration: '',
+          });
+        });
+
+        docStepsBody.addEventListener('click', function (e) {
+          var btn = e.target.closest('.gen-row-remove');
+          if (!btn) return;
+          var row = btn.closest('tr');
+          if (row) row.remove();
+          renumberSteps();
+        });
+      }
+
+      // -------------------------------------------------------------
+      // Period / duration maths — every block below always sums back
+      // up to the total session duration chosen by the user.
+      // -------------------------------------------------------------
+      function getTotalMinutes() {
+        var periods = Math.max(1, parseInt(periodsInput.value, 10) || 1);
+        var perPeriod = parseInt(periodLengthSelect.value, 10) || 40;
+        return periods * perPeriod;
+      }
+
+      function updateTotalDurationDisplay() {
+        var periods = Math.max(1, parseInt(periodsInput.value, 10) || 1);
+        var perPeriod = parseInt(periodLengthSelect.value, 10) || 40;
+        var total = periods * perPeriod;
+        totalDurationDisplay.value = periods + ' period' + (periods === 1 ? '' : 's') +
+          ' \u00d7 ' + perPeriod + ' min = ' + total + ' min';
+      }
+
+      // Splits the total session time into Introduction / Development /
+      // Conclusion blocks (roughly 15% / 65% / 20%), rounded to whole
+      // minutes, with the Development block absorbing any rounding
+      // remainder so the three durations always add back up to the total.
+      function splitSessionTime(total) {
+        var intro = Math.max(5, Math.round(total * 0.15));
+        var conclusion = Math.max(5, Math.round(total * 0.20));
+        if (intro + conclusion >= total) {
+          intro = Math.max(1, Math.floor(total * 0.2));
+          conclusion = Math.max(1, Math.floor(total * 0.2));
+        }
+        var development = total - intro - conclusion;
+        return { intro: intro, development: development, conclusion: conclusion };
+      }
+
+      // Splits `total` development minutes evenly across `count` steps,
+      // whole minutes only, with any remainder added to the last step.
+      function splitEvenly(total, count) {
+        if (count <= 0) return [];
+        var base = Math.floor(total / count);
+        var remainder = total - base * count;
+        var out = [];
+        for (var i = 0; i < count; i++) {
+          out.push(base + (i === count - 1 ? remainder : 0));
+        }
+        return out;
+      }
+
+      // -------------------------------------------------------------
+      // Indicative content selection — populated fresh for whichever
+      // learning outcome is selected, all ticked by default so behaviour
+      // matches the old "include everything" default, but trainers can
+      // untick anything this particular session isn't covering.
+      // -------------------------------------------------------------
+      function renderIndicativeContentCheckboxes(contents) {
+        indicativeContentList.innerHTML = '';
+
+        if (!contents || !contents.length) {
+          indicativeContentField.style.display = 'none';
+          return;
+        }
+
+        contents.forEach(function (c, idx) {
+          var itemId = 'indicContent_' + c.id;
+
+          var wrap = document.createElement('div');
+          wrap.className = 'gen-indic-item';
+
+          var checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.id = itemId;
+          checkbox.checked = true;
+          checkbox.dataset.contentId = String(c.id);
+
+          var label = document.createElement('label');
+          label.setAttribute('for', itemId);
+          label.textContent = c.indic_name;
+
+          wrap.appendChild(checkbox);
+          wrap.appendChild(label);
+          indicativeContentList.appendChild(wrap);
+        });
+
+        indicativeContentField.style.display = '';
+      }
+
+      // Returns the indicative-content objects the trainer has left
+      // ticked, in their original order. Falls back to the full list if
+      // the checklist hasn't been rendered yet (shouldn't normally
+      // happen, since generation requires an outcome to be selected).
+      function getSelectedIndicativeContents(outcomeId) {
+        var outcomeContents = data.contents.filter(function (c) { return c.outcome_id === outcomeId; });
+        var checkboxes = indicativeContentList.querySelectorAll('input[type="checkbox"]');
+        if (!checkboxes.length) return outcomeContents;
+
+        var checkedIds = {};
+        checkboxes.forEach(function (cb) {
+          if (cb.checked) checkedIds[cb.dataset.contentId] = true;
+        });
+
+        return outcomeContents.filter(function (c) { return checkedIds[String(c.id)]; });
+      }
+
+      // When the trainer ticks/unticks indicative content, refresh the
+      // auto-filled Range field to match — but only while they haven't
+      // typed their own Range text.
+      function onIndicativeContentSelectionChange() {
+        if (rangeTouchedByUser) return;
+        var outcomeId = outcomeSelect.value ? Number(outcomeSelect.value) : null;
+        if (!outcomeId) return;
+        rangeInput.value = buildRangeText(getSelectedIndicativeContents(outcomeId));
+      }
+
+      function onModuleChange() {
+        var moduleId = moduleSelect.value ? Number(moduleSelect.value) : null;
+        outcomeSelect.innerHTML = '<option value="">Select module first</option>';
+        outcomeSelect.disabled = true;
+        renderIndicativeContentCheckboxes([]);
+
+        if (!moduleId) return;
+
+        var outcomes = data.outcomes.filter(function (o) { return o.module_id === moduleId; });
+
+        TMSGen.populateSelect(outcomeSelect, outcomes, {
+          valueKey: 'id',
+          labelFn: function (o) { return TMSGen.shortOutcomeText(o.outcome_text); },
+          placeholder: outcomes.length ? 'Select learning outcome' : 'No outcomes for this module',
+        });
+
+        var mod = modulesById[moduleId];
+        if (mod && mod.trainer_id) {
+          trainerSelect.value = String(mod.trainer_id);
+        } else {
+          trainerSelect.value = '';
+        }
+
+        if (mod && !classTouchedByUser) {
+          var trade = data.trades.find(function (t) { return t.id === mod.trade_id; });
+          var level = data.levels.find(function (l) { return l.id === mod.level_id; });
+          classInput.value = buildClassLabel(trade, level);
+        }
+      }
+
+      function onOutcomeChange() {
+        var moduleId = moduleSelect.value ? Number(moduleSelect.value) : null;
+        var outcomeId = outcomeSelect.value ? Number(outcomeSelect.value) : null;
+        if (!moduleId || !outcomeId) return;
+
+        var mod = modulesById[moduleId];
+        var outcome = data.outcomes.find(function (o) { return o.id === outcomeId; });
+        if (!topicInput.value.trim() && mod && outcome) {
+          topicInput.value = mod.mod_code + ' — ' + TMSGen.shortOutcomeText(outcome.outcome_text);
+        }
+
+        var outcomeContents = data.contents.filter(function (c) { return c.outcome_id === outcomeId; });
+        renderIndicativeContentCheckboxes(outcomeContents);
+
+        if (!rangeTouchedByUser) {
+          rangeInput.value = buildRangeText(outcomeContents);
+        }
+      }
+
+      // A "new module" session is Learning Outcome 1 + Indicative Content
+      // 1.1 — i.e. the module's very first outcome, generating the
+      // session that covers its very first indicative content point.
+      // LearningOutcome/IndicativeContent are always fetched in id order
+      // (see core/views.py), so the first entry for a module/outcome in
+      // data.outcomes/data.contents is always "#1" of that module/outcome.
+      function isNewModuleSession(moduleId, outcomeId, selectedContents) {
+        var moduleOutcomes = data.outcomes.filter(function (o) { return o.module_id === moduleId; });
+        if (!moduleOutcomes.length || moduleOutcomes[0].id !== outcomeId) return false;
+
+        var outcomeContents = data.contents.filter(function (c) { return c.outcome_id === outcomeId; });
+        if (!outcomeContents.length) return true;
+
+        var firstContentId = outcomeContents[0].id;
+        return selectedContents.some(function (c) { return c.id === firstContentId; });
+      }
+
+      function onReset() {
+        classTouchedByUser = false;
+        rangeTouchedByUser = false;
+        moduleSelect.value = '';
+        onModuleChange();
+        topicInput.value = '';
+        rangeInput.value = '';
+        weekInput.value = '';
+        // Date and school year are conveniences, not blank slates — put
+        // today's date and the current school year straight back in.
+        lessonDateInput.value = TMSGen.todayISO();
+        schoolYearInput.value = DEFAULT_SCHOOL_YEAR;
+        classInput.value = '';
+        traineesInput.value = '';
+        periodsInput.value = '1';
+        periodLengthSelect.value = '40';
+        updateTotalDurationDisplay();
+        document.title = ORIGINAL_DOCUMENT_TITLE;
+        docSection.classList.add('d-none');
+        accessBlockedAlert.classList.add('d-none');
+      }
+
+      // Shows the payment-required message in place of the document area,
+      // reusing the same "empty state" visual language (.gen-alert-empty)
+      // already used above for noDataAlert - no new visual language.
+      function showAccessBlocked(message) {
+        docSection.classList.add('d-none');
+        accessBlockedMessage.textContent = message ||
+          'You need active paid access to generate this document.';
+        accessBlockedAlert.classList.remove('d-none');
+        accessBlockedAlert.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+
+      // Checks the trainer's free/paid generation access before any
+      // document is rendered. Consumes the free generation server-side the
+      // first time it's used - see core/views.py: check_generation_access.
+      function checkGenerationAccess(callback) {
+        fetch('/api/generation/check-access/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken'),
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+        })
+          .then(function (response) { return response.json(); })
+          .then(function (resp) {
+            if (resp && resp.allowed) {
+              callback(true, null);
+            } else {
+              callback(false, (resp && resp.message) ||
+                'You need active paid access to generate this document.');
+            }
+          })
+          .catch(function (err) {
+            console.error(err);
+            callback(false, 'Could not verify your generation access. Please try again.');
+          });
+      }
+
+      function onGenerate() {
+        var moduleId = moduleSelect.value ? Number(moduleSelect.value) : null;
+        var outcomeId = outcomeSelect.value ? Number(outcomeSelect.value) : null;
+
+        if (!moduleId || !outcomeId) {
+          TMS.toast('Please select a module and a learning outcome first.', 'danger');
+          return;
+        }
+
+        var allContents = data.contents.filter(function (c) { return c.outcome_id === outcomeId; });
+        var selectedContents = getSelectedIndicativeContents(outcomeId);
+        if (allContents.length && !selectedContents.length) {
+          TMS.toast('Please tick at least one indicative content item for this session.', 'danger');
+          return;
+        }
+
+        checkGenerationAccess(function (allowed, message) {
+          if (!allowed) {
+            showAccessBlocked(message);
+            return;
+          }
+          accessBlockedAlert.classList.add('d-none');
+          performGenerate(moduleId, outcomeId);
+        });
+      }
+
+      function performGenerate(moduleId, outcomeId) {
+        var mod = modulesById[moduleId];
+        var outcome = data.outcomes.find(function (o) { return o.id === outcomeId; });
+        var trade = data.trades.find(function (t) { return t.id === mod.trade_id; });
+        var level = data.levels.find(function (l) { return l.id === mod.level_id; });
+        var sector = trade ? sectorsById[trade.sector_id] : null;
+        var trainerName = trainerSelect.value
+          ? (data.trainers.find(function (t) { return t.id === Number(trainerSelect.value); }) || {}).name
+          : (mod.trainer_name || '');
+
+        var allContents = data.contents.filter(function (c) { return c.outcome_id === outcomeId; });
+        var contents = getSelectedIndicativeContents(outcomeId);
+        if (allContents.length && !contents.length) {
+          TMS.toast('Please tick at least one indicative content item for this session.', 'danger');
+          return;
+        }
+        var topic = topicInput.value.trim() || (mod.mod_code + ' — ' + TMSGen.shortOutcomeText(outcome.outcome_text));
+        var isNewModule = isNewModuleSession(moduleId, outcomeId, contents);
+
+        var total = getTotalMinutes();
+        var blocks = splitSessionTime(total);
+        var periods = Math.max(1, parseInt(periodsInput.value, 10) || 1);
+        var perPeriod = parseInt(periodLengthSelect.value, 10) || 40;
+        var durationLabel = periods + ' period' + (periods === 1 ? '' : 's') + ' \u00d7 ' + perPeriod +
+          ' min = ' + total + ' min';
+
+        renderLogos(data.logos);
+        setText('spSector', sector ? sector.sector_name : '\u2014');
+        setText('spTrade', trade ? trade.trade_name : '\u2014');
+        setText('spLevel', level ? level.class_level : '\u2014');
+        setText('spDate', lessonDateInput.value ? TMSGen.formatDateLong(lessonDateInput.value) : '\u2014');
+        setText('spTrainer', trainerName || '\u2014');
+        setText('spSchoolYear', schoolYearInput.value.trim() || '\u2014');
+        setText('spModule', mod.mod_code + ' \u2014 ' + mod.mod_name);
+        setText('spWeek', weekInput.value.trim() || '\u2014');
+        setText('spTrainees', traineesInput.value ? traineesInput.value : '\u2014');
+        setText('spClasses', classInput.value.trim() || '\u2014');
+        setText('spOutcome', TMSGen.shortOutcomeText(outcome.outcome_text));
+        setText('spContent', contents.length ? contents.map(function (c) { return c.indic_name; }).join('; ') : '\u2014');
+        setText('spTopic', topic);
+        setText('spRange', rangeInput.value.trim() || '\u2014');
+        setText('spDuration', durationLabel);
+
+        renderObjectivesLoading();
+        renderTechniquesLoading();
+        renderIntroduction(blocks.intro, topic);
+        renderIntroductionLoading();
+        renderStepsLoading();
+        renderConclusion(blocks.conclusion, outcome);
+        renderEvaluationSections();
+        renderReflectionLoading();
+        renderAssessmentLoading();
+        renderEvaluationLoading();
+        renderAppendicesLoading();
+        renderQuestionsLoading();
+        renderConclusionSummaryLoading();
+
+        // Title is built from the selected Indicative content — not the
+        // Learning outcome / topic — per the fixed "SESSION PLAN - ..."
+        // document heading format. document.title is set the same way so
+        // "Save as PDF" defaults to this name instead of the generic
+        // page title.
+        var contentLabel = contents.length
+          ? contents.map(function (c) { return c.indic_name; }).join('; ')
+          : '\u2014';
+        document.getElementById('docTitle').textContent = 'SESSION PLAN - ' + contentLabel;
+        document.title = TMSGen.filenameSafe(contentLabel, 'Session Plan');
+
+        docSection.classList.remove('d-none');
+        docSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+        // Objectives, Facilitation Technique(s), the Development/Body
+        // steps, and the Reflection draft answers are all drafted
+        // server-side by Groq (see core/views.py:
+        // generate_lesson_plan_ai_content) — the backend guarantees at
+        // least 3 steps even if the model returns fewer, always returns
+        // usable objectives grounded in the outcome/Range/indicative
+        // content (never a copy of the indicative content itself), and
+        // always returns a usable reflection draft.
+        fetchAiSessionContent({
+          outcome_text: outcome.outcome_text,
+          indicative_content: contents.map(function (c) { return c.indic_name; }),
+          sector: sector ? sector.sector_name : null,
+          trade: trade ? trade.trade_name : null,
+          level: level ? level.class_level : null,
+          module_code: mod.mod_code,
+          module_name: mod.mod_name,
+          topic: topic,
+          range: rangeInput.value.trim(),
+          total_minutes: total,
+          is_new_module: isNewModule,
+        }, blocks.development, topic, isNewModule);
+      }
+
+      function setText(id, value) {
+        var el = document.getElementById(id);
+        if (el) el.textContent = value;
+      }
+
+      // Only the school logo and the RTB logo belong on the session plan —
+      // any NESA logo present in the shared logo list is left out here.
+      function renderLogos(logos) {
+        var wrap = document.getElementById('docLogos');
+        wrap.innerHTML = '';
+        (logos || [])
+          .filter(function (logo) { return !/nesa/i.test(logo.name || ''); })
+          .forEach(function (logo) {
+            var img = document.createElement('img');
+            img.src = logo.image;
+            img.alt = logo.name;
+            wrap.appendChild(img);
+          });
+      }
+
+      // Objectives are drafted server-side by Groq (see core/views.py:
+      // generate_lesson_plan_ai_content) from the outcome, Range and
+      // indicative content — never a direct copy of the indicative
+      // content bullets. If the AI is unreachable, we fall back to a
+      // single generic, editable objective rather than re-listing the
+      // indicative content.
+      function renderObjectivesLoading() {
+        document.getElementById('spObjectives').innerHTML =
+          '<span class="gen-ai-loading-text"><i class="fa-solid fa-circle-notch fa-spin"></i> Drafting…</span>';
+      }
+
+      function renderObjectivesFromAi(objectives) {
+        var el = document.getElementById('spObjectives');
+        var clean = (objectives || [])
+          .map(function (o) { return (o || '').toString().trim(); })
+          .filter(Boolean);
+
+        if (!clean.length) {
+          renderObjectivesFailed();
+          return;
+        }
+
+        var items = clean.map(function (o) { return '<li>' + TMSGen.escapeHtml(o) + '</li>'; }).join('');
+        el.innerHTML = '<ul class="gen-bullets">' + items + '</ul> <span class="gen-ai-badge">AI</span>';
+      }
+
+      function renderObjectivesFailed() {
+        document.getElementById('spObjectives').innerHTML =
+          '<span class="gen-ai-error-text">Couldn\'t generate this — click to fill in manually.</span>';
+      }
+
+      function renderTechniquesLoading() {
+        document.getElementById('spTechniques').innerHTML =
+          '<span class="gen-ai-loading-text"><i class="fa-solid fa-circle-notch fa-spin"></i> Drafting…</span>';
+      }
+
+      function renderTechniques(text) {
+        var el = document.getElementById('spTechniques');
+        var clean = (text || '').toString().trim();
+        if (!clean) {
+          renderTechniquesFailed();
+          return;
+        }
+        el.innerHTML = TMSGen.escapeHtml(clean) + ' <span class="gen-ai-badge">AI</span>';
+      }
+
+      function renderTechniquesFailed() {
+        document.getElementById('spTechniques').innerHTML =
+          '<span class="gen-ai-error-text">Couldn\'t generate this — click to fill in manually.</span>';
+      }
+
+      // -------------------------------------------------------------
+      // Introduction / Development / Conclusion — all durations are
+      // expressed purely in minutes (never hours), derived from the
+      // number of periods × minutes-per-period chosen above, so they
+      // always add back up to the session total shown at the top.
+      // -------------------------------------------------------------
+      // Renders a trainer/learner activity as a styled bullet list rather
+      // than one run-on sentence — each item is its own <li> for readability
+      // and stays contenteditable via the wrapping block.
+      function buildActivityListHtml(items, variant) {
+        var lis = (items || [])
+          .map(function (item) { return '<li>' + item + '</li>'; })
+          .join('');
+        return '<ul class="gen-activity-list gen-activity-list--' + variant + '">' + lis + '</ul>';
+      }
+
+      function renderActivityList(elementId, items, variant) {
+        var el = document.getElementById(elementId);
+        if (el) el.innerHTML = buildActivityListHtml(items, variant);
+      }
+
+      // Introduction content (trainer/learner activity + resources) is now
+      // AI-drafted (see renderIntroductionFromAi below) so it references
+      // the actual topic/range instead of generic filler — only the
+      // duration (a pure time calculation) is set synchronously here.
+      function renderIntroduction(minutes, topic) {
+        document.getElementById('spIntroDuration').textContent = minutes + ' mins';
+      }
+
+      function renderIntroductionLoading() {
+        document.getElementById('spIntroTrainer').innerHTML =
+          '<span class="gen-ai-loading-text"><i class="fa-solid fa-circle-notch fa-spin"></i> Drafting…</span>';
+        document.getElementById('spIntroLearner').innerHTML = '';
+        document.getElementById('spIntroResources').textContent = '';
+      }
+
+      function renderIntroductionFromAi(introduction, topic, isNewModule) {
+        var trainerItems = (introduction && introduction.trainer_activity && introduction.trainer_activity.length)
+          ? introduction.trainer_activity.map(TMSGen.escapeHtml)
+          : null;
+        var learnerItems = (introduction && introduction.learner_activity && introduction.learner_activity.length)
+          ? introduction.learner_activity.map(TMSGen.escapeHtml)
+          : null;
+
+        if (!trainerItems || !learnerItems) {
+          renderIntroductionFailed(topic, isNewModule);
+          return;
+        }
+
+        renderActivityList('spIntroTrainer', trainerItems, 'trainer');
+        renderActivityList('spIntroLearner', learnerItems, 'learner');
+        document.getElementById('spIntroResources').textContent =
+          (introduction && introduction.resources) ? introduction.resources : 'Attendance register, whiteboard, projector';
+        document.getElementById('spIntroTrainer').insertAdjacentHTML('beforeend', ' <span class="gen-ai-badge">AI</span>');
+      }
+
+      // Fixed opening sequence, used whenever the AI is unavailable/fails:
+      // 1) trainer and learners greet each other, 2) trainer takes/confirms
+      // attendance (roll call), 3) unless this is a new module (Learning
+      // Outcome 1 + Indicative Content 1.1), learners briefly recall the
+      // previous class — mirrors the same structure enforced server-side
+      // in core/views.py: generate_lesson_plan_ai_content.
+      function renderIntroductionFailed(topic, isNewModule) {
+        var topicHtml = TMSGen.escapeHtml(topic || '');
+        var trainerItems = [
+          'Greets the learners as they arrive',
+          'Takes attendance and confirms the roll call',
+        ];
+        var learnerItems = [
+          'Greet the trainer and each other',
+          'Respond to the roll call',
+        ];
+        if (!isNewModule) {
+          trainerItems.push('Invites learners to briefly recall what was covered in the previous class');
+          learnerItems.push('Briefly recall and share what was covered in the previous class');
+        }
+        trainerItems.push(
+          'Reviews prior learning relevant to &ldquo;' + topicHtml + '&rdquo;',
+          'Introduces the topic and session objectives',
+          'Motivates learners for the session'
+        );
+        learnerItems.push(
+          'Listen and ask clarifying questions'
+        );
+        renderActivityList('spIntroTrainer', trainerItems, 'trainer');
+        renderActivityList('spIntroLearner', learnerItems, 'learner');
+        document.getElementById('spIntroResources').textContent = 'Attendance register, whiteboard, projector';
+      }
+
+      // Minimum steps kept client-side too, so the manual fallback (AI
+      // unreachable) still gives the trainer at least this many rows to
+      // fill in — mirrors MIN_LESSON_PLAN_STEPS enforced in views.py.
+      var MIN_STEPS_CLIENT = 3;
+
+      function renderStepsLoading() {
+        docStepsBody.innerHTML =
+          '<tr><td colspan="5" class="gen-ai-loading-row">' +
+          '<i class="fa-solid fa-circle-notch fa-spin"></i> Drafting development steps…</td></tr>';
+      }
+
+      function renderStepsFromAi(steps, developmentMinutes) {
+        docStepsBody.innerHTML = '';
+        var durations = splitEvenly(developmentMinutes, steps.length);
+
+        steps.forEach(function (step, i) {
+          var title = (step && step.title) ? TMSGen.escapeHtml(step.title) : ('Step ' + (i + 1));
+          var trainerItems = (step && step.trainer_activity && step.trainer_activity.length)
+            ? step.trainer_activity.map(TMSGen.escapeHtml)
+            : [''];
+          var learnerItems = (step && step.learner_activity && step.learner_activity.length)
+            ? step.learner_activity.map(TMSGen.escapeHtml)
+            : [''];
+          var resources = (step && step.resources) ? TMSGen.escapeHtml(step.resources) : '';
+
+          addStepRow({
+            label: 'Step ' + (i + 1) + ': ' + title + ' <span class="gen-ai-badge">AI</span>',
+            trainerItems: trainerItems,
+            learnerItems: learnerItems,
+            resources: resources,
+            duration: durations[i] + ' mins',
+          });
+        });
+      }
+
+      function renderStepsFailed(developmentMinutes) {
+        docStepsBody.innerHTML = '';
+        var durations = splitEvenly(developmentMinutes, MIN_STEPS_CLIENT);
+        for (var i = 0; i < MIN_STEPS_CLIENT; i++) {
+          addStepRow({
+            label: 'Step ' + (i + 1),
+            trainerItems: [''],
+            learnerItems: [''],
+            resources: '',
+            duration: durations[i] + ' mins',
+          });
+        }
+      }
+
+      function getCookie(name) {
+        var match = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+        return match ? decodeURIComponent(match.pop()) : '';
+      }
+
+      // Calls the Groq-backed endpoint for Objectives, Facilitation
+      // Technique(s) and the Development/Body steps, then fills in
+      // whichever loading state each field is currently showing. Falls
+      // back to editable blank fields (never leaves the page stuck
+      // loading) if the request fails or the AI response comes back empty.
+      function fetchAiSessionContent(payload, developmentMinutes, topic, isNewModule) {
+        fetch(AI_ENDPOINT, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken'),
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+          body: JSON.stringify(payload),
+        })
+          .then(function (response) {
+            if (!response.ok) {
+              throw new Error('AI request failed with status ' + response.status);
+            }
+            return response.json();
+          })
+          .then(function (data) {
+            renderObjectivesFromAi(data && data.objectives);
+            renderTechniques(data && data.facilitation_techniques);
+            renderIntroductionFromAi(data && data.introduction, topic, isNewModule);
+
+            var steps = (data && Array.isArray(data.steps) && data.steps.length) ? data.steps : null;
+            if (steps) {
+              renderStepsFromAi(steps, developmentMinutes);
+            } else {
+              renderStepsFailed(developmentMinutes);
+            }
+
+            renderReflection(data && data.reflection);
+            renderAssessment(data && data.assessment);
+            renderEvaluation(data && data.evaluation);
+            renderAppendices(data && data.appendices);
+            renderQuestions(data && data.questions);
+            renderConclusionSummary(data && data.conclusion_summary);
+
+            // Range/sub-topics: only overwrite what the AI drafted if the
+            // trainer hasn't typed their own Range text.
+            if (!rangeTouchedByUser && data && data.range) {
+              rangeInput.value = data.range;
+              setText('spRange', data.range);
+            }
+          })
+          .catch(function (err) {
+            console.error(err);
+            renderObjectivesFailed();
+            renderTechniquesFailed();
+            renderIntroductionFailed(topic, isNewModule);
+            renderStepsFailed(developmentMinutes);
+            renderReflectionFailed();
+            renderAssessmentFailed();
+            renderEvaluationFailed();
+            renderAppendicesFailed();
+            renderQuestionsFailed();
+            renderConclusionSummaryFailed();
+            TMS.toast('Could not reach the AI service — fill in the development steps manually.', 'danger');
+          });
+      }
+
+      function addStepRow(row) {
+        var tr = document.createElement('tr');
+        var trainerHtml = row.trainerItems
+          ? buildActivityListHtml(row.trainerItems, 'trainer')
+          : (row.trainer || '');
+        var learnerHtml = row.learnerItems
+          ? buildActivityListHtml(row.learnerItems, 'learner')
+          : (row.learner || '');
+        tr.innerHTML =
+          '<td colspan="2">' +
+            '<div class="gen-step-cell" contenteditable="true">' + row.label + '</div>' +
+            '<strong>Trainer\'s activity:</strong>' +
+            '<div contenteditable="true" class="gen-sp-editable-block">' + trainerHtml + '</div>' +
+            '<strong>Learner\'s activity:</strong>' +
+            '<div contenteditable="true" class="gen-sp-editable-block">' + learnerHtml + '</div>' +
+          '</td>' +
+          '<td contenteditable="true">' + row.resources + '</td>' +
+          '<td contenteditable="true" class="gen-sp-duration">' + row.duration + '</td>' +
+          '<td class="no-print"><button type="button" class="gen-row-remove" title="Remove step"><i class="fa-solid fa-xmark"></i></button></td>';
+        docStepsBody.appendChild(tr);
+      }
+
+      function renumberSteps() {
+        Array.prototype.forEach.call(docStepsBody.children, function (tr, i) {
+          var cell = tr.querySelector('.gen-step-cell');
+          if (!cell) return;
+          var text = cell.textContent.replace(/^Step\s+\d+/, 'Step ' + (i + 1));
+          if (text === cell.textContent && !/^Step\s+\d+/.test(cell.textContent)) {
+            text = 'Step ' + (i + 1) + ': ' + cell.textContent;
+          }
+          cell.textContent = text;
+        });
+      }
+
+      // The Summary line is now AI-drafted (see renderConclusionSummary
+      // below) so it names the exact same sub-topics as the Range and the
+      // Development/Body steps — only the fixed resources/duration are
+      // set synchronously here.
+      function renderConclusion(minutes, outcome) {
+        document.getElementById('spConclusionResources').textContent = 'Pens, papers, projector and whiteboard';
+        document.getElementById('spConclusionDuration').textContent = minutes + ' mins';
+      }
+
+      function renderConclusionSummaryLoading() {
+        document.getElementById('spSummary').innerHTML =
+          '<span class="gen-ai-loading-text"><i class="fa-solid fa-circle-notch fa-spin"></i> Drafting…</span>';
+      }
+
+      function renderConclusionSummary(text) {
+        var el = document.getElementById('spSummary');
+        var clean = (text || '').toString().trim();
+        if (!clean) {
+          renderConclusionSummaryFailed();
+          return;
+        }
+        el.innerHTML = TMSGen.escapeHtml(clean) + ' <span class="gen-ai-badge">AI</span>';
+      }
+
+      function renderConclusionSummaryFailed() {
+        document.getElementById('spSummary').innerHTML =
+          '<span class="gen-ai-error-text">Couldn\'t generate this — click to fill in manually.</span>';
+      }
+
+      // Assessment/Assignment, Evaluation of the session, Appendices and
+      // Questions are all drafted server-side by Groq (see core/views.py:
+      // generate_lesson_plan_ai_content) so the trainer never has to pick
+      // between Assessment/Assignment or write these sections by hand -
+      // Cross-cutting issues and References stay as fixed standard lists.
+      function renderEvaluationSections() {
+        document.getElementById('spCrossCutting').innerHTML =
+          '<ul class="gen-bullets">' +
+          DEFAULT_CROSS_CUTTING.map(function (c) { return '<li>' + TMSGen.escapeHtml(c) + '</li>'; }).join('') +
+          '</ul>';
+
+        document.getElementById('spReferences').innerHTML =
+          '<ul class="gen-bullets"><li>Module curriculum / competence-based training programme</li>' +
+          '<li>Trainer manual and relevant technical references</li></ul>';
+      }
+
+      function renderAssessmentLoading() {
+        document.getElementById('spAssessment').innerHTML =
+          '<span class="gen-ai-loading-text"><i class="fa-solid fa-circle-notch fa-spin"></i> Drafting…</span>';
+      }
+
+      function renderAssessment(assessment) {
+        var el = document.getElementById('spAssessment');
+        var type = assessment && assessment.type ? assessment.type.toString().trim() : '';
+        var content = assessment && assessment.content ? assessment.content.toString().trim() : '';
+        if (!type || !content) {
+          renderAssessmentFailed();
+          return;
+        }
+        el.innerHTML = '<strong>' + TMSGen.escapeHtml(type) + ':</strong> ' +
+          TMSGen.escapeHtml(content) + ' <span class="gen-ai-badge">AI</span>';
+      }
+
+      function renderAssessmentFailed() {
+        document.getElementById('spAssessment').innerHTML =
+          '<span class="gen-ai-error-text">Couldn\'t generate this — click to fill in manually.</span>';
+      }
+
+      function renderEvaluationLoading() {
+        document.getElementById('spEvaluation').innerHTML =
+          '<span class="gen-ai-loading-text"><i class="fa-solid fa-circle-notch fa-spin"></i> Drafting…</span>';
+      }
+
+      function renderEvaluation(text) {
+        var el = document.getElementById('spEvaluation');
+        var clean = (text || '').toString().trim();
+        if (!clean) {
+          renderEvaluationFailed();
+          return;
+        }
+        el.innerHTML = '<p>' + TMSGen.escapeHtml(clean) + '</p><span class="gen-ai-badge">AI</span>';
+      }
+
+      function renderEvaluationFailed() {
+        document.getElementById('spEvaluation').innerHTML =
+          '<span class="gen-ai-error-text">Couldn\'t generate this — click to fill in manually.</span>';
+      }
+
+      function renderAppendicesLoading() {
+        document.getElementById('spAppendices').innerHTML =
+          '<span class="gen-ai-loading-text"><i class="fa-solid fa-circle-notch fa-spin"></i> Drafting…</span>';
+      }
+
+      function renderAppendices(text) {
+        var el = document.getElementById('spAppendices');
+        var lines = (text || '').toString().split(/\r?\n/).map(function (l) { return l.trim(); }).filter(Boolean);
+        if (!lines.length) {
+          el.innerHTML = '<p class="text-muted">None for this session.</p>';
+          return;
+        }
+        var items = lines.map(function (l) { return '<li>' + TMSGen.escapeHtml(l) + '</li>'; }).join('');
+        el.innerHTML = '<ul class="gen-bullets">' + items + '</ul> <span class="gen-ai-badge">AI</span>';
+      }
+
+      function renderAppendicesFailed() {
+        document.getElementById('spAppendices').innerHTML =
+          '<span class="gen-ai-error-text">Couldn\'t generate this — click to fill in manually.</span>';
+      }
+
+      function renderQuestionsLoading() {
+        document.getElementById('spQuestions').innerHTML =
+          '<span class="gen-ai-loading-text"><i class="fa-solid fa-circle-notch fa-spin"></i> Drafting…</span>';
+      }
+
+      function renderQuestions(questions) {
+        var el = document.getElementById('spQuestions');
+        var clean = (questions || [])
+          .map(function (q) { return (q || '').toString().trim(); })
+          .filter(Boolean)
+          .slice(0, 3);
+        if (!clean.length) {
+          renderQuestionsFailed();
+          return;
+        }
+        var items = clean.map(function (q) { return '<li>' + TMSGen.escapeHtml(q) + '</li>'; }).join('');
+        el.innerHTML = '<ol class="gen-bullets">' + items + '</ol> <span class="gen-ai-badge">AI</span>';
+      }
+
+      function renderQuestionsFailed() {
+        document.getElementById('spQuestions').innerHTML =
+          '<span class="gen-ai-error-text">Couldn\'t generate this — click to fill in manually.</span>';
+      }
+
+      // Reflection is drafted server-side by Groq — the two standard
+      // post-session prompts ("What went well?" / "What would you change
+      // next time?") come back already ANSWERED as a grounded draft, which
+      // the trainer edits after actually teaching the session.
+      function renderReflectionLoading() {
+        document.getElementById('spReflection').innerHTML =
+          '<span class="gen-ai-loading-text"><i class="fa-solid fa-circle-notch fa-spin"></i> Drafting…</span>';
+      }
+
+      function renderReflection(reflection) {
+        var el = document.getElementById('spReflection');
+        var wentWell = reflection && reflection.went_well ? reflection.went_well.toString().trim() : '';
+        var changeNext = reflection && reflection.change_next_time ? reflection.change_next_time.toString().trim() : '';
+
+        if (!wentWell && !changeNext) {
+          renderReflectionFailed();
+          return;
+        }
+
+        el.innerHTML =
+          '<ul class="gen-bullets">' +
+          '<li><strong>What went well:</strong> ' + TMSGen.escapeHtml(wentWell || '\u2014') + '</li>' +
+          '<li><strong>What to change next time:</strong> ' + TMSGen.escapeHtml(changeNext || '\u2014') + '</li>' +
+          '</ul>' +
+          '<span class="gen-ai-badge">AI</span>';
+      }
+
+      function renderReflectionFailed() {
+        document.getElementById('spReflection').innerHTML =
+          '<span class="gen-ai-error-text">Couldn\'t generate this — click to fill in manually.</span>';
+      }
+
+      init();
+    })();
+  </script>
+
+</body>
+</html>

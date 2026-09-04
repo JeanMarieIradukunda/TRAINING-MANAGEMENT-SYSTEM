@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} · TMS{% endblock %}
+{% block content %}
+
+<div class="topbar">
+  <div>
+    <h1>{{ title }}</h1>
+    <div class="subtitle">{{ page_obj.paginator.count|default:rows|length }} total record{{ rows|length|pluralize }}</div>
+  </div>
+  <div class="d-flex align-items-center gap-2 flex-wrap">
+    <div class="table-search-wrap">
+      <i class="fa-solid fa-magnifying-glass"></i>
+      <input type="text" id="tableSearch" class="form-control" placeholder="Quick search...">
+    </div>
+    {% if bulk_create_url_name %}
+    <a href="{% url bulk_create_url_name %}" class="btn btn-outline-gold">
+      <i class="fa-solid fa-layer-group me-1"></i> {{ bulk_create_label|default:"Add multiple" }}
+    </a>
+    {% endif %}
+    <a href="{% url create_url_name %}" class="btn btn-gold">
+      <i class="fa-solid fa-plus me-1"></i> Add {{ title|slice:":-1" }}
+    </a>
+  </div>
+</div>
+
+{% if group_by_trainer %}
+<div class="card-panel table-panel">
+  {% if trainer_groups %}
+  <div class="trainer-accordion">
+    {% for group in trainer_groups %}
+    <details class="trainer-group">
+      <summary class="trainer-group-summary">
+        <span class="trainer-group-toggle"><i class="fa-solid fa-chevron-right"></i></span>
+        <span class="trainer-group-icon {% if not group.trainer_id %}trainer-group-icon-muted{% endif %}">
+          <i class="fa-solid fa-chalkboard-user"></i>
+        </span>
+        <span class="trainer-group-name">{{ group.trainer_name }}</span>
+        <span class="trainer-group-count">{{ group.rows|length }} record{{ group.rows|length|pluralize }}</span>
+      </summary>
+      <div class="trainer-group-body">
+        {% if group_by_module %}
+        <div class="module-accordion">
+          {% for mgroup in group.modules %}
+          <details class="module-group">
+            <summary class="module-group-summary">
+              <span class="module-group-toggle"><i class="fa-solid fa-chevron-right"></i></span>
+              <span class="module-group-icon"><i class="fa-solid fa-book-open"></i></span>
+              <span class="module-group-name">{{ mgroup.module_label }}</span>
+              <span class="module-group-count">{{ mgroup.rows|length }} record{{ mgroup.rows|length|pluralize }}</span>
+            </summary>
+            <div class="module-group-body">
+              <div class="record-card-list">
+                {% for row in mgroup.rows %}
+                <div class="record-card" data-searchable>
+                  <div class="record-card-fields">
+                    {% for label, value in row.fields %}
+                    <div class="record-card-field">
+                      <span class="record-card-label">{{ label }}</span>
+                      <span class="record-card-value">{{ value }}</span>
+                    </div>
+                    {% endfor %}
+                  </div>
+                  <div class="record-card-actions">
+                    {% if quick_add_url_name %}
+                    <a href="{% url quick_add_url_name %}?{{ quick_add_param }}={{ row.pk }}" class="action-icon quick-add" title="{{ quick_add_label|default:'Add related records' }}">
+                      <i class="fa-solid fa-layer-group"></i>
+                    </a>
+                    {% endif %}
+                    <a href="{% url edit_url_name pk=row.pk %}" class="action-icon edit" title="Edit">
+                      <i class="fa-solid fa-pen"></i>
+                    </a>
+                    <a href="{% url delete_url_name pk=row.pk %}" class="action-icon delete" title="Delete">
+                      <i class="fa-solid fa-trash"></i>
+                    </a>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+          </details>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="table-responsive">
+          <table class="table align-middle">
+            <thead>
+              <tr>
+                {% for h in headers %}<th>{{ h }}</th>{% endfor %}
+                {% if toggle_url_name %}<th>Status</th>{% endif %}
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in group.rows %}
+              <tr data-searchable>
+                {% for cell in row.cells %}<td>{{ cell }}</td>{% endfor %}
+                {% if toggle_url_name %}
+                <td>
+                  {% if row.is_active %}
+                  <span class="badge bg-success">Active</span>
+                  {% else %}
+                  <span class="badge bg-secondary">Locked</span>
+                  {% endif %}
+                </td>
+                {% endif %}
+                <td class="text-end">
+                  {% if toggle_url_name and can_toggle_module %}
+                  <form method="post" action="{% url toggle_url_name pk=row.pk %}" class="d-inline">
+                    {% csrf_token %}
+                    {% if row.is_active %}
+                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Turn Off (lock this module)"
+                            onclick="return confirm('Lock this module? It will be hidden from the public Scheme of Work / Lesson Plan generators until you turn it back on.');">
+                      Turn Off
+                    </button>
+                    {% else %}
+                    <button type="submit" class="btn btn-sm btn-outline-success" title="Turn On (unlock this module)">
+                      Turn On
+                    </button>
+                    {% endif %}
+                  </form>
+                  {% endif %}
+                  {% if quick_add_url_name %}
+                  <a href="{% url quick_add_url_name %}?{{ quick_add_param }}={{ row.pk }}" class="action-icon quick-add" title="{{ quick_add_label|default:'Add related records' }}">
+                    <i class="fa-solid fa-layer-group"></i>
+                  </a>
+                  {% endif %}
+                  <a href="{% url edit_url_name pk=row.pk %}" class="action-icon edit" title="Edit">
+                    <i class="fa-solid fa-pen"></i>
+                  </a>
+                  <a href="{% url delete_url_name pk=row.pk %}" class="action-icon delete" title="Delete">
+                    <i class="fa-solid fa-trash"></i>
+                  </a>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% endif %}
+      </div>
+    </details>
+    {% endfor %}
+  </div>
+  <div id="tableSearchEmpty" class="empty-state d-none">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <div>No records match your search.</div>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <i class="fa-solid fa-inbox"></i>
+    <div>{{ empty_message }}</div>
+  </div>
+  {% endif %}
+</div>
+{% else %}
+<div class="card-panel table-panel">
+  {% if rows %}
+  <div class="table-responsive">
+    <table class="table align-middle">
+      <thead>
+        <tr>
+          {% if has_thumbnail %}<th>Preview</th>{% endif %}
+          {% for h in headers %}<th>{{ h }}</th>{% endfor %}
+          {% if show_login_management %}<th>Login account</th>{% endif %}
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr data-searchable>
+          {% if has_thumbnail %}
+          <td>
+            {% if row.thumbnail %}
+              <img src="{{ row.thumbnail }}" alt="" class="logo-thumb">
+            {% else %}
+              <span class="logo-thumb logo-thumb-placeholder"><i class="fa-solid fa-image"></i></span>
+            {% endif %}
+          </td>
+          {% endif %}
+          {% for cell in row.cells %}<td>{{ cell }}</td>{% endfor %}
+          {% if show_login_management %}
+          <td>
+            {% if row.login_status == 'active' %}
+              <span class="badge bg-success">Active</span>
+              {% if row.login_last_login %}
+                <div class="small text-muted">Last login {{ row.login_last_login|date:"d M Y, H:i" }}</div>
+              {% else %}
+                <div class="small text-muted">Never logged in</div>
+              {% endif %}
+            {% elif row.login_status == 'inactive' %}
+              <span class="badge bg-secondary">Disabled</span>
+            {% else %}
+              <span class="badge bg-warning text-dark">No account</span>
+            {% endif %}
+          </td>
+          {% endif %}
+          <td class="text-end">
+            {% if show_login_management %}
+              {% if row.login_status == 'missing' %}
+              <form method="post" action="{% url login_repair_url_name pk=row.pk %}" class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-outline-success" title="Create a login account for this trainer">
+                  Create login
+                </button>
+              </form>
+              {% else %}
+              <form method="post" action="{% url login_toggle_url_name pk=row.pk %}" class="d-inline">
+                {% csrf_token %}
+                {% if row.login_status == 'active' %}
+                <button type="submit" class="btn btn-sm btn-outline-danger" title="Disable login"
+                        onclick="return confirm('Disable login for this trainer? They will not be able to sign in until you re-enable it.');">
+                  Disable
+                </button>
+                {% else %}
+                <button type="submit" class="btn btn-sm btn-outline-success" title="Enable login">
+                  Enable
+                </button>
+                {% endif %}
+              </form>
+              {% endif %}
+            {% endif %}
+            {% if quick_add_url_name %}
+            <a href="{% url quick_add_url_name %}?{{ quick_add_param }}={{ row.pk }}" class="action-icon quick-add" title="{{ quick_add_label|default:'Add related records' }}">
+              <i class="fa-solid fa-layer-group"></i>
+            </a>
+            {% endif %}
+            <a href="{% url edit_url_name pk=row.pk %}" class="action-icon edit" title="Edit">
+              <i class="fa-solid fa-pen"></i>
+            </a>
+            <a href="{% url delete_url_name pk=row.pk %}" class="action-icon delete" title="Delete">
+              <i class="fa-solid fa-trash"></i>
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div id="tableSearchEmpty" class="empty-state d-none">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <div>No records match your search.</div>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <i class="fa-solid fa-inbox"></i>
+    <div>{{ empty_message }}</div>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+{% if is_paginated %}
+<nav class="mt-3">
+  <ul class="pagination">
+    {% if page_obj.has_previous %}
+      <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a></li>
+    {% endif %}
+    <li class="page-item disabled"><span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span></li>
+    {% if page_obj.has_next %}
+      <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a></li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %}
+
+{% endblock %}
