@@ -520,6 +520,12 @@ h1, h2, h3, h4, h5, .brand, .card-stat .value {
   box-shadow: 0 0 0 3px var(--app-primary-soft);
 }
 
+.form-control[readonly] {
+  background: var(--app-muted-soft, #eef0f5);
+  color: var(--app-muted, #6b7280);
+  cursor: not-allowed;
+}
+
 .errorlist { list-style: none; padding: 0; margin: 0.25rem 0 0; color: var(--danger); font-size: 0.8rem; }
 
 /* ---------- Image / logo previews ---------- */
