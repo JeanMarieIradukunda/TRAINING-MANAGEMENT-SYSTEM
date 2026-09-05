@@ -737,7 +737,7 @@
     <!-- ==================== SELECTOR ==================== -->
     <section class="gen-card no-print" id="selectorCard">
       <h2>1. Choose trade, level &amp; module</h2>
-      <p class="gen-card-sub">The level and module lists narrow down automatically based on what you pick.</p>
+      <p class="gen-card-sub">Pick a module — terms and weeks load automatically.</p>
 
       <div id="noDataAlert" class="gen-alert-empty d-none">
         <i class="fa-solid fa-triangle-exclamation"></i>
@@ -773,34 +773,20 @@
           <div>
             <label class="form-label" for="hoursPerWeekInput">Training hours per week</label>
             <input type="number" class="form-control" id="hoursPerWeekInput" min="0.1" max="40" step="0.01" value="5">
-            <p class="gen-hint" style="margin-top:0.35rem;" id="hoursPerWeekHint">Auto-calculated as the module's total learning hours &divide; total weeks in the selected terms. Edit it yourself to override the calculated value for this run.</p>
-          </div>
-
-          <div>
-            <label class="form-label" for="numTermsInput">Number of terms for this module</label>
-            <input type="text" inputmode="numeric" class="form-control" id="numTermsInput" value="1"
-                   readonly tabindex="-1" aria-readonly="true">
-            <p class="gen-hint" style="margin-top:0.35rem;">Set automatically from the selected
-              module's own record — select a module above to fill this in. You only need to
-              confirm the weeks per term below.</p>
+            <p class="gen-hint" id="hoursPerWeekHint">Auto-calculated — edit to override.</p>
           </div>
 
           <div class="gen-field-span-all">
-            <label class="form-label" for="termSelectionInput">Terms to generate for this Scheme</label>
-            <select class="form-select" id="termSelectionInput">
-              <option value="1-3" selected>Both (3 Terms)</option>
-              <option value="1-2">First 2 Terms (1-2)</option>
-              <option value="2-3">Last 2 Terms (2-3)</option>
-              <option value="1">Only Term One</option>
-            </select>
-            <p class="gen-hint" style="margin-top:0.35rem;">Choose which of the module's terms this Scheme should cover. Only term numbers that actually fall within this module's own term placement (based on Number of terms above) are used; anything outside that range is ignored. The document's Term headings will show exactly the term numbers this selection resolves to.</p>
+            <label class="form-label">Terms to generate <span class="req">*</span></label>
+            <div class="gen-term-chip-row" id="termSelectionChips"></div>
+            <input type="hidden" id="termSelectionInput">
           </div>
         </div>
 
         <div class="gen-term-weeks-wrap" id="termWeeksWrap">
           <label class="form-label">Weeks per term <span class="req">*</span></label>
           <div class="gen-term-weeks-grid" id="termWeeksGrid"></div>
-          <p class="gen-hint" style="margin-top:0.5rem;" id="termWeeksHint">Selecting a module loads its recorded number of terms and weeks per term automatically. Every term can be a different length — adjust the values above for this run only if needed; it won't change the module's saved record.</p>
+          <p class="gen-hint" id="termWeeksHint">Pre-filled from the module's records — adjust for this run only.</p>
         </div>
 
         <div class="gen-actions-row">
@@ -811,7 +797,6 @@
             <i class="fa-solid fa-rotate-left me-1"></i> Reset
           </button>
         </div>
-        <p class="gen-hint">Hours per week controls how the module's total learning hours are split into weeks; the weeks-per-term values above control how those weeks are grouped into terms — neither changes the module's total learning hours.</p>
       </div>
     </section>
 
@@ -1000,8 +985,8 @@
       var levelSelect = document.getElementById('levelSelect');
       var moduleSelect = document.getElementById('moduleSelect');
       var hoursPerWeekInput = document.getElementById('hoursPerWeekInput');
-      var numTermsInput = document.getElementById('numTermsInput');
       var termSelectionInput = document.getElementById('termSelectionInput');
+      var termSelectionChips = document.getElementById('termSelectionChips');
       var termWeeksGrid = document.getElementById('termWeeksGrid');
       var generateBtn = document.getElementById('generateBtn');
       var resetBtn = document.getElementById('resetBtn');
@@ -1031,6 +1016,14 @@
       // Reset back to false whenever a different module is selected, so
       // the new module always starts from its own calculated default.
       var hoursPerWeekManuallySet = false;
+
+      // Per-term default "weeks" values for the currently selected module,
+      // keyed by real term number, e.g. { 2: 12, 3: 10 } for a module
+      // recorded as "2, 3" with term_weeks "12,10". Populated whenever a
+      // module is selected (see onModuleChange) and used to pre-fill the
+      // Weeks per term fields whenever the "Terms to generate" selection
+      // changes and brings a term back into view.
+      var currentBaseWeeksByTerm = {};
 
       function indexBy(list, key) {
         var map = {};
@@ -1124,97 +1117,179 @@
       }
 
       /**
-       * (Re)builds one "Term N weeks" number input per term, based on
-       * numTermsInput's current value. Existing values are preserved
-       * when the count changes (e.g. going from 3 to 4 terms keeps the
-       * first 3 values and just adds a 4th).
-       *
-       * @param {number[]} [presetWeeks] Optional per-term week counts
-       *   loaded from the selected module's own record (num_terms /
-       *   term_weeks). When supplied, these take priority over whatever
-       *   values are currently in the grid - used right after a module
-       *   is selected so the fields start from the database's recorded
-       *   term structure instead of a generic default.
+       * (Re)builds one "Term N weeks" number input per term currently
+       * chosen in "Terms to generate for this Scheme" - that select is
+       * the only control that decides how many terms/weeks fields
+       * appear, and which real term numbers they represent. Existing
+       * values are preserved (keyed by real term number, not grid
+       * position) when the selection changes, e.g. narrowing from
+       * "Terms 2-3" down to "Only Term 2" keeps whatever was typed for
+       * Term 2. A term brought into view for the first time falls back
+       * to the module's own recorded weeks for that term (see
+       * currentBaseWeeksByTerm / onModuleChange), then to 12.
        */
-      function renderTermWeeksInputs(presetWeeks) {
-        var numTerms = Math.max(1, Math.min(3, parseInt(numTermsInput.value, 10) || 1));
-        var existing = Array.prototype.slice.call(termWeeksGrid.querySelectorAll('.gen-term-week-input'))
-          .map(function (el) { return parseInt(el.value, 10) || 12; });
+      function renderTermWeeksInputs() {
+        var mod = getSelectedModule();
+        var selectedTerms = getSelectedTermsList(mod);
 
-        // Labels use the module's real, placement-aware term numbers
-        // (e.g. "Term 2 weeks" / "Term 3 weeks" for a 2-term module
-        // that runs in the school year's Terms 2-3), never a generic
-        // 1..numTerms count - see getModuleTermPlacement().
-        var placement = getModuleTermPlacement(getSelectedModule(), numTerms);
-        var startTerm = placement.start;
+        var existingByTerm = {};
+        Array.prototype.slice.call(termWeeksGrid.querySelectorAll('.gen-term-week-input'))
+          .forEach(function (el) {
+            var t = parseInt(el.getAttribute('data-term-number'), 10);
+            if (!isNaN(t)) existingByTerm[t] = parseInt(el.value, 10) || 12;
+          });
 
         var html = '';
-        for (var i = 0; i < numTerms; i++) {
-          var value = (presetWeeks && presetWeeks[i]) || existing[i] || 12;
-          var realTermNumber = startTerm + i;
+        selectedTerms.forEach(function (termNumber, i) {
+          var value = existingByTerm[termNumber] || currentBaseWeeksByTerm[termNumber] || 12;
           html += '' +
             '<div class="gen-term-week-field">' +
-              '<label for="termWeek_' + (i + 1) + '">Term ' + realTermNumber + ' weeks</label>' +
+              '<label for="termWeek_' + (i + 1) + '">Term ' + termNumber + ' weeks</label>' +
               '<input type="number" class="form-control form-control-sm gen-term-week-input" ' +
-                'id="termWeek_' + (i + 1) + '" data-term-index="' + i + '" min="1" max="52" value="' + value + '">' +
+                'id="termWeek_' + (i + 1) + '" data-term-number="' + termNumber + '" min="1" max="52" value="' + value + '">' +
             '</div>';
-        }
+        });
         termWeeksGrid.innerHTML = html;
       }
 
       // Returns the currently-selected module object (or null), used
-      // wherever the module's own recorded term placement needs to be
+      // wherever the module's own recorded term structure needs to be
       // read without threading the object through every call site.
       function getSelectedModule() {
         var moduleId = moduleSelect.value ? Number(moduleSelect.value) : null;
         return moduleId ? modulesById[moduleId] : null;
       }
 
+      // Returns the selected module's own recorded terms (e.g. [2, 3]
+      // for a module recorded as "2, 3"), or [1] when no module is
+      // selected yet - the source of truth for which terms exist at
+      // all for that module.
+      function getModuleTerms(mod) {
+        return (mod && Array.isArray(mod.terms) && mod.terms.length) ? mod.terms : [1];
+      }
+
       /**
-       * Determines which real term number(s), within the school year's
-       * fixed 3-term calendar (Term 1 / Term 2 / Term 3), this module
-       * actually occupies - its "term placement" - based on the
-       * module's own recorded `term` field plus its Number of terms.
-       * This is what the "Number of Terms defines the valid term
-       * range/options" rule is built on:
-       *
-       *   - numTerms >= 3 -> only one placement fits a 3-term year:
-       *     Term 1 through Term 3.
-       *   - numTerms === 2 -> only two placements fit a 3-term year:
-       *     Terms 1-2 or Terms 2-3. Which one is picked by reading the
-       *     module's recorded starting term (falls back to 1-2 when
-       *     that isn't recorded as 2 or 3).
-       *   - numTerms === 1 -> the single relevant term is whichever
-       *     term the module's own record says it runs in (1, 2 or 3).
-       *
-       * The module's `term` field is free text (e.g. "1", "Term 2"),
-       * so only the first number found in it is used; anything
-       * unparsable defaults to Term 1.
+       * Builds the "Terms to generate for this Scheme" dropdown options
+       * for a module's own recorded terms - every contiguous, non-empty
+       * run of those terms, largest first (so the full set is the
+       * default/first option), e.g. for terms [1, 2, 3]:
+       *   "1,2,3" All 3 Terms (1-3), "1,2" Terms 1-2, "2,3" Terms 2-3,
+       *   "1" Only Term 1, "2" Only Term 2, "3" Only Term 3.
+       * This is what lets the trainer pick any subset of the module's
+       * own terms without ever typing a term count by hand.
        */
-      function getModuleTermPlacement(mod, numTerms) {
-        var raw = (mod && mod.term != null) ? String(mod.term) : '';
-        var match = raw.match(/\d+/);
-        var recordedStart = match ? parseInt(match[0], 10) : 1;
-        if (!recordedStart || recordedStart < 1) recordedStart = 1;
-        if (recordedStart > 3) recordedStart = 3;
+      function buildTermSelectionOptions(terms) {
+        var n = terms.length;
+        var options = [];
+        for (var size = n; size >= 1; size--) {
+          for (var start = 0; start + size <= n; start++) {
+            var slice = terms.slice(start, start + size);
+            var value = slice.join(',');
+            var label;
+            if (size === n) {
+              label = size === 1
+                ? ('Term ' + slice[0])
+                : ('All ' + size + ' Terms (' + slice[0] + '\u2013' + slice[slice.length - 1] + ')');
+            } else if (size === 1) {
+              label = 'Only Term ' + slice[0];
+            } else {
+              label = 'Terms ' + slice[0] + '\u2013' + slice[slice.length - 1];
+            }
+            options.push({ value: value, label: label });
+          }
+        }
+        return options;
+      }
 
-        var n = Math.max(1, Math.min(3, numTerms || 1));
+      // (Re)renders the "Terms to generate" chip row for a module's own
+      // recorded terms (see buildTermSelectionOptions) and keeps the
+      // hidden termSelectionInput in sync - clicking a chip is the only
+      // way to change the selection now, so its value is always one of
+      // these exact, valid options; no free-text parsing/normalizing
+      // is needed any more.
+      function setTermSelection(value) {
+        termSelectionInput.value = value;
+        if (termSelectionChips) {
+          Array.prototype.slice.call(termSelectionChips.querySelectorAll('.gen-term-chip')).forEach(function (chip) {
+            chip.classList.toggle('active', chip.getAttribute('data-value') === value);
+          });
+        }
+        renderTermWeeksInputs();
+        recalcAutoHoursPerWeek();
+        scheduleAutoRegenerate();
+      }
 
-        if (n >= 3) return { start: 1, end: 3 };
-        if (n === 1) return { start: recordedStart, end: recordedStart };
+      function populateTermSelectionOptions(terms) {
+        if (!termSelectionInput) return;
+        var options = buildTermSelectionOptions(terms);
+        var fullValue = terms.join(',');
+        termSelectionInput.value = fullValue;
 
-        // n === 2: only "1-2" or "2-3" fit inside a 3-term year.
-        var start = recordedStart >= 2 ? 2 : 1;
-        return { start: start, end: start + 1 };
+        if (termSelectionChips) {
+          termSelectionChips.innerHTML = options.map(function (opt) {
+            return '<button type="button" class="gen-term-chip' + (opt.value === fullValue ? ' active' : '') + '" ' +
+              'data-value="' + opt.value + '">' + TMSGen.escapeHtml(opt.label) + '</button>';
+          }).join('');
+
+          Array.prototype.slice.call(termSelectionChips.querySelectorAll('.gen-term-chip')).forEach(function (chip) {
+            chip.addEventListener('click', function () { setTermSelection(chip.getAttribute('data-value')); });
+          });
+        }
+      }
+
+      /**
+       * Resolves "Terms to generate for this Scheme" into a sorted,
+       * de-duplicated list of actual term numbers, restricted to the
+       * selected module's own recorded terms (allTerms). Falls back to
+       * every term the module has when the field is blank or every
+       * token turns out invalid/out of range, so the schedule can never
+       * end up with zero terms selected and never pulls in a term the
+       * module doesn't occupy.
+       */
+      function parseTermSelection(rawValue, allTerms) {
+        var raw = (rawValue || '').trim();
+        if (!raw) return allTerms.slice();
+
+        var picked = {};
+        raw.split(',').forEach(function (token) {
+          token = token.trim();
+          if (!token) return;
+
+          var rangeMatch = token.match(/^(\d+)\s*-\s*(\d+)$/);
+          if (rangeMatch) {
+            var start = parseInt(rangeMatch[1], 10);
+            var end = parseInt(rangeMatch[2], 10);
+            if (start > end) { var tmp = start; start = end; end = tmp; }
+            for (var i = start; i <= end; i++) {
+              if (allTerms.indexOf(i) !== -1) picked[i] = true;
+            }
+            return;
+          }
+
+          var single = parseInt(token, 10);
+          if (!isNaN(single) && allTerms.indexOf(single) !== -1) picked[single] = true;
+        });
+
+        var result = Object.keys(picked).map(Number).sort(function (a, b) { return a - b; });
+        return result.length ? result : allTerms.slice();
+      }
+
+      // Which actual term numbers "Terms to generate for this Scheme"
+      // currently resolves to, for the given module.
+      function getSelectedTermsList(mod) {
+        var modTerms = getModuleTerms(mod);
+        return parseTermSelection(termSelectionInput ? termSelectionInput.value : '', modTerms);
       }
 
       /**
        * Called when a module is selected. Loads that module's own
-       * recorded term structure (num_terms / term_weeks, resolved
-       * server-side in get_term_weeks_list()) into the Number of terms
-       * and Weeks-per-term fields, replacing whatever was there before -
-       * this is what makes the generator dynamically database-driven
-       * instead of always assuming a fixed number of terms.
+       * recorded term structure (terms / term_weeks, both resolved
+       * server-side from the module's `term` field - see
+       * Module.get_terms_list() / get_term_weeks_list()) into the
+       * Number of terms and Weeks-per-term fields, replacing whatever
+       * was there before - this is what makes the generator dynamically
+       * database-driven instead of always assuming a fixed number of
+       * terms, and why the trainer never has to type a term count.
        */
       function onModuleChange() {
         var moduleId = moduleSelect.value ? Number(moduleSelect.value) : null;
@@ -1222,18 +1297,20 @@
         var mod = modulesById[moduleId];
         if (!mod) return;
 
-        var numTerms = Math.max(1, Math.min(3, parseInt(mod.num_terms, 10) || 1));
-        numTermsInput.value = numTerms;
-
-        var presetWeeks = Array.isArray(mod.term_weeks) && mod.term_weeks.length
+        var modTerms = getModuleTerms(mod);
+        var modWeeks = (Array.isArray(mod.term_weeks) && mod.term_weeks.length === modTerms.length)
           ? mod.term_weeks
-          : null;
-        renderTermWeeksInputs(presetWeeks);
+          : modTerms.map(function () { return 12; });
 
-        // A newly-selected module's term structure starts fully
-        // selected (every term included) rather than carrying over
-        // whatever subset was previously chosen for a previous module.
-        if (termSelectionInput) termSelectionInput.value = '1-3';
+        currentBaseWeeksByTerm = {};
+        modTerms.forEach(function (termNumber, i) { currentBaseWeeksByTerm[termNumber] = modWeeks[i]; });
+
+        // A newly-selected module's "Terms to generate" starts fully
+        // populated with, and fully selecting, that module's own
+        // recorded terms - rather than carrying over whatever subset
+        // was previously chosen for a previous module.
+        populateTermSelectionOptions(modTerms);
+        renderTermWeeksInputs();
 
         // A newly-selected module always starts from its own
         // calculated Training Hours per Week default (see
@@ -1260,23 +1337,18 @@
           .reduce(function (sum, o) { return sum + (Number(o.learning_hours) || 0); }, 0);
       }
 
-      // Total weeks across ONLY the currently selected terms (per the
-      // "Terms to generate" field, defaulting to every term in the
-      // module's placement range), minus the always-reserved final
-      // RESERVED_WEEKS_COUNT weeks (Revision / Exams - Collections /
-      // Marks Publication - see splitTeachingAndReservedSlots), since
-      // those weeks are never available for teaching. This is the
-      // denominator for the auto-calculated Training Hours per Week.
-      function computeSelectedTotalWeeks(mod, termWeeksArray) {
-        var placement = getModuleTermPlacement(mod, termWeeksArray.length);
-        var selectedTerms = parseTermSelection(
-          termSelectionInput ? termSelectionInput.value : '',
-          placement.start,
-          placement.end
-        );
-        var offset = placement.start;
-        var totalSelectedWeeks = selectedTerms.reduce(function (sum, termNumber) {
-          var weeks = termWeeksArray[termNumber - offset];
+      // Total weeks across ONLY the currently selected terms, minus the
+      // always-reserved final RESERVED_WEEKS_COUNT weeks (Revision /
+      // Exams - Collections / Marks Publication - see
+      // splitTeachingAndReservedSlots), since those weeks are never
+      // available for teaching. The Weeks per term fields already
+      // contain exactly one entry per term chosen in "Terms to
+      // generate" (see renderTermWeeksInputs), so termWeeksArray IS the
+      // selected terms' weeks already - no extra filtering needed here.
+      // This is the denominator for the auto-calculated Training Hours
+      // per Week.
+      function computeSelectedTotalWeeks(termWeeksArray) {
+        var totalSelectedWeeks = (termWeeksArray || []).reduce(function (sum, weeks) {
           return sum + (weeks || 0);
         }, 0);
         var reserved = Math.min(RESERVED_WEEKS_COUNT, totalSelectedWeeks);
@@ -1300,63 +1372,12 @@
         var termWeeksArray = getTermWeeksArray();
         if (!termWeeksArray.length) return;
 
-        var totalWeeks = computeSelectedTotalWeeks(mod, termWeeksArray);
+        var totalWeeks = computeSelectedTotalWeeks(termWeeksArray);
         var totalHours = computeModuleTotalHours(mod);
         if (!totalWeeks || !totalHours) return;
 
         var rate = totalHours / totalWeeks;
         hoursPerWeekInput.value = Math.round(rate * 100) / 100;
-      }
-
-      /**
-       * Resolves the "Terms to generate" dropdown value into a sorted,
-       * de-duplicated list of actual term numbers (1-based), e.g.:
-       *   ""        -> [1, 2, 3]              (blank = every term)
-       *   "1"       -> [1]
-       *   "1-2"     -> [1, 2]
-       *   "2-3"     -> [2, 3]
-       *   "1-3"     -> [1, 2, 3]
-       *
-       * Only term numbers within [minTerm, maxTerm] - the module's
-       * actual term placement, from getModuleTermPlacement() - are
-       * kept. Anything out of that range (or the whole field, if every
-       * token turns out invalid/out of range) is silently ignored and
-       * falls back to every term in the valid range, so a stray typo,
-       * a term number the module was never scheduled in, or a shrunk
-       * term count can never leave the schedule with zero terms
-       * selected, and never pulls in a term the module doesn't occupy.
-       * This never surfaces a warning/validation message to the user -
-       * out-of-range input is simply not honoured.
-       */
-      function parseTermSelection(rawValue, minTerm, maxTerm) {
-        var allTerms = [];
-        for (var n = minTerm; n <= maxTerm; n++) allTerms.push(n);
-
-        var raw = (rawValue || '').trim();
-        if (!raw) return allTerms;
-
-        var picked = {};
-        raw.split(',').forEach(function (token) {
-          token = token.trim();
-          if (!token) return;
-
-          var rangeMatch = token.match(/^(\d+)\s*-\s*(\d+)$/);
-          if (rangeMatch) {
-            var start = parseInt(rangeMatch[1], 10);
-            var end = parseInt(rangeMatch[2], 10);
-            if (start > end) { var tmp = start; start = end; end = tmp; }
-            for (var i = start; i <= end; i++) {
-              if (i >= minTerm && i <= maxTerm) picked[i] = true;
-            }
-            return;
-          }
-
-          var single = parseInt(token, 10);
-          if (!isNaN(single) && single >= minTerm && single <= maxTerm) picked[single] = true;
-        });
-
-        var result = Object.keys(picked).map(Number).sort(function (a, b) { return a - b; });
-        return result.length ? result : allTerms;
       }
 
       // Once a scheme of work has already been generated, any further
@@ -1390,10 +1411,8 @@
         tradeSelect.addEventListener('change', onTradeChange);
         levelSelect.addEventListener('change', onLevelChange);
         moduleSelect.addEventListener('change', function () { onModuleChange(); scheduleAutoRegenerate(); });
-        numTermsInput.addEventListener('input', function () { renderTermWeeksInputs(); recalcAutoHoursPerWeek(); scheduleAutoRegenerate(); });
-        renderTermWeeksInputs();
+        resetTermFields();
         hoursPerWeekInput.addEventListener('input', function () { hoursPerWeekManuallySet = true; scheduleAutoRegenerate(); });
-        if (termSelectionInput) termSelectionInput.addEventListener('change', function () { recalcAutoHoursPerWeek(); scheduleAutoRegenerate(); });
         // Delegated: the term-week inputs are rebuilt every time the
         // term count changes, so a single listener on their container
         // covers whichever inputs currently exist.
@@ -1462,14 +1481,15 @@
         resetTermFields();
       }
 
-      // Reverts Number of terms / Weeks per term to a neutral single-term
-      // default whenever the module selection is cleared or changed away
-      // (trade/level change), so a previous module's term structure never
-      // lingers on screen after its module is no longer selected.
+      // Reverts "Terms to generate" / Weeks per term to a neutral
+      // single-term default whenever the module selection is cleared or
+      // changed away (trade/level change), so a previous module's term
+      // structure never lingers on screen after its module is no longer
+      // selected.
       function resetTermFields() {
-        numTermsInput.value = 1;
-        renderTermWeeksInputs([12]);
-        if (termSelectionInput) termSelectionInput.value = '1-3';
+        currentBaseWeeksByTerm = { 1: 12 };
+        populateTermSelectionOptions([1]);
+        renderTermWeeksInputs();
       }
 
       function onReset() {
@@ -1565,21 +1585,15 @@
         var termWeeksArray = getTermWeeksArray();
         if (!termWeeksArray.length) termWeeksArray = [12];
 
-        // The module's own valid term range (its "term placement"),
-        // e.g. Terms 2-3 for a 2-term module recorded as starting in
-        // Term 2 - see getModuleTermPlacement(). "Terms to generate"
-        // can only ever pick from within this range.
-        var placement = getModuleTermPlacement(mod, termWeeksArray.length);
-
-        // Which actual term numbers to generate for this run — e.g.
-        // "2-3" only builds Terms 2 and 3, with headings that read
-        // "Term 2" / "Term 3" (never renumbered). Blank = every term
-        // in the module's valid range.
-        var selectedTerms = parseTermSelection(
-          termSelectionInput ? termSelectionInput.value : '',
-          placement.start,
-          placement.end
-        );
+        // Which actual term numbers to generate for this run — read
+        // straight from "Terms to generate for this Scheme", which is
+        // itself built from the module's own recorded terms (see
+        // populateTermSelectionOptions / getSelectedTermsList). E.g.
+        // "Terms 2-3" only builds Terms 2 and 3, with headings that
+        // read "Term 2" / "Term 3" (never renumbered). The Weeks per
+        // term fields above already contain exactly one entry per term
+        // in this list, in the same order (see renderTermWeeksInputs).
+        var selectedTerms = getSelectedTermsList(mod);
 
         var outcomes = data.outcomes
           .filter(function (o) { return o.module_id === moduleId; })
@@ -1611,7 +1625,7 @@
         // those weeks are ever used (see buildTermStructure) - the
         // generator never creates additional weeks, terms, or shifts
         // a module into an unselected term.
-        var termStructure = buildTermStructure(termWeeksArray, selectedTerms, placement.start);
+        var termStructure = buildTermStructure(termWeeksArray, selectedTerms);
 
         // The final RESERVED_WEEKS_COUNT weeks of that structure are
         // always reserved for Revision / Exams - Collections / Marks
@@ -1813,32 +1827,26 @@ function renderMeta(ctx) {
        * Integrated Assessment are now scheduled as part of the ordinary
        * flow (see buildWeekUnits/placeUnitsIntoTerms).
        *
-       * @param {number[]} termWeeksArray Per-term week counts, indexed
-       *   by actual term number (termWeeksArray[0] = Term 1's weeks,
-       *   etc.) - always the module's FULL term list, regardless of
-       *   what's selected for this particular run.
+       * @param {number[]} termWeeksArray Per-term week counts, in the
+       *   same order as selectedTerms (termWeeksArray[i] is the weeks
+       *   for selectedTerms[i]) - see renderTermWeeksInputs, which keeps
+       *   the Weeks per term fields 1-for-1 with "Terms to generate".
        * @param {number[]} [selectedTerms] Which actual (real, e.g.
        *   school-year) term numbers to build a structure for, e.g.
-       *   [2, 3] to generate only Terms 2-3 (see parseTermSelection).
+       *   [2, 3] to generate only Terms 2-3 (see getSelectedTermsList).
        *   Every entry keeps its own real term number as `termNumber`,
        *   so a Term 2-3 run's headings read "Term 2" / "Term 3" -
-       *   never renumbered to "Term 1" / "Term 2". Defaults to every
-       *   term in termWeeksArray.
-       * @param {number} [startTerm] The real term number that local
-       *   index 0 of termWeeksArray represents (from
-       *   getModuleTermPlacement().start) - e.g. 2 for a module whose
-       *   own "Term 1 weeks" field is really the school year's Term 2.
-       *   Defaults to 1 (weeks array already indexed 1..n).
+       *   never renumbered to "Term 1" / "Term 2". Defaults to
+       *   1..termWeeksArray.length.
        */
-      function buildTermStructure(termWeeksArray, selectedTerms, startTerm) {
+      function buildTermStructure(termWeeksArray, selectedTerms) {
         var weeks = termWeeksArray || [];
-        var offset = startTerm || 1;
         var termNumbers = (selectedTerms && selectedTerms.length)
           ? selectedTerms
-          : weeks.map(function (_, idx) { return offset + idx; });
+          : weeks.map(function (_, idx) { return idx + 1; });
 
-        return termNumbers.map(function (termNumber) {
-          var rawTotal = weeks[termNumber - offset];
+        return termNumbers.map(function (termNumber, idx) {
+          var rawTotal = weeks[idx];
           var totalWeeks = Math.max(1, parseInt(rawTotal, 10) || 1);
           return {
             termNumber: termNumber,

@@ -1104,8 +1104,8 @@ h1, h2, h3, h4, h5, .brand, .card-stat .value {
   border-radius: 18px;
   border: 1px solid #e9ecf4;
   box-shadow: 0 18px 40px rgba(16, 26, 48, 0.08);
-  padding: 1.75rem;
-  margin-bottom: 1.75rem;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
 }
 
 .gen-card h2 {
@@ -1209,6 +1209,102 @@ h1, h2, h3, h4, h5, .brand, .card-stat .value {
   color: #9199b0;
   font-size: 0.78rem;
   margin-top: 0.35rem;
+}
+
+/* ============================================================
+   Term pills — used on the Module create/edit form (Terms this
+   module runs in) and reused by the Scheme of Work generator's
+   own term-selection chips further below.
+   ============================================================ */
+.term-field-block { max-width: 480px; }
+
+.term-pill-group #id_term {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  padding: 0;
+  margin: 0;
+}
+
+.term-pill-group #id_term > div { margin: 0; }
+
+.term-pill-group label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 1rem;
+  border: 1.5px solid #e1e5ee;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--app-ink-soft);
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.term-pill-group label:hover { border-color: var(--gold); }
+
+.term-pill-group input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  accent-color: var(--gold);
+}
+
+.term-pill-group label:has(input:checked) {
+  background: var(--navy);
+  border-color: var(--navy);
+  color: #fff;
+}
+
+.term-pill-footer {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.15rem 0.6rem;
+  margin-top: 0.55rem;
+}
+
+.term-pill-summary {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--navy);
+}
+
+.term-pill-summary.is-invalid { color: var(--danger); }
+
+.term-pill-rule {
+  font-size: 0.74rem;
+  color: #9199b0;
+}
+
+.gen-term-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.gen-term-chip {
+  appearance: none;
+  border: 1.5px solid #e1e5ee;
+  background: #fff;
+  color: var(--app-ink-soft);
+  border-radius: 999px;
+  padding: 0.4rem 0.95rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.gen-term-chip:hover { border-color: var(--gold); }
+
+.gen-term-chip.active {
+  background: var(--navy);
+  border-color: var(--navy);
+  color: #fff;
 }
 
 .gen-alert-empty {

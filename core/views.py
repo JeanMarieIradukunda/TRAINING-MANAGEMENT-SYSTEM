@@ -110,9 +110,14 @@ def _build_generator_payload(trainer=None):
             'trainer_name': m.trainer.full_name if m.trainer_id else '',
             'learning_hours': m.learning_hours,
             'term': m.term,
-            # Drives the Scheme of Work generator's term/week fields so
-            # they're loaded from this module's own record instead of a
-            # hardcoded assumption (e.g. always 3 terms of 12 weeks).
+            # The exact, ordered list of term numbers this module runs
+            # in, e.g. [2, 3] - always contiguous (enforced by
+            # Module.clean()/ModuleForm). This is what the Scheme of
+            # Work generator uses to automatically determine the number
+            # of terms and build the matching "Weeks per term" fields,
+            # instead of requiring the trainer to enter a term count or
+            # guessing a placement from free text.
+            'terms': m.get_terms_list(),
             'num_terms': m.num_terms,
             'term_weeks': m.get_term_weeks_list(),
         }

@@ -1,6 +1,8 @@
 import datetime
+import re
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
@@ -176,17 +178,38 @@ class Module(models.Model):
     mod_code = models.CharField(max_length=50, unique=True)
     mod_name = models.CharField(max_length=150)
     learning_hours = models.IntegerField()
-    term = models.CharField(max_length=50)
 
     # ------------------------------------------------------------------
-    # Scheme of Work term/week structure for this module. These drive the
-    # Scheme of Work generator's "Number of terms" and "Weeks per term"
-    # fields so they're loaded from the module's own record instead of
-    # defaulting to a hardcoded assumption (e.g. always 3 terms).
+    # Which term(s) of the 3-term school year this module runs in.
+    # Stored as a comma-separated list of term numbers, e.g. "1", "2,3",
+    # or "1,2,3" - always contiguous (see clean() / get_terms_list()).
+    # This is the single source of truth for the Scheme of Work
+    # generator's "Number of terms" and "Weeks per term" fields: they're
+    # derived from this field (via num_terms/get_terms_list()) instead
+    # of requiring the trainer to re-enter the term count by hand.
+    # ------------------------------------------------------------------
+    TERM_CHOICES = [(1, 'Term 1'), (2, 'Term 2'), (3, 'Term 3')]
+
+    term = models.CharField(
+        max_length=50,
+        help_text=(
+            "Comma-separated term numbers this module runs in, e.g. '1', "
+            "'2,3', or '1,2,3'. Must be contiguous - Term 1 and Term 3 "
+            "without Term 2 is not allowed."
+        ),
+    )
+
+    # ------------------------------------------------------------------
+    # Scheme of Work term/week structure for this module. num_terms is
+    # kept in sync automatically from `term` on every save() (see below)
+    # rather than being entered by hand - it exists as a denormalised
+    # count purely so existing code/queries that already read
+    # module.num_terms keep working unchanged.
     # ------------------------------------------------------------------
     num_terms = models.PositiveSmallIntegerField(
         default=1,
-        help_text="How many terms this module's Scheme of Work is split across.",
+        help_text="How many terms this module's Scheme of Work is split across. "
+                   "Set automatically from the Term(s) field - not editable directly.",
     )
     term_weeks = models.CharField(
         max_length=100,
@@ -219,6 +242,54 @@ class Module(models.Model):
 
     def __str__(self):
         return f"{self.mod_code} - {self.mod_name}"
+
+    def get_terms_list(self):
+        """
+        Parses `term` into a clean, sorted, de-duplicated list of term
+        number ints, e.g. "2,3" -> [2, 3], "1" -> [1]. Tolerant of extra
+        whitespace and of legacy free-text values (e.g. "Term 1") that
+        predate this field's comma-separated convention - any digit
+        found in a token is used. Falls back to [1] if `term` is blank
+        or contains no parseable digits, so callers never see an empty
+        list. Does NOT enforce contiguity - see clean() for that; this
+        method just reads whatever is currently stored.
+        """
+        terms = set()
+        for token in (self.term or '').split(','):
+            match = re.search(r'\d+', token)
+            if match:
+                n = int(match.group())
+                if 1 <= n <= 3:
+                    terms.add(n)
+        return sorted(terms) if terms else [1]
+
+    def clean(self):
+        super().clean()
+        terms = self.get_terms_list()
+        # get_terms_list() already discards anything outside 1-3, so the
+        # only remaining invalid shape is a gap - e.g. Term 1 + Term 3
+        # without Term 2 - which contiguity check below catches.
+        if terms != list(range(terms[0], terms[-1] + 1)):
+            raise ValidationError({
+                'term': (
+                    "Terms must be contiguous - e.g. Term 1, Terms 1-2, "
+                    "Terms 2-3, or Terms 1-2-3. Term 1 and Term 3 without "
+                    "Term 2 is not allowed."
+                )
+            })
+
+    def save(self, *args, **kwargs):
+        # Keep `term` normalised to a clean comma-separated form and
+        # num_terms in sync with it on every save, regardless of whether
+        # the record came through ModuleForm (which already validates
+        # contiguity in clean_term()), the Django admin, a fixture, or a
+        # script - so num_terms can never drift out of sync with the
+        # actual terms recorded, and the trainer never has to set it by
+        # hand.
+        terms = self.get_terms_list()
+        self.term = ','.join(str(t) for t in terms)
+        self.num_terms = len(terms)
+        super().save(*args, **kwargs)
 
     def get_term_weeks_list(self):
         """

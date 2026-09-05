@@ -53,7 +53,7 @@ class BootstrapModelForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         for field_name, field in self.fields.items():
             widget = field.widget
-            if isinstance(widget, (forms.CheckboxInput,)):
+            if isinstance(widget, (forms.CheckboxInput, forms.CheckboxSelectMultiple, forms.RadioSelect)):
                 widget.attrs.setdefault('class', 'form-check-input')
             elif isinstance(widget, (forms.Select, forms.SelectMultiple)):
                 widget.attrs.setdefault('class', 'form-select')
@@ -224,12 +224,53 @@ class TrainerAccessForm(BootstrapModelForm):
 
 
 class ModuleForm(BootstrapModelForm):
+    # Replaces the old free-text "term" field with checkboxes for each
+    # of the 3 possible terms. The selected terms are what the Scheme of
+    # Work generator later reads (via Module.get_terms_list() /
+    # num_terms) to automatically determine the number of terms and
+    # weeks-per-term fields for this module - no one has to type a term
+    # count anywhere.
+    term = forms.MultipleChoiceField(
+        choices=Module.TERM_CHOICES,
+        widget=forms.CheckboxSelectMultiple,
+        label='Terms this module runs in',
+        help_text=(
+            "Select every term this module covers. Selections must be "
+            "contiguous - e.g. Term 1, Terms 1 & 2, Terms 2 & 3, or all "
+            "3 terms. Term 1 and Term 3 without Term 2 is not allowed."
+        ),
+    )
+
     class Meta:
         model = Module
         # Trainer first: recording a Module starts with "who teaches
         # it", then the curriculum placement (trade/level), then the
         # module's own identity.
         fields = ['trainer', 'trade', 'level', 'mod_code', 'mod_name', 'learning_hours', 'term']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Pre-check the boxes matching this module's currently saved
+        # term(s) when editing an existing module.
+        if self.instance and self.instance.pk:
+            self.fields['term'].initial = [
+                str(t) for t in self.instance.get_terms_list()
+            ]
+
+    def clean_term(self):
+        """
+        Turns the list of checked term numbers (e.g. ['2', '3']) into
+        the comma-separated string Module.term actually stores (e.g.
+        "2,3"). Contiguity (no Term 1 + Term 3 gap) is enforced by
+        Module.clean(), which Django runs automatically as part of this
+        ModelForm's validation - so that rule lives in one place and
+        also applies to modules edited via the Django admin.
+        """
+        selected = self.cleaned_data.get('term') or []
+        if not selected:
+            raise forms.ValidationError('Select at least one term.')
+        ordered = sorted(int(v) for v in selected)
+        return ','.join(str(t) for t in ordered)
 
 
 class LearningOutcomeForm(BootstrapModelForm):
