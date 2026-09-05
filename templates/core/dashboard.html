@@ -2,6 +2,138 @@
 {% block title %}Dashboard · TMS{% endblock %}
 {% block content %}
 
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  .db-page{
+    --ink:#142027;
+    --blueprint:#3d6f93;
+    --blueprint-deep:#274b63;
+    --brass:#b9853f;
+    --brass-deep:#8f672f;
+    --text:#1b2226;
+    --text-soft:#5c6b71;
+    --line:rgba(27,34,38,.14);
+    --radius:3px;
+    font-family:'DM Sans',sans-serif;
+    color:var(--text);
+    font-variant-numeric:tabular-nums;
+  }
+  .db-page h1,.db-page h2,.db-page h3,
+  .db-page .db-kpi-value,.db-page .db-nav-title,
+  .db-page .db-tab-btn,.db-page .db-hero-action,
+  .db-page .db-activity-panel-title,.db-page .db-flag a{
+    font-family:'Space Grotesk',sans-serif;
+  }
+  .db-page a{text-decoration:none;color:inherit;}
+  .db-page ul{list-style:none;margin:0;padding:0;}
+
+  /* ---- hero ---- */
+  .db-hero{
+    display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;
+    gap:1.5rem;padding-bottom:1.75rem;margin-bottom:2rem;border-bottom:1px solid var(--line);
+  }
+  .db-hero-eyebrow{font-size:.8rem;color:var(--text-soft);margin:0 0 .4rem;}
+  .db-hero h1{font-size:clamp(1.4rem,2.6vw,1.9rem);font-weight:600;margin:0;letter-spacing:-.01em;}
+  .db-hero-sub{margin-top:.5rem;color:var(--text-soft);max-width:46ch;line-height:1.5;}
+  .db-hero-actions{display:flex;flex-wrap:wrap;gap:.6rem;}
+  .db-hero-action{
+    font-size:.85rem;font-weight:500;padding:.6rem 1rem;border-radius:var(--radius);
+    border:1px solid var(--line);display:inline-flex;gap:.5rem;align-items:center;
+  }
+  .db-hero-action:hover{border-color:var(--blueprint-deep);color:var(--blueprint-deep);}
+  .db-hero-action-primary{background:var(--brass);border-color:var(--brass);color:var(--ink);}
+  .db-hero-action-primary:hover{background:var(--brass-deep);border-color:var(--brass-deep);color:#fff;}
+
+  /* ---- kpi strip ---- */
+  .db-kpi-rail{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(9.5rem,1fr));
+    gap:.75rem;margin-bottom:2rem;
+  }
+  .db-kpi-card{
+    border:1px solid var(--line);border-radius:var(--radius);padding:1rem 1.15rem;
+  }
+  a.db-kpi-card:hover{border-color:var(--blueprint-deep);}
+  .db-kpi-top{color:var(--blueprint-deep);font-size:.95rem;margin-bottom:.7rem;}
+  .db-kpi-value{font-size:1.5rem;font-weight:600;}
+  .db-kpi-label{font-size:.78rem;color:var(--text-soft);margin-top:.15rem;}
+  .db-kpi-alert{background:rgba(185,133,63,.07);border-color:var(--brass);}
+  .db-kpi-alert .db-kpi-top{color:var(--brass-deep);}
+  .db-kpi-alert .db-kpi-value{color:var(--brass-deep);}
+
+  /* ---- flag / alert ---- */
+  .db-flag{
+    display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:1rem;
+    border:1px solid var(--brass);border-left:3px solid var(--brass);border-radius:var(--radius);
+    padding:1rem 1.25rem;background:rgba(185,133,63,.06);margin-bottom:2rem;
+    font-size:.92rem;line-height:1.5;
+  }
+  .db-flag strong{font-family:'Space Grotesk';}
+  .db-flag a{
+    font-size:.85rem;font-weight:500;padding:.55rem .9rem;border:1px solid var(--brass-deep);
+    border-radius:var(--radius);color:var(--brass-deep);display:inline-flex;gap:.4rem;
+    align-items:center;white-space:nowrap;
+  }
+  .db-flag a:hover{background:var(--brass-deep);color:#fff;}
+
+  /* ---- sections ---- */
+  .db-section{margin-bottom:2.5rem;}
+  .db-section-head{
+    display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;
+    gap:1rem;margin-bottom:.25rem;
+  }
+  .db-section-title{font-size:1.1rem;font-weight:600;}
+
+  /* ---- tabs ---- */
+  .db-tabs{display:flex;gap:1.75rem;border-bottom:1px solid var(--line);}
+  .db-tab-btn{
+    background:none;border:none;padding:.6rem 0;margin-bottom:-1px;font-size:.86rem;
+    color:var(--text-soft);border-bottom:2px solid transparent;cursor:pointer;
+    display:flex;gap:.45rem;align-items:center;
+  }
+  .db-tab-btn.active{color:var(--ink);border-color:var(--brass);}
+  .db-tab-btn:hover{color:var(--ink);}
+  .db-tab-panel{display:none;}
+  .db-tab-panel.active{display:block;}
+
+  /* ---- nav rows (browse-by-category lists) ---- */
+  .db-nav-grid{border-top:1px solid var(--line);margin-top:.75rem;}
+  .db-nav-card{
+    display:flex;align-items:center;gap:1rem;padding:.9rem 0;border-bottom:1px solid var(--line);
+  }
+  .db-nav-card:hover .db-nav-title{color:var(--blueprint-deep);}
+  .db-nav-icon{
+    width:2.15rem;height:2.15rem;border-radius:var(--radius);border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;color:var(--blueprint-deep);
+    flex:none;font-size:.9rem;overflow:hidden;
+  }
+  .db-nav-icon-image img{width:100%;height:100%;object-fit:cover;}
+  .db-nav-title{font-size:.94rem;font-weight:600;}
+  .db-nav-sub{font-size:.8rem;color:var(--text-soft);margin-top:.1rem;}
+  .db-nav-arrow{margin-left:auto;color:var(--text-soft);font-size:.8rem;flex:none;}
+
+  /* ---- recent activity ---- */
+  .db-activity-grid{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(16rem,1fr));gap:1.5rem;margin-top:.75rem;
+  }
+  .db-activity-panel{border:1px solid var(--line);border-radius:var(--radius);padding:1.25rem 1.4rem;}
+  .db-activity-panel-title{
+    font-weight:600;font-size:.9rem;display:flex;gap:.5rem;align-items:center;
+    margin-bottom:.85rem;color:var(--blueprint-deep);
+  }
+  .db-timeline li{padding:.7rem 0;border-bottom:1px solid var(--line);}
+  .db-timeline li:last-child{border-bottom:none;}
+  .db-timeline-title{font-size:.9rem;font-weight:500;}
+  .db-timeline-sub{font-size:.8rem;color:var(--text-soft);margin-top:.2rem;}
+  .db-activity-empty{color:var(--text-soft);font-size:.87rem;padding:.4rem 0;}
+
+  @media (max-width:640px){
+    .db-hero{align-items:flex-start;}
+    .db-flag{flex-direction:column;align-items:flex-start;}
+  }
+</style>
+
 <div class="db-page">
 
 {% if is_trainer %}
@@ -18,24 +150,18 @@
   </div>
 
   <div class="db-kpi-rail">
-    <div class="db-kpi-card db-kpi-1">
-      <div class="db-kpi-top">
-        <div class="db-kpi-icon"><i class="fa-solid fa-book-open"></i></div>
-      </div>
+    <div class="db-kpi-card">
+      <div class="db-kpi-top"><i class="fa-solid fa-book-open"></i></div>
       <div class="db-kpi-value">{{ module_count }}</div>
       <div class="db-kpi-label">Assigned Modules</div>
     </div>
-    <div class="db-kpi-card db-kpi-2">
-      <div class="db-kpi-top">
-        <div class="db-kpi-icon"><i class="fa-solid fa-list-check"></i></div>
-      </div>
+    <div class="db-kpi-card">
+      <div class="db-kpi-top"><i class="fa-solid fa-list-check"></i></div>
       <div class="db-kpi-value">{{ outcome_count }}</div>
       <div class="db-kpi-label">Learning Outcomes</div>
     </div>
-    <div class="db-kpi-card db-kpi-3">
-      <div class="db-kpi-top">
-        <div class="db-kpi-icon"><i class="fa-solid fa-file-lines"></i></div>
-      </div>
+    <div class="db-kpi-card">
+      <div class="db-kpi-top"><i class="fa-solid fa-file-lines"></i></div>
       <div class="db-kpi-value">{{ content_count }}</div>
       <div class="db-kpi-label">Indicative Contents</div>
     </div>
@@ -46,19 +172,21 @@
       <h2 class="db-section-title">Browse your data</h2>
     </div>
     <div class="db-nav-grid">
-      <a href="{% url 'outcome-list' %}" class="db-nav-card db-accent-teal">
+      <a href="{% url 'outcome-list' %}" class="db-nav-card">
         <div class="db-nav-icon"><i class="fa-solid fa-list-check"></i></div>
         <div>
           <div class="db-nav-title">Learning Outcomes</div>
           <div class="db-nav-sub">{{ outcome_count }} record{{ outcome_count|pluralize }}</div>
         </div>
+        <i class="fa-solid fa-chevron-right db-nav-arrow"></i>
       </a>
-      <a href="{% url 'content-list' %}" class="db-nav-card db-accent-teal">
+      <a href="{% url 'content-list' %}" class="db-nav-card">
         <div class="db-nav-icon"><i class="fa-solid fa-file-lines"></i></div>
         <div>
           <div class="db-nav-title">Indicative Contents</div>
           <div class="db-nav-sub">{{ content_count }} record{{ content_count|pluralize }}</div>
         </div>
+        <i class="fa-solid fa-chevron-right db-nav-arrow"></i>
       </a>
     </div>
   </section>
@@ -68,7 +196,7 @@
       <h2 class="db-section-title">Recent activity</h2>
     </div>
     <div class="db-activity-grid">
-      <div class="card-panel db-activity-panel">
+      <div class="db-activity-panel">
         <div class="db-activity-panel-title">
           <i class="fa-solid fa-list-check"></i> Latest learning outcomes
         </div>
@@ -111,61 +239,47 @@
     </div>
   </div>
 
-  <!-- KPI bento rail: glanceable counts across the whole programme -->
+  <!-- KPI strip: glanceable counts across the whole programme -->
   <div class="db-kpi-rail">
-    <div class="db-kpi-card db-kpi-1">
-      <div class="db-kpi-top">
-        <div class="db-kpi-icon"><i class="fa-solid fa-industry"></i></div>
-      </div>
+    <div class="db-kpi-card">
+      <div class="db-kpi-top"><i class="fa-solid fa-industry"></i></div>
       <div class="db-kpi-value">{{ sector_count }}</div>
       <div class="db-kpi-label">Sectors</div>
     </div>
-    <div class="db-kpi-card db-kpi-2">
-      <div class="db-kpi-top">
-        <div class="db-kpi-icon"><i class="fa-solid fa-toolbox"></i></div>
-      </div>
+    <div class="db-kpi-card">
+      <div class="db-kpi-top"><i class="fa-solid fa-toolbox"></i></div>
       <div class="db-kpi-value">{{ trade_count }}</div>
       <div class="db-kpi-label">Trades</div>
     </div>
-    <div class="db-kpi-card db-kpi-3">
-      <div class="db-kpi-top">
-        <div class="db-kpi-icon"><i class="fa-solid fa-layer-group"></i></div>
-      </div>
+    <div class="db-kpi-card">
+      <div class="db-kpi-top"><i class="fa-solid fa-layer-group"></i></div>
       <div class="db-kpi-value">{{ level_count }}</div>
       <div class="db-kpi-label">Levels</div>
     </div>
-    <div class="db-kpi-card db-kpi-4">
-      <div class="db-kpi-top">
-        <div class="db-kpi-icon"><i class="fa-solid fa-book-open"></i></div>
-      </div>
+    <div class="db-kpi-card">
+      <div class="db-kpi-top"><i class="fa-solid fa-book-open"></i></div>
       <div class="db-kpi-value">{{ module_count }}</div>
       <div class="db-kpi-label">Modules</div>
     </div>
-    <div class="db-kpi-card db-kpi-5">
-      <div class="db-kpi-top">
-        <div class="db-kpi-icon"><i class="fa-solid fa-chalkboard-user"></i></div>
-      </div>
+    <div class="db-kpi-card">
+      <div class="db-kpi-top"><i class="fa-solid fa-chalkboard-user"></i></div>
       <div class="db-kpi-value">{{ trainer_count }}</div>
       <div class="db-kpi-label">Trainers</div>
     </div>
-    <div class="db-kpi-card db-kpi-6">
-      <div class="db-kpi-top">
-        <div class="db-kpi-icon"><i class="fa-solid fa-chalkboard"></i></div>
-      </div>
+    <div class="db-kpi-card">
+      <div class="db-kpi-top"><i class="fa-solid fa-chalkboard"></i></div>
       <div class="db-kpi-value">{{ lesson_plan_count }}</div>
       <div class="db-kpi-label">Lesson Plans</div>
     </div>
-    <a href="{% url 'traineraccess-list' %}" class="db-kpi-card db-kpi-1 {% if pending_access_count %}db-kpi-alert{% endif %}">
-      <div class="db-kpi-top">
-        <div class="db-kpi-icon"><i class="fa-solid fa-unlock-keyhole"></i></div>
-      </div>
+    <a href="{% url 'traineraccess-list' %}" class="db-kpi-card {% if pending_access_count %}db-kpi-alert{% endif %}">
+      <div class="db-kpi-top"><i class="fa-solid fa-unlock-keyhole"></i></div>
       <div class="db-kpi-value">{{ pending_access_count }}</div>
       <div class="db-kpi-label">Trainers Awaiting Access</div>
     </a>
   </div>
 
   {% if pending_access_count %}
-  <div class="alert alert-warning d-flex justify-content-between align-items-center flex-wrap gap-2">
+  <div class="db-flag">
     <div>
       <strong>{{ pending_access_count }} trainer{{ pending_access_count|pluralize }}</strong>
       used their free generation and now need{{ pending_access_count|pluralize:",s" }} paid access
@@ -174,93 +288,101 @@
         (e.g. {% for t in pending_access_trainers %}{{ t.full_name }}{% if not forloop.last %}, {% endif %}{% endfor %}{% if pending_access_count > pending_access_trainers|length %}, …{% endif %}).
       {% else %}.{% endif %}
     </div>
-    <a href="{% url 'traineraccess-list' %}" class="btn btn-sm btn-gold">
-      <i class="fa-solid fa-unlock me-1"></i> Review Trainer Access
+    <a href="{% url 'traineraccess-list' %}">
+      <i class="fa-solid fa-unlock"></i> Review Trainer Access
     </a>
   </div>
   {% endif %}
 
-  <!-- Browse by category: tabbed switcher instead of stacked accordions -->
+  <!-- Browse by category: underline tabs instead of stacked accordions -->
   <section class="db-section">
     <div class="db-section-head">
       <h2 class="db-section-title">Browse your data</h2>
-      <div class="db-tabs" role="tablist">
-        <button type="button" class="db-tab-btn active" data-db-tab="curriculum">
-          <i class="fa-solid fa-diagram-project"></i> Curriculum Data
-        </button>
-        <button type="button" class="db-tab-btn" data-db-tab="people">
-          <i class="fa-solid fa-users"></i> People
-        </button>
-        <button type="button" class="db-tab-btn" data-db-tab="documents">
-          <i class="fa-solid fa-folder-open"></i> Documents &amp; Media
-        </button>
-      </div>
+    </div>
+    <div class="db-tabs" role="tablist">
+      <button type="button" class="db-tab-btn active" data-db-tab="curriculum">
+        <i class="fa-solid fa-diagram-project"></i> Curriculum Data
+      </button>
+      <button type="button" class="db-tab-btn" data-db-tab="people">
+        <i class="fa-solid fa-users"></i> People
+      </button>
+      <button type="button" class="db-tab-btn" data-db-tab="documents">
+        <i class="fa-solid fa-folder-open"></i> Documents &amp; Media
+      </button>
     </div>
 
     <div class="db-tab-panel active" data-db-panel="curriculum">
       <div class="db-nav-grid">
-        <a href="{% url 'sector-list' %}" class="db-nav-card db-accent-teal">
+        <a href="{% url 'sector-list' %}" class="db-nav-card">
           <div class="db-nav-icon"><i class="fa-solid fa-industry"></i></div>
           <div>
             <div class="db-nav-title">Sectors</div>
             <div class="db-nav-sub">{{ sector_count }} record{{ sector_count|pluralize }}</div>
           </div>
+          <i class="fa-solid fa-chevron-right db-nav-arrow"></i>
         </a>
-        <a href="{% url 'trade-list' %}" class="db-nav-card db-accent-teal">
+        <a href="{% url 'trade-list' %}" class="db-nav-card">
           <div class="db-nav-icon"><i class="fa-solid fa-toolbox"></i></div>
           <div>
             <div class="db-nav-title">Trades</div>
             <div class="db-nav-sub">{{ trade_count }} record{{ trade_count|pluralize }}</div>
           </div>
+          <i class="fa-solid fa-chevron-right db-nav-arrow"></i>
         </a>
-        <a href="{% url 'level-list' %}" class="db-nav-card db-accent-teal">
+        <a href="{% url 'level-list' %}" class="db-nav-card">
           <div class="db-nav-icon"><i class="fa-solid fa-layer-group"></i></div>
           <div>
             <div class="db-nav-title">Levels</div>
             <div class="db-nav-sub">{{ level_count }} record{{ level_count|pluralize }}</div>
           </div>
+          <i class="fa-solid fa-chevron-right db-nav-arrow"></i>
         </a>
-        <a href="{% url 'tradelevel-list' %}" class="db-nav-card db-accent-teal">
+        <a href="{% url 'tradelevel-list' %}" class="db-nav-card">
           <div class="db-nav-icon"><i class="fa-solid fa-diagram-project"></i></div>
           <div>
             <div class="db-nav-title">Trade Levels</div>
             <div class="db-nav-sub">Mappings</div>
           </div>
+          <i class="fa-solid fa-chevron-right db-nav-arrow"></i>
         </a>
-        <a href="{% url 'module-list' %}" class="db-nav-card db-accent-teal">
+        <a href="{% url 'module-list' %}" class="db-nav-card">
           <div class="db-nav-icon"><i class="fa-solid fa-book-open"></i></div>
           <div>
             <div class="db-nav-title">Modules</div>
             <div class="db-nav-sub">{{ module_count }} record{{ module_count|pluralize }}</div>
           </div>
+          <i class="fa-solid fa-chevron-right db-nav-arrow"></i>
         </a>
-        <a href="{% url 'outcome-list' %}" class="db-nav-card db-accent-teal">
+        <a href="{% url 'outcome-list' %}" class="db-nav-card">
           <div class="db-nav-icon"><i class="fa-solid fa-list-check"></i></div>
           <div>
             <div class="db-nav-title">Learning Outcomes</div>
             <div class="db-nav-sub">{{ outcome_count }} record{{ outcome_count|pluralize }}</div>
           </div>
+          <i class="fa-solid fa-chevron-right db-nav-arrow"></i>
         </a>
-        <a href="{% url 'content-list' %}" class="db-nav-card db-accent-teal">
+        <a href="{% url 'content-list' %}" class="db-nav-card">
           <div class="db-nav-icon"><i class="fa-solid fa-file-lines"></i></div>
           <div>
             <div class="db-nav-title">Indicative Contents</div>
             <div class="db-nav-sub">{{ content_count }} record{{ content_count|pluralize }}</div>
           </div>
+          <i class="fa-solid fa-chevron-right db-nav-arrow"></i>
         </a>
       </div>
     </div>
 
     <div class="db-tab-panel" data-db-panel="people">
       <div class="db-nav-grid">
-        <a href="{% url 'trainer-list' %}" class="db-nav-card db-accent-gold">
+        <a href="{% url 'trainer-list' %}" class="db-nav-card">
           <div class="db-nav-icon"><i class="fa-solid fa-chalkboard-user"></i></div>
           <div>
             <div class="db-nav-title">Trainers</div>
             <div class="db-nav-sub">{{ trainer_count }} record{{ trainer_count|pluralize }}</div>
           </div>
+          <i class="fa-solid fa-chevron-right db-nav-arrow"></i>
         </a>
-        <a href="{% url 'traineraccess-list' %}" class="db-nav-card db-accent-gold">
+        <a href="{% url 'traineraccess-list' %}" class="db-nav-card">
           <div class="db-nav-icon"><i class="fa-solid fa-unlock-keyhole"></i></div>
           <div>
             <div class="db-nav-title">Trainer Access</div>
@@ -268,27 +390,30 @@
               {% if pending_access_count %}{{ pending_access_count }} awaiting access{% else %}All up to date{% endif %}
             </div>
           </div>
+          <i class="fa-solid fa-chevron-right db-nav-arrow"></i>
         </a>
       </div>
     </div>
 
     <div class="db-tab-panel" data-db-panel="documents">
       <div class="db-nav-grid">
-        <a href="{% url 'lessonplan-list' %}" class="db-nav-card db-accent-purple">
+        <a href="{% url 'lessonplan-list' %}" class="db-nav-card">
           <div class="db-nav-icon"><i class="fa-solid fa-chalkboard"></i></div>
           <div>
             <div class="db-nav-title">Lesson Plans</div>
             <div class="db-nav-sub">{{ lesson_plan_count }} record{{ lesson_plan_count|pluralize }}</div>
           </div>
+          <i class="fa-solid fa-chevron-right db-nav-arrow"></i>
         </a>
-        <a href="{% url 'assessmentplan-list' %}" class="db-nav-card db-accent-purple">
+        <a href="{% url 'assessmentplan-list' %}" class="db-nav-card">
           <div class="db-nav-icon"><i class="fa-solid fa-clipboard-check"></i></div>
           <div>
             <div class="db-nav-title">Assessment Plans</div>
             <div class="db-nav-sub">{{ assessment_plan_count }} record{{ assessment_plan_count|pluralize }}</div>
           </div>
+          <i class="fa-solid fa-chevron-right db-nav-arrow"></i>
         </a>
-        <a href="{% url 'logo-list' %}" class="db-nav-card db-accent-purple">
+        <a href="{% url 'logo-list' %}" class="db-nav-card">
           {% if latest_logo and latest_logo.image %}
             <div class="db-nav-icon db-nav-icon-image"><img src="{{ latest_logo.image }}" alt="{{ latest_logo.name }}"></div>
           {% else %}
@@ -298,6 +423,7 @@
             <div class="db-nav-title">Logos</div>
             <div class="db-nav-sub">{{ logo_count }} record{{ logo_count|pluralize }}</div>
           </div>
+          <i class="fa-solid fa-chevron-right db-nav-arrow"></i>
         </a>
       </div>
     </div>
@@ -309,7 +435,7 @@
       <h2 class="db-section-title">Recent activity</h2>
     </div>
     <div class="db-activity-grid">
-      <div class="card-panel db-activity-panel">
+      <div class="db-activity-panel">
         <div class="db-activity-panel-title">
           <i class="fa-solid fa-book-open"></i> Latest modules
         </div>
@@ -329,7 +455,7 @@
         {% endif %}
       </div>
 
-      <div class="card-panel db-activity-panel">
+      <div class="db-activity-panel">
         <div class="db-activity-panel-title">
           <i class="fa-solid fa-list-check"></i> Latest learning outcomes
         </div>

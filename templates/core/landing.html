@@ -7,341 +7,537 @@
   <title>Training Management System</title>
   <meta name="description" content="Padri Vjeko Centre Training Management System — generate structured Schemes of Work, Lesson Plans and Assessment Plans for accredited TVET training programmes.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-  <link rel="stylesheet" href="{% static 'css/style.css' %}">
   <script>document.documentElement.classList.add('js');</script>
+  <style>
+    :root{
+      --ink:#142027;
+      --ink-2:#1c2b33;
+      --ink-3:#24363f;
+      --paper:#ece6d8;
+      --paper-2:#f6f1e6;
+      --blueprint:#4a7fa5;
+      --blueprint-deep:#2b5876;
+      --brass:#c1934e;
+      --brass-deep:#96702f;
+      --text-ink:#1b2226;
+      --text-ink-soft:#5a6a70;
+      --text-on-ink:#e9e3d4;
+      --text-on-ink-soft:#93a5a6;
+      --line-ink:rgba(27,34,38,.16);
+      --line-on-ink:rgba(233,227,212,.18);
+      --radius:3px;
+      --font-display:'Space Grotesk',sans-serif;
+      --font-body:'DM Sans',sans-serif;
+      --measure:62ch;
+    }
+
+    *,*::before,*::after{box-sizing:border-box;}
+    html{scroll-behavior:smooth;}
+    @media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto;} }
+
+    body{
+      margin:0;
+      font-family:var(--font-body);
+      color:var(--text-ink);
+      background:var(--paper);
+      font-variant-numeric:tabular-nums;
+      -webkit-font-smoothing:antialiased;
+    }
+
+    h1,h2,h3{font-family:var(--font-display);margin:0;letter-spacing:-0.01em;}
+    p{margin:0;}
+    a{color:inherit;text-decoration:none;}
+
+    .measure{max-width:var(--measure);}
+
+    /* ---------- title-block strip ---------- */
+    .strip{
+      position:sticky;top:0;z-index:40;
+      display:flex;align-items:center;justify-content:space-between;
+      gap:1rem;
+      padding:.85rem clamp(1.25rem,4vw,2.5rem);
+      background:var(--ink);
+      color:var(--text-on-ink);
+      border-bottom:1px solid var(--line-on-ink);
+    }
+    .strip-brand{
+      display:flex;align-items:center;gap:.6rem;
+      font-family:var(--font-display);font-weight:600;font-size:1rem;
+    }
+    .strip-brand .mark{
+      width:.55rem;height:.55rem;border-radius:1px;
+      background:var(--brass);transform:rotate(45deg);flex:none;
+    }
+    .strip-counts{display:flex;align-items:stretch;gap:0;font-size:.82rem;color:var(--text-on-ink-soft);}
+    .strip-counts .cell{
+      padding:0 .9rem;border-left:1px solid var(--line-on-ink);
+      display:flex;flex-direction:column;line-height:1.25;
+    }
+    .strip-counts .cell:first-child{border-left:none;}
+    .strip-counts strong{font-family:var(--font-display);color:var(--text-on-ink);font-size:.95rem;}
+    @media (max-width:720px){ .strip-counts{display:none;} }
+
+    /* ---------- shell / rail ---------- */
+    .shell{display:grid;grid-template-columns:14rem 1fr;}
+    @media (max-width:960px){ .shell{grid-template-columns:1fr;} }
+
+    .rail{
+      position:sticky;top:3.2rem;align-self:start;
+      height:calc(100vh - 3.2rem);
+      padding:2.5rem 1.5rem;
+      background:var(--ink);
+      color:var(--text-on-ink-soft);
+      display:flex;flex-direction:column;justify-content:space-between;
+    }
+    @media (max-width:960px){ .rail{display:none;} }
+    .rail-index{display:flex;flex-direction:column;gap:1.1rem;}
+    .rail-index a{
+      display:flex;gap:.6rem;align-items:baseline;
+      font-size:.86rem;color:var(--text-on-ink-soft);
+      transition:color .15s ease;
+    }
+    .rail-index a:hover,.rail-index a:focus-visible{color:var(--text-on-ink);}
+    .rail-index a span.no{font-family:var(--font-display);color:var(--brass);font-size:.78rem;}
+    .rail-signin{
+      font-size:.8rem;padding-top:1.5rem;border-top:1px solid var(--line-on-ink);
+      display:flex;align-items:center;gap:.5rem;color:var(--text-on-ink-soft);
+    }
+    .rail-signin a{color:var(--text-on-ink);}
+    .rail-signin a:hover{color:var(--brass);}
+
+    .content{background:var(--paper);}
+
+    section{padding:clamp(3rem,7vw,6.5rem) clamp(1.25rem,4vw,3rem);}
+    .section-inner{max-width:64rem;margin:0 auto;}
+
+    .section-head{margin-bottom:clamp(2rem,4vw,3rem);}
+    .section-head .kicker{
+      display:flex;align-items:baseline;gap:.6rem;
+      font-size:.82rem;color:var(--text-ink-soft);margin-bottom:.6rem;
+    }
+    .section-head .kicker .no{font-family:var(--font-display);color:var(--blueprint-deep);}
+    .section-head h2{font-size:clamp(1.5rem,2.6vw,2.1rem);font-weight:600;max-width:26ch;}
+    .section-head p{margin-top:.85rem;color:var(--text-ink-soft);max-width:var(--measure);line-height:1.55;}
+
+    /* ---------- hero ---------- */
+    .hero{
+      background:var(--ink);color:var(--text-on-ink);
+      position:relative;overflow:hidden;
+      padding-top:clamp(3.5rem,8vw,6rem);
+      background-image:
+        linear-gradient(var(--line-on-ink) 1px, transparent 1px),
+        linear-gradient(90deg, var(--line-on-ink) 1px, transparent 1px);
+      background-size:42px 42px;
+      background-position:-1px -1px;
+    }
+    .hero::after{
+      content:"";position:absolute;inset:0;
+      background:radial-gradient(ellipse at 78% 30%, rgba(74,127,165,.22), transparent 60%);
+      pointer-events:none;
+    }
+    .hero-grid{
+      position:relative;z-index:1;
+      display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);
+      gap:clamp(2rem,4vw,3rem);align-items:center;
+      max-width:72rem;margin:0 auto;
+    }
+    @media (max-width:900px){ .hero-grid{grid-template-columns:1fr;} }
+
+    .hero-eyebrow{
+      font-size:.82rem;color:var(--text-on-ink-soft);
+      display:flex;align-items:center;gap:.55rem;margin-bottom:1.1rem;
+    }
+    .hero-eyebrow .dot{width:.4rem;height:.4rem;border-radius:50%;background:var(--brass);}
+    .hero h1{
+      font-size:clamp(2.1rem,4.6vw,3.2rem);line-height:1.08;font-weight:600;
+      max-width:15ch;
+    }
+    .hero-sub{
+      margin-top:1.4rem;font-size:1.02rem;line-height:1.6;
+      color:var(--text-on-ink-soft);max-width:44ch;
+    }
+
+    .spec-line{
+      margin-top:1.75rem;display:flex;flex-wrap:wrap;gap:0;
+      border:1px solid var(--line-on-ink);border-radius:var(--radius);
+      overflow:hidden;width:fit-content;
+    }
+    .spec-line div{
+      padding:.55rem .95rem;border-left:1px solid var(--line-on-ink);
+      font-size:.78rem;color:var(--text-on-ink-soft);
+    }
+    .spec-line div:first-child{border-left:none;}
+    .spec-line strong{display:block;color:var(--text-on-ink);font-family:var(--font-display);font-size:.86rem;font-weight:600;}
+
+    .hero-actions{margin-top:2.1rem;display:flex;flex-wrap:wrap;gap:.6rem;}
+    .action{
+      font-family:var(--font-display);font-weight:500;font-size:.92rem;
+      padding:.72rem 1.15rem;border-radius:var(--radius);
+      border:1px solid transparent;
+    }
+    .action-primary{background:var(--brass);color:var(--ink);}
+    .action-primary:hover{background:var(--brass-deep);}
+    .action-ghost{border-color:var(--line-on-ink);color:var(--text-on-ink);}
+    .action-ghost:hover{border-color:var(--text-on-ink-soft);}
+
+    .hero-signin{
+      margin-top:1.6rem;display:inline-flex;align-items:center;gap:.5rem;
+      font-size:.86rem;color:var(--text-on-ink-soft);border-bottom:1px solid transparent;
+    }
+    .hero-signin:hover{color:var(--text-on-ink);border-color:var(--text-on-ink-soft);}
+
+    /* hero drafting illustration */
+    .hero-art{position:relative;}
+    .hero-art svg{width:100%;height:auto;display:block;}
+    .draw-in{stroke-dasharray:600;stroke-dashoffset:600;animation:draw 1.4s ease forwards .2s;}
+    .sheet-in{opacity:0;transform:translateY(10px);animation:rise .6s ease forwards;}
+    .sheet-in.d1{animation-delay:.15s;}
+    .sheet-in.d2{animation-delay:.32s;}
+    .sheet-in.d3{animation-delay:.5s;}
+    @keyframes draw{to{stroke-dashoffset:0;}}
+    @keyframes rise{to{opacity:1;transform:translateY(0);}}
+    @media (prefers-reduced-motion: reduce){
+      .draw-in{stroke-dashoffset:0;animation:none;}
+      .sheet-in{opacity:1;transform:none;animation:none;}
+    }
+
+    /* ---------- documents (spec list) ---------- */
+    .doc-list{border-top:1px solid var(--line-ink);}
+    .doc-row{
+      display:grid;grid-template-columns:3rem 1fr auto;gap:1.5rem;align-items:start;
+      padding:1.75rem 0;border-bottom:1px solid var(--line-ink);
+    }
+    @media (max-width:640px){ .doc-row{grid-template-columns:2.2rem 1fr;} .doc-row .doc-open{grid-column:2;margin-top:.6rem;} }
+    .doc-tag{
+      font-family:var(--font-display);font-weight:600;font-size:1.05rem;
+      color:var(--blueprint-deep);
+    }
+    .doc-body h3{font-size:1.15rem;font-weight:600;}
+    .doc-body p{margin-top:.5rem;color:var(--text-ink-soft);line-height:1.55;max-width:52ch;}
+    .doc-open{
+      align-self:center;font-size:.85rem;font-family:var(--font-display);font-weight:500;
+      color:var(--blueprint-deep);white-space:nowrap;
+      display:inline-flex;align-items:center;gap:.4rem;
+      border-bottom:1px solid transparent;
+    }
+    .doc-open:hover{border-color:var(--blueprint-deep);}
+
+    /* ---------- process (rail timeline) ---------- */
+    .process-section{background:var(--ink);color:var(--text-on-ink);}
+    .process-section .section-head .kicker{color:var(--text-on-ink-soft);}
+    .process-section .section-head .kicker .no{color:var(--brass);}
+    .process-section .section-head h2{color:var(--text-on-ink);}
+    .process-section .section-head p{color:var(--text-on-ink-soft);}
+
+    .timeline{position:relative;padding-left:2.4rem;}
+    .timeline::before{
+      content:"";position:absolute;left:.62rem;top:.35rem;bottom:.35rem;width:1px;
+      background:repeating-linear-gradient(var(--line-on-ink) 0 6px, transparent 6px 11px);
+    }
+    .tl-step{position:relative;padding-bottom:2.4rem;}
+    .tl-step:last-child{padding-bottom:0;}
+    .tl-step::before{
+      content:"";position:absolute;left:-2.4rem;top:.2rem;
+      width:.85rem;height:.85rem;border-radius:50%;
+      background:var(--ink);border:1px solid var(--brass);
+    }
+    .tl-step .no{font-family:var(--font-display);font-size:.8rem;color:var(--brass);}
+    .tl-step h3{margin-top:.35rem;font-size:1.05rem;font-weight:600;}
+    .tl-step p{margin-top:.4rem;color:var(--text-on-ink-soft);line-height:1.55;max-width:46ch;}
+
+    /* ---------- access (spec sheet) ---------- */
+    .spec-sheet{display:grid;grid-template-columns:1fr 1fr;gap:clamp(2rem,4vw,3.5rem);}
+    @media (max-width:760px){ .spec-sheet{grid-template-columns:1fr;} }
+    .spec-col h3{font-size:.95rem;font-weight:600;color:var(--blueprint-deep);padding-bottom:.75rem;border-bottom:1px solid var(--line-ink);}
+    .spec-col dl{margin:0;}
+    .spec-col > dl > div{padding:1.15rem 0;border-bottom:1px solid var(--line-ink);}
+    .spec-col dt{font-family:var(--font-display);font-size:.92rem;font-weight:600;}
+    .spec-col dd{margin:.4rem 0 0;color:var(--text-ink-soft);line-height:1.55;font-size:.94rem;}
+    .spec-note{
+      margin-top:1.5rem;padding:.9rem 1rem;border:1px solid var(--line-ink);border-radius:var(--radius);
+      font-size:.85rem;color:var(--text-ink-soft);display:flex;gap:.6rem;
+    }
+    .spec-note i{color:var(--blueprint-deep);margin-top:.15rem;}
+
+    /* ---------- closing / title block footer ---------- */
+    .closing{background:var(--ink);color:var(--text-on-ink);}
+    .closing-inner{
+      max-width:64rem;margin:0 auto;
+      display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:1.5rem;
+      padding-bottom:2.5rem;border-bottom:1px solid var(--line-on-ink);
+    }
+    .closing h2{font-size:clamp(1.4rem,2.6vw,1.9rem);font-weight:600;max-width:20ch;}
+    .closing p{margin-top:.6rem;color:var(--text-on-ink-soft);max-width:38ch;line-height:1.55;}
+
+    .title-block{
+      max-width:64rem;margin:2.5rem auto 0;
+      display:grid;grid-template-columns:repeat(4,1fr);
+      border:1px solid var(--line-on-ink);border-radius:var(--radius);overflow:hidden;
+    }
+    @media (max-width:760px){ .title-block{grid-template-columns:repeat(2,1fr);} }
+    .title-block div{
+      padding:1rem 1.15rem;border-left:1px solid var(--line-on-ink);
+    }
+    .title-block div:first-child,
+    .title-block div:nth-child(3){border-left:none;}
+    @media (max-width:760px){ .title-block div:nth-child(3){border-left:1px solid var(--line-on-ink);} }
+    .title-block .label{font-size:.72rem;color:var(--text-on-ink-soft);}
+    .title-block .value{margin-top:.3rem;font-family:var(--font-display);font-size:.88rem;color:var(--text-on-ink);}
+
+    footer.site-footer{
+      background:var(--ink);color:var(--text-on-ink-soft);
+      padding:1.5rem clamp(1.25rem,4vw,3rem) 2.5rem;
+      display:flex;flex-wrap:wrap;gap:1.25rem;justify-content:space-between;
+      max-width:64rem;margin:0 auto;font-size:.82rem;
+    }
+    footer.site-footer nav{display:flex;flex-wrap:wrap;gap:1.25rem;}
+    footer.site-footer a:hover{color:var(--text-on-ink);}
+
+    :focus-visible{outline:2px solid var(--brass);outline-offset:2px;}
+  </style>
 </head>
-<body class="landing-page">
-  <div class="landing-shell">
+<body>
 
-    <!-- Top bar -->
-    <header class="landing-topbar" id="landingTopbar">
-      <div class="landing-topbar-brand">
-        <span class="dot" aria-hidden="true"></span>
-        Padri Vjeko Centre
+  <header class="strip">
+    <div class="strip-brand"><span class="mark" aria-hidden="true"></span>TMS</div>
+    <div class="strip-counts">
+      <div class="cell"><strong>{{ module_count }}</strong>module{{ module_count|pluralize }}</div>
+      <div class="cell"><strong>{{ lesson_plan_count }}</strong>lesson plan{{ lesson_plan_count|pluralize }}</div>
+      <div class="cell"><strong>{{ assessment_plan_count }}</strong>assessment plan{{ assessment_plan_count|pluralize }}</div>
+    </div>
+  </header>
+
+  <div class="shell">
+    <aside class="rail" aria-label="Page index">
+      <nav class="rail-index">
+        <a href="#overview"><span class="no">01</span>Overview</a>
+        <a href="#documents"><span class="no">02</span>Documents</a>
+        <a href="#process"><span class="no">03</span>Process</a>
+        <a href="#access"><span class="no">04</span>Access</a>
+      </nav>
+      <div class="rail-signin">
+        <i class="fa-solid fa-lock" aria-hidden="true"></i>
+        <a href="{% url 'login' %}">Administrator / trainer sign in</a>
       </div>
-      <div class="landing-topbar-stats">
-        <span><i class="fa-solid fa-diagram-project" aria-hidden="true"></i>{{ module_count }} module{{ module_count|pluralize }}</span>
-        <span><i class="fa-solid fa-chalkboard" aria-hidden="true"></i>{{ lesson_plan_count }} lesson plan{{ lesson_plan_count|pluralize }}</span>
-        <span><i class="fa-solid fa-clipboard-check" aria-hidden="true"></i>{{ assessment_plan_count }} assessment plan{{ assessment_plan_count|pluralize }}</span>
-      </div>
-    </header>
+    </aside>
 
-    <!-- Hero -->
-    <main class="landing-hero">
-      <span class="landing-hero-glow-a" aria-hidden="true"></span>
-      <span class="landing-hero-glow-b" aria-hidden="true"></span>
+    <div class="content">
 
-      <div class="landing-hero-content">
-        <span class="landing-hero-eyebrow">
-          <span class="pulse-dot" aria-hidden="true"></span>
-          Training Management System
-        </span>
-        <h1>Structured documentation for <span class="accent">accredited TVET training</span></h1>
-        <p class="landing-hero-sub">Padri Vjeko Centre's official platform for producing a Scheme of Work, Lesson Plan and Assessment Plan for any trade and level — each generated to a consistent, audit-ready standard and grounded in the Centre's own curriculum data.</p>
+      <!-- Overview / hero -->
+      <section class="hero" id="overview">
+        <div class="hero-grid">
+          <div>
+            <div class="hero-eyebrow"><span class="dot" aria-hidden="true"></span>Training Management System</div>
+            <h1>Turn a trade and level into a complete set of training documents</h1>
+            <p class="hero-sub">Padri Vjeko Centre's platform for producing a Scheme of Work, Lesson Plan and Assessment Plan for any accredited trade and level — built from the Centre's own curriculum records, so every document matches what's currently taught.</p>
 
-        <div class="landing-hero-actions">
-          <a href="{% url 'schemeofwork-user' %}" class="btn-hero btn-hero-primary">
-            Scheme of Work <i class="fa-solid fa-arrow-right-long" aria-hidden="true"></i>
-          </a>
-          <a href="{% url 'lessonplan-user' %}" class="btn-hero btn-hero-secondary">
-            Lesson Plan
-          </a>
-          <a href="{% url 'assessmentplan-user' %}" class="btn-hero btn-hero-tertiary">
-            Assessment Plan
-          </a>
-        </div>
-
-        <a href="{% url 'login' %}" class="landing-hero-login-link">
-          <i class="fa-solid fa-lock" aria-hidden="true"></i> Administrator / trainer sign in
-        </a>
-      </div>
-
-      <div class="landing-hero-visual" aria-hidden="true">
-        <div class="landing-doc-mock landing-doc-mock-back">
-          <div class="landing-doc-mock-header">
-            <div class="landing-doc-mock-dots">
-              <span></span><span></span><span></span>
+            <div class="spec-line">
+              <div><strong>Any trade, any level</strong>drawn from the Centre's curriculum</div>
+              <div><strong>3 document types</strong>scheme, lesson, assessment</div>
             </div>
-            <span class="landing-doc-mock-tag">Scheme</span>
-          </div>
-          <div class="landing-doc-mock-title"></div>
-          <div class="landing-doc-mock-row"></div>
-          <div class="landing-doc-mock-row"></div>
-          <div class="landing-doc-mock-row short"></div>
-        </div>
 
-        <div class="landing-doc-mock landing-doc-mock-front">
-          <div class="landing-doc-mock-header">
-            <div class="landing-doc-mock-dots">
-              <span></span><span></span><span></span>
+            <div class="hero-actions">
+              <a href="{% url 'schemeofwork-user' %}" class="action action-primary">Scheme of Work</a>
+              <a href="{% url 'lessonplan-user' %}" class="action action-ghost">Lesson Plan</a>
+              <a href="{% url 'assessmentplan-user' %}" class="action action-ghost">Assessment Plan</a>
             </div>
-            <span class="landing-doc-mock-tag">Lesson</span>
+            <a href="{% url 'login' %}" class="hero-signin"><i class="fa-solid fa-lock" aria-hidden="true"></i> Administrator / trainer sign in</a>
           </div>
-          <div class="landing-doc-mock-title"></div>
-          <div class="landing-doc-mock-row"></div>
-          <div class="landing-doc-mock-row"></div>
-          <div class="landing-doc-mock-row short"></div>
-          <div class="landing-doc-mock-row"></div>
-        </div>
 
-        <div class="landing-hero-stat-card">
-          <i class="fa-solid fa-diagram-project"></i>
-          <div><strong data-count-to="{{ module_count }}">{{ module_count }}</strong><span>modules</span></div>
-        </div>
-        <div class="landing-hero-stat-card landing-hero-stat-card-alt">
-          <i class="fa-solid fa-clipboard-check"></i>
-          <div><strong data-count-to="{{ assessment_plan_count }}">{{ assessment_plan_count }}</strong><span>assessment plans</span></div>
-        </div>
-      </div>
-    </main>
-
-    <!-- The three functions -->
-    <section class="landing-section landing-features-section" aria-label="What you can generate">
-      <div class="landing-section-head reveal">
-        <span class="landing-section-eyebrow">What you can generate</span>
-        <h2>Three documents, one consistent standard</h2>
-        <p>Every document is built from the Centre's own sector, trade and module records, so what you generate always reflects the curriculum as it is currently configured.</p>
-      </div>
-
-      <div class="landing-features-grid">
-        <div class="landing-feature-card reveal" style="--reveal-delay: 0s">
-          <div class="landing-feature-icon icon-teal"><i class="fa-solid fa-diagram-project"></i></div>
-          <h3>Scheme of Work</h3>
-          <p>A term-by-term breakdown of a module's learning outcomes, indicative content, learning activities, resources and formative assessment evidence.</p>
-          <a href="{% url 'schemeofwork-user' %}" class="landing-feature-link">Open Scheme of Work <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
-        </div>
-        <div class="landing-feature-card reveal" style="--reveal-delay: 0.1s">
-          <div class="landing-feature-icon icon-gold"><i class="fa-solid fa-chalkboard"></i></div>
-          <h3>Lesson Plan</h3>
-          <p>A complete, classroom-ready session plan for a single learning outcome — objectives, introduction, development steps, reflection and assessment.</p>
-          <a href="{% url 'lessonplan-user' %}" class="landing-feature-link">Open Lesson Plan <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
-        </div>
-        <div class="landing-feature-card reveal" style="--reveal-delay: 0.2s">
-          <div class="landing-feature-icon icon-violet"><i class="fa-solid fa-clipboard-check"></i></div>
-          <h3>Assessment Plan</h3>
-          <p>One row per learning outcome, covering assessment type, required resources and a practical note on administering it — ready for scheduling.</p>
-          <a href="{% url 'assessmentplan-user' %}" class="landing-feature-link">Open Assessment Plan <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
-        </div>
-      </div>
-    </section>
-
-    <!-- How it works -->
-    <section class="landing-section landing-steps-section" aria-label="How it works">
-      <div class="landing-section-head reveal">
-        <span class="landing-section-eyebrow">How it works</span>
-        <h2>From sign-in to a finished document, in four steps</h2>
-        <p>The same process applies whichever of the three documents you're producing.</p>
-      </div>
-
-      <div class="landing-steps">
-        <div class="landing-step reveal" style="--reveal-delay: 0s">
-          <div class="landing-step-num">01</div>
-          <h3>Sign in</h3>
-          <p>Sign in with your administrator or trainer account. Trainer accounts are created by an administrator.</p>
-        </div>
-        <div class="landing-step reveal" style="--reveal-delay: 0.1s">
-          <div class="landing-step-num">02</div>
-          <h3>Choose trade, level &amp; module</h3>
-          <p>Select the sector, trade, level and module you are planning training for, then the relevant learning outcome(s).</p>
-        </div>
-        <div class="landing-step reveal" style="--reveal-delay: 0.2s">
-          <div class="landing-step-num">03</div>
-          <h3>Generate the document</h3>
-          <p>Choose Scheme of Work, Lesson Plan or Assessment Plan. The system drafts the content from your curriculum data for you to review.</p>
-        </div>
-        <div class="landing-step reveal" style="--reveal-delay: 0.3s">
-          <div class="landing-step-num">04</div>
-          <h3>Review, edit &amp; print</h3>
-          <p>Adjust any field as needed, then print or export the finished document for your records or submission.</p>
-        </div>
-      </div>
-    </section>
-
-    <!-- Access & generation policy -->
-    <section class="landing-section landing-access-section" aria-label="Access and generation policy">
-      <div class="landing-section-head reveal">
-        <span class="landing-section-eyebrow">Access &amp; generation policy</span>
-        <h2>Who can sign in, and how generation access works</h2>
-        <p>The three generators are only available to signed-in accounts — there is no anonymous access.</p>
-      </div>
-
-      <div class="landing-access-grid">
-        <div class="landing-access-card reveal" style="--reveal-delay: 0s">
-          <div class="landing-access-card-head">
-            <div class="landing-access-icon icon-navy"><i class="fa-solid fa-user-shield"></i></div>
-            <h3>Account types</h3>
-          </div>
-          <ul class="landing-access-list">
-            <li><i class="fa-solid fa-check"></i><span><strong>Administrators</strong> manage the full curriculum — sectors, trades, levels, modules, trainers and generation access — and can generate all three documents without restriction.</span></li>
-            <li><i class="fa-solid fa-check"></i><span><strong>Trainers</strong> sign in with an account issued by an administrator and generate documents for the modules assigned to them.</span></li>
-            <li><i class="fa-solid fa-check"></i><span>Don't have an account yet? Contact your institution's administrator to have one created.</span></li>
-          </ul>
-        </div>
-
-        <div class="landing-access-card reveal" style="--reveal-delay: 0.15s">
-          <div class="landing-access-card-head">
-            <div class="landing-access-icon icon-amber"><i class="fa-solid fa-unlock-keyhole"></i></div>
-            <h3>Generation allowance</h3>
-          </div>
-          <ul class="landing-access-list">
-            <li><i class="fa-solid fa-check"></i><span>Every trainer account includes <strong>one free generation</strong>, shared across the Scheme of Work, Lesson Plan and Assessment Plan generators.</span></li>
-            <li><i class="fa-solid fa-check"></i><span>After the free generation is used, continued access requires <strong>paid access</strong>, activated by an administrator once payment is confirmed.</span></li>
-            <li><i class="fa-solid fa-check"></i><span>Paid access remains active for a fixed period once granted, and can be renewed at any time by an administrator.</span></li>
-          </ul>
-          <div class="landing-access-note">
-            <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
-            Payment instructions and renewal are handled directly by your administrator after your free generation has been used.
+          <div class="hero-art" aria-hidden="true">
+            <svg viewBox="0 0 480 420" xmlns="http://www.w3.org/2000/svg">
+              <g class="sheet-in d1">
+                <rect x="70" y="150" width="230" height="170" rx="2" fill="var(--paper-2)" stroke="var(--blueprint)" stroke-width="1.5"/>
+                <rect x="70" y="150" width="230" height="30" fill="var(--blueprint-deep)"/>
+                <text x="84" y="170" font-family="Space Grotesk" font-size="13" fill="var(--paper-2)">SOW</text>
+                <line x1="88" y1="200" x2="270" y2="200" stroke="var(--ink)" stroke-opacity=".25" stroke-width="2"/>
+                <line x1="88" y1="222" x2="250" y2="222" stroke="var(--ink)" stroke-opacity=".25" stroke-width="2"/>
+                <line x1="88" y1="244" x2="260" y2="244" stroke="var(--ink)" stroke-opacity=".18" stroke-width="2"/>
+                <line x1="88" y1="266" x2="220" y2="266" stroke="var(--ink)" stroke-opacity=".18" stroke-width="2"/>
+              </g>
+              <g class="sheet-in d2">
+                <rect x="140" y="95" width="230" height="170" rx="2" fill="var(--paper-2)" stroke="var(--blueprint)" stroke-width="1.5"/>
+                <rect x="140" y="95" width="230" height="30" fill="var(--blueprint)"/>
+                <text x="154" y="115" font-family="Space Grotesk" font-size="13" fill="var(--paper-2)">LP</text>
+                <line x1="158" y1="145" x2="340" y2="145" stroke="var(--ink)" stroke-opacity=".22" stroke-width="2"/>
+                <line x1="158" y1="167" x2="300" y2="167" stroke="var(--ink)" stroke-opacity=".22" stroke-width="2"/>
+                <line x1="158" y1="189" x2="330" y2="189" stroke="var(--ink)" stroke-opacity=".16" stroke-width="2"/>
+              </g>
+              <g class="sheet-in d3">
+                <rect x="205" y="40" width="200" height="150" rx="2" fill="var(--paper-2)" stroke="var(--brass)" stroke-width="1.5"/>
+                <rect x="205" y="40" width="200" height="30" fill="var(--brass)"/>
+                <text x="219" y="60" font-family="Space Grotesk" font-size="13" fill="var(--ink)">AP</text>
+                <line x1="223" y1="90" x2="380" y2="90" stroke="var(--ink)" stroke-opacity=".25" stroke-width="2"/>
+                <line x1="223" y1="112" x2="350" y2="112" stroke="var(--ink)" stroke-opacity=".25" stroke-width="2"/>
+              </g>
+              <g stroke="var(--brass)" stroke-width="1.5" fill="none">
+                <line class="draw-in" x1="70" y1="330" x2="300" y2="330" stroke-dasharray="4 5"/>
+                <line x1="70" y1="322" x2="70" y2="338"/>
+                <line x1="300" y1="322" x2="300" y2="338"/>
+              </g>
+              <circle cx="70" cy="330" r="3" fill="var(--brass)"/>
+              <text x="105" y="352" font-family="Space Grotesk" font-size="12" fill="var(--text-on-ink-soft)" style="fill:var(--paper-2)">L.O. 3.2 — indicative content</text>
+            </svg>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <!-- Quick access -->
-    <section class="landing-section landing-quick-access-section" aria-label="Quick access">
-      <div class="landing-quick-access">
-
-        <a href="{% url 'login' %}" class="landing-quick-item reveal" style="--reveal-delay: 0s">
-          <div class="lq-icon lq-icon-login"><i class="fa-solid fa-right-to-bracket"></i></div>
-          <div class="lq-text">
-            <h3>Sign in <span class="lq-badge lq-badge-restricted"><i class="fa-solid fa-lock"></i>Account required</span></h3>
-            <p>Sign in with your administrator or trainer account to reach the generators and the management dashboard.</p>
+      <!-- Documents -->
+      <section id="documents">
+        <div class="section-inner">
+          <div class="section-head">
+            <div class="kicker"><span class="no">02</span>Documents</div>
+            <h2>Three documents, one consistent standard</h2>
+            <p>Every document is drafted from the Centre's own sector, trade and module records, so what you generate always reflects the curriculum as it is currently configured.</p>
           </div>
-          <i class="fa-solid fa-chevron-right lq-arrow" aria-hidden="true"></i>
-        </a>
 
-        <a href="{% url 'schemeofwork-user' %}" class="landing-quick-item reveal" style="--reveal-delay: 0.1s">
-          <div class="lq-icon lq-icon-scheme"><i class="fa-solid fa-diagram-project"></i></div>
-          <div class="lq-text">
-            <h3>Scheme of Work <span class="lq-badge">{{ module_count }} module{{ module_count|pluralize }}</span></h3>
-            <p>Generate a structured, term-by-term scheme of work for a selected trade, level and module.</p>
-          </div>
-          <i class="fa-solid fa-chevron-right lq-arrow" aria-hidden="true"></i>
-        </a>
-
-        <a href="{% url 'lessonplan-user' %}" class="landing-quick-item reveal" style="--reveal-delay: 0.2s">
-          <div class="lq-icon lq-icon-lesson"><i class="fa-solid fa-chalkboard"></i></div>
-          <div class="lq-text">
-            <h3>Lesson Plan <span class="lq-badge">{{ lesson_plan_count }} plan{{ lesson_plan_count|pluralize }}</span></h3>
-            <p>Generate a classroom-ready session plan for a single learning outcome, including objectives and assessment.</p>
-          </div>
-          <i class="fa-solid fa-chevron-right lq-arrow" aria-hidden="true"></i>
-        </a>
-
-        <a href="{% url 'assessmentplan-user' %}" class="landing-quick-item reveal" style="--reveal-delay: 0.3s">
-          <div class="lq-icon lq-icon-assessment"><i class="fa-solid fa-clipboard-check"></i></div>
-          <div class="lq-text">
-            <h3>Assessment Plan <span class="lq-badge">{{ assessment_plan_count }} plan{{ assessment_plan_count|pluralize }}</span></h3>
-            <p>Generate an assessment plan with one row per learning outcome, ready for review and scheduling.</p>
-          </div>
-          <i class="fa-solid fa-chevron-right lq-arrow" aria-hidden="true"></i>
-        </a>
-
-      </div>
-    </section>
-
-    <!-- CTA banner -->
-    <section class="landing-section landing-cta-section">
-      <div class="landing-cta reveal">
-        <div class="landing-cta-content">
-          <h2>Ready to plan your next training programme?</h2>
-          <p>Sign in to generate a Scheme of Work, Lesson Plan or Assessment Plan for any trade and level.</p>
-          <div class="landing-cta-actions">
-            <a href="{% url 'schemeofwork-user' %}" class="btn-hero btn-hero-primary">
-              Scheme of Work <i class="fa-solid fa-arrow-right-long" aria-hidden="true"></i>
-            </a>
-            <a href="{% url 'lessonplan-user' %}" class="btn-hero btn-hero-secondary">
-              Lesson Plan
-            </a>
-            <a href="{% url 'assessmentplan-user' %}" class="btn-hero btn-hero-tertiary">
-              Assessment Plan
-            </a>
+          <div class="doc-list">
+            <div class="doc-row">
+              <div class="doc-tag">A</div>
+              <div class="doc-body">
+                <h3>Scheme of Work</h3>
+                <p>A term-by-term breakdown of a module's learning outcomes, indicative content, learning activities, resources and formative assessment evidence.</p>
+              </div>
+              <a href="{% url 'schemeofwork-user' %}" class="doc-open">Open <i class="fa-solid fa-chevron-right" aria-hidden="true"></i></a>
+            </div>
+            <div class="doc-row">
+              <div class="doc-tag">B</div>
+              <div class="doc-body">
+                <h3>Lesson Plan</h3>
+                <p>A complete, classroom-ready session plan for a single learning outcome — objectives, introduction, development steps, reflection and assessment.</p>
+              </div>
+              <a href="{% url 'lessonplan-user' %}" class="doc-open">Open <i class="fa-solid fa-chevron-right" aria-hidden="true"></i></a>
+            </div>
+            <div class="doc-row">
+              <div class="doc-tag">C</div>
+              <div class="doc-body">
+                <h3>Assessment Plan</h3>
+                <p>One row per learning outcome, covering assessment type, required resources and a practical note on administering it — ready for scheduling.</p>
+              </div>
+              <a href="{% url 'assessmentplan-user' %}" class="doc-open">Open <i class="fa-solid fa-chevron-right" aria-hidden="true"></i></a>
+            </div>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <footer class="landing-footer">
-      <div class="landing-footer-links">
-        <a href="{% url 'schemeofwork-user' %}">Scheme of Work</a>
-        <a href="{% url 'lessonplan-user' %}">Lesson Plan</a>
-        <a href="{% url 'assessmentplan-user' %}">Assessment Plan</a>
-        <a href="{% url 'login' %}">Trainer / Admin Login</a>
-      </div>
-      <div class="landing-footer-copy">
-        <i class="fa-solid fa-shield-halved" aria-hidden="true"></i>
-        &copy; {% now "Y" %} Padri Vjeko Centre &middot; Training Management System &middot; Sign-in required for all generators
-      </div>
-    </footer>
+      <!-- Process -->
+      <section class="process-section" id="process">
+        <div class="section-inner">
+          <div class="section-head">
+            <div class="kicker"><span class="no">03</span>Process</div>
+            <h2>From sign-in to a finished document, in four steps</h2>
+            <p>The same process applies whichever of the three documents you're producing.</p>
+          </div>
 
+          <div class="timeline">
+            <div class="tl-step">
+              <div class="no">01</div>
+              <h3>Sign in</h3>
+              <p>Sign in with your administrator or trainer account. Trainer accounts are created by an administrator.</p>
+            </div>
+            <div class="tl-step">
+              <div class="no">02</div>
+              <h3>Choose trade, level &amp; module</h3>
+              <p>Select the sector, trade, level and module you're planning training for, then the relevant learning outcome(s).</p>
+            </div>
+            <div class="tl-step">
+              <div class="no">03</div>
+              <h3>Generate the document</h3>
+              <p>Choose Scheme of Work, Lesson Plan or Assessment Plan. The system drafts the content from your curriculum data for you to review.</p>
+            </div>
+            <div class="tl-step">
+              <div class="no">04</div>
+              <h3>Review, edit &amp; print</h3>
+              <p>Adjust any field as needed, then print or export the finished document for your records or submission.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Access -->
+      <section id="access">
+        <div class="section-inner">
+          <div class="section-head">
+            <div class="kicker"><span class="no">04</span>Access</div>
+            <h2>Who can sign in, and how generation access works</h2>
+            <p>The three generators are only available to signed-in accounts — there is no anonymous access.</p>
+          </div>
+
+          <div class="spec-sheet">
+            <div class="spec-col">
+              <h3>Account types</h3>
+              <dl>
+                <div>
+                  <dt>Administrator</dt>
+                  <dd>Manages the full curriculum — sectors, trades, levels, modules, trainers and generation access — and generates all three documents without restriction.</dd>
+                </div>
+                <div>
+                  <dt>Trainer</dt>
+                  <dd>Signs in with an account issued by an administrator, and generates documents for the modules assigned to them.</dd>
+                </div>
+                <div>
+                  <dt>No account yet</dt>
+                  <dd>Contact your institution's administrator to have one created.</dd>
+                </div>
+              </dl>
+            </div>
+            <div class="spec-col">
+              <h3>Generation allowance</h3>
+              <dl>
+                <div>
+                  <dt>First generation</dt>
+                  <dd>Free, and shared across the Scheme of Work, Lesson Plan and Assessment Plan generators.</dd>
+                </div>
+                <div>
+                  <dt>After that</dt>
+                  <dd>Continued access requires paid access, activated by an administrator once payment is confirmed.</dd>
+                </div>
+                <div>
+                  <dt>Once granted</dt>
+                  <dd>Paid access stays active for a fixed period, and can be renewed at any time by an administrator.</dd>
+                </div>
+              </dl>
+              <div class="spec-note">
+                <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+                <span>Payment instructions and renewal are handled directly by your administrator after your free generation has been used.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Closing / title block -->
+      <section class="closing">
+        <div class="closing-inner">
+          <div>
+            <h2>Ready to plan your next training programme?</h2>
+            <p>Sign in to generate a Scheme of Work, Lesson Plan or Assessment Plan for any trade and level.</p>
+          </div>
+          <a href="{% url 'login' %}" class="action action-primary">Sign in</a>
+        </div>
+
+        <div class="title-block">
+          <div><div class="label">Institution</div><div class="value">Padri Vjeko Centre</div></div>
+          <div><div class="label">Documents</div><div class="value">Scheme, Lesson, Assessment</div></div>
+          <div><div class="label">Access</div><div class="value">Sign-in required</div></div>
+          <div><div class="label">Revision</div><div class="value">{% now "Y" %}</div></div>
+        </div>
+
+        <footer class="site-footer">
+          <span>Training Management System</span>
+          <nav>
+            <a href="{% url 'schemeofwork-user' %}">Scheme of Work</a>
+            <a href="{% url 'lessonplan-user' %}">Lesson Plan</a>
+            <a href="{% url 'assessmentplan-user' %}">Assessment Plan</a>
+            <a href="{% url 'login' %}">Trainer / Admin login</a>
+          </nav>
+        </footer>
+      </section>
+
+    </div>
   </div>
 
-  <script>
-    (function () {
-      // Sticky top bar shadow on scroll
-      var topbar = document.getElementById('landingTopbar');
-      var onScroll = function () {
-        if (window.scrollY > 8) {
-          topbar.classList.add('is-scrolled');
-        } else {
-          topbar.classList.remove('is-scrolled');
-        }
-      };
-      onScroll();
-      window.addEventListener('scroll', onScroll, { passive: true });
-
-      // Scroll-triggered reveal animations
-      var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      var revealEls = document.querySelectorAll('.reveal');
-      if ('IntersectionObserver' in window && !reduceMotion) {
-        var observer = new IntersectionObserver(function (entries) {
-          entries.forEach(function (entry) {
-            if (entry.isIntersecting) {
-              entry.target.classList.add('is-visible');
-              observer.unobserve(entry.target);
-            }
-          });
-        }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
-        revealEls.forEach(function (el) { observer.observe(el); });
-      } else {
-        revealEls.forEach(function (el) { el.classList.add('is-visible'); });
-      }
-
-      // Animated stat counters
-      if (!reduceMotion) {
-        var counters = document.querySelectorAll('[data-count-to]');
-        var animateCounter = function (el) {
-          var target = parseInt(el.getAttribute('data-count-to'), 10) || 0;
-          var duration = 900;
-          var start = null;
-          var step = function (timestamp) {
-            if (!start) start = timestamp;
-            var progress = Math.min((timestamp - start) / duration, 1);
-            var eased = 1 - Math.pow(1 - progress, 3);
-            el.textContent = Math.round(eased * target);
-            if (progress < 1) {
-              window.requestAnimationFrame(step);
-            } else {
-              el.textContent = target;
-            }
-          };
-          window.requestAnimationFrame(step);
-        };
-        if ('IntersectionObserver' in window) {
-          var counterObserver = new IntersectionObserver(function (entries) {
-            entries.forEach(function (entry) {
-              if (entry.isIntersecting) {
-                animateCounter(entry.target);
-                counterObserver.unobserve(entry.target);
-              }
-            });
-          }, { threshold: 0.6 });
-          counters.forEach(function (el) { counterObserver.observe(el); });
-        }
-      }
-    })();
-  </script>
 </body>
 </html>
