@@ -1137,6 +1137,127 @@ h1, h2, h3, h4, h5, .brand, .card-stat .value {
 
 .gen-field-span-all { grid-column: 1 / -1; }
 
+/* ============================================================
+   Trade -> Level -> Module step chain — a classic horizontal
+   stepper: numbered circles joined by one continuous connecting
+   line across the top, with each step's field stacked below its
+   own circle.
+   ============================================================ */
+.gen-step-chain {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  margin-bottom: 1.25rem;
+}
+
+.gen-step {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  padding: 0 0.6rem;
+}
+
+/* The connecting line runs behind every circle, center-to-center,
+   as one continuous horizontal bar - not a short segment per step -
+   so the whole chain reads as a single connected line, not three
+   disjointed dots. */
+.gen-step:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: 15px;
+  left: 50%;
+  width: 100%;
+  height: 2px;
+  background: #e1e5ee;
+  z-index: 0;
+  transition: background 0.2s ease;
+}
+
+.gen-step.is-complete:not(:last-child)::after { background: var(--gold); }
+
+.gen-step-marker {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid #e1e5ee;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #9199b0;
+  background: #fff;
+  transition: all 0.2s ease;
+}
+
+.gen-step-marker i { display: none; font-size: 0.8rem; }
+
+.gen-step.is-active .gen-step-marker {
+  border-color: var(--gold);
+  color: var(--navy);
+}
+
+.gen-step.is-complete .gen-step-marker {
+  background: var(--navy);
+  border-color: var(--navy);
+  color: #fff;
+}
+
+.gen-step.is-complete .gen-step-marker .gen-step-num { display: none; }
+.gen-step.is-complete .gen-step-marker i { display: block; }
+
+.gen-step-body { width: 100%; margin-top: 0.55rem; }
+.gen-step-body .form-label { margin-bottom: 0.35rem; justify-content: center; }
+
+.gen-field-grid-config { margin-top: 0.25rem; }
+
+/* Hours per week / Terms to generate / Weeks per term all sit on one
+   row - a fixed 3-column grid rather than the general auto-fit
+   behaviour, since here we always want exactly three fields side by
+   side, not however many fit at 210px each. */
+.gen-field-grid.gen-field-grid-config {
+  grid-template-columns: repeat(3, 1fr);
+  align-items: start;
+}
+
+#termWeeksWrap .gen-term-weeks-grid {
+  grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+}
+
+@media (max-width: 900px) {
+  .gen-field-grid.gen-field-grid-config { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 640px) {
+  .gen-step-chain { flex-direction: column; align-items: stretch; gap: 1rem; }
+  .gen-step { flex-direction: row; align-items: center; padding: 0; }
+  .gen-step-body { margin-top: 0; margin-left: 0.65rem; }
+  .gen-step-body .form-label { justify-content: flex-start; }
+  .gen-step:not(:last-child)::after { display: none; }
+}
+
+.gen-card .form-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.gen-field-grid .form-label i,
+.gen-step-body .form-label i,
+.gen-term-weeks-wrap .form-label i,
+.term-field-block .form-label i {
+  color: var(--gold);
+  font-size: 0.82em;
+  width: 1em;
+  text-align: center;
+}
+
 .gen-term-weeks-wrap {
   margin-top: 1rem;
 }
