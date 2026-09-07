@@ -14,54 +14,54 @@
 
 <div class="card-panel form-panel">
   {% if form.instance.pk and form.instance.image %}
-    <div class="mb-4">
-      <label class="form-label">Current Image</label>
-      <div class="current-image-box">
-        <img src="{{ form.instance.image }}" alt="{{ form.instance.name }}">
-      </div>
+  <div class="mb-4">
+    <label class="form-label">Current Image</label>
+    <div class="current-image-box">
+      <img src="{{ form.instance.image }}" alt="{{ form.instance.name }}">
     </div>
+  </div>
   {% endif %}
 
   <form method="post" enctype="multipart/form-data" class="needs-validation js-loading-submit" novalidate>
     {% csrf_token %}
 
     {% for field in form %}
-      {% if field.name == 'term' %}
-        <div class="mb-3 term-field-block">
-          <label class="form-label">
-            Terms this module runs in <span class="text-danger">*</span>
-          </label>
-          <div class="term-pill-group" id="termPillGroup">{{ field }}</div>
-          <div class="term-pill-footer">
-            <span class="term-pill-summary" id="termPillSummary">Select at least one term.</span>
-            <span class="term-pill-rule">Must be contiguous — no Term 1 &amp; 3 without Term 2.</span>
-          </div>
-          {% if field.errors %}
-            <ul class="errorlist">
-              {% for error in field.errors %}<li>{{ error }}</li>{% endfor %}
-            </ul>
-          {% endif %}
-        </div>
-      {% else %}
-        <div class="mb-3">
-          <label for="{{ field.id_for_label }}" class="form-label">
-            {{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}
-          </label>
-          {{ field }}
-          {% if field.help_text %}
-            <div class="form-text">{{ field.help_text }}</div>
-          {% endif %}
-          {% if field.errors %}
-            <ul class="errorlist">
-              {% for error in field.errors %}<li>{{ error }}</li>{% endfor %}
-            </ul>
-          {% endif %}
-        </div>
+    {% if field.name == 'term' %}
+    <div class="mb-3 term-field-block">
+      <label class="form-label">
+        Terms this module runs in <span class="text-danger">*</span>
+      </label>
+      <div class="term-pill-group" id="termPillGroup">{{ field }}</div>
+      <div class="term-pill-footer">
+        <span class="term-pill-summary" id="termPillSummary">Select at least one term.</span>
+        <span class="term-pill-rule">Must be contiguous — no Term 1 &amp; 3 without Term 2.</span>
+      </div>
+      {% if field.errors %}
+      <ul class="errorlist">
+        {% for error in field.errors %}<li>{{ error }}</li>{% endfor %}
+      </ul>
       {% endif %}
+    </div>
+    {% else %}
+    <div class="mb-3">
+      <label for="{{ field.id_for_label }}" class="form-label">
+        {{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}
+      </label>
+      {{ field }}
+      {% if field.help_text %}
+      <div class="form-text">{{ field.help_text }}</div>
+      {% endif %}
+      {% if field.errors %}
+      <ul class="errorlist">
+        {% for error in field.errors %}<li>{{ error }}</li>{% endfor %}
+      </ul>
+      {% endif %}
+    </div>
+    {% endif %}
     {% endfor %}
 
     {% if form.non_field_errors %}
-      <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+    <div class="alert alert-danger">{{ form.non_field_errors }}</div>
     {% endif %}
 
     <div class="d-flex gap-2 mt-4">
@@ -71,6 +71,138 @@
       <a href="{% url list_url_name %}" class="btn btn-outline-secondary">Cancel</a>
     </div>
   </form>
+
+  <style>
+    /* ---- Term pill selector ---- */
+    .term-field-block {
+      --pill-gold: #c9a227;
+      --pill-gold-bg: #fbf3d9;
+      --pill-gold-border: #e2c766;
+    }
+
+    .term-pill-group {
+      display: flex;
+      flex-wrap: nowrap;
+      gap: 0.5rem;
+      overflow-x: auto;
+      padding-bottom: 2px;
+      /* room for focus ring on small screens */
+    }
+
+    /* Django renders CheckboxSelectMultiple as a <ul> of <li><label><input>...</label></li> */
+    .term-pill-group ul {
+      display: flex;
+      flex-wrap: nowrap;
+      gap: 0.5rem;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      width: 100%;
+    }
+
+    .term-pill-group li {
+      flex: 1 1 0;
+      min-width: 0;
+    }
+
+    .term-pill-group label {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      width: 100%;
+      height: 42px;
+      padding: 0 0.75rem;
+      border: 1.5px solid #d8dbe0;
+      border-radius: 999px;
+      background: #fff;
+      color: #495057;
+      font-size: 0.9rem;
+      font-weight: 500;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: border-color 0.15s ease, background-color 0.15s ease,
+        color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+    }
+
+    .term-pill-group label:hover {
+      border-color: var(--pill-gold-border);
+      background: #fffdf5;
+    }
+
+    /* Hide the native checkbox visually but keep it accessible */
+    .term-pill-group input[type="checkbox"] {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    /* Checked pill state */
+    .term-pill-group label:has(input[type="checkbox"]:checked) {
+      background: var(--pill-gold-bg);
+      border-color: var(--pill-gold);
+      color: #6b5417;
+      box-shadow: inset 0 0 0 1px var(--pill-gold);
+    }
+
+    .term-pill-group label:has(input[type="checkbox"]:checked)::before {
+      content: "✓";
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--pill-gold);
+    }
+
+    /* Keyboard focus visibility */
+    .term-pill-group input[type="checkbox"]:focus-visible+*,
+    .term-pill-group label:has(input[type="checkbox"]:focus-visible) {
+      outline: 2px solid var(--pill-gold);
+      outline-offset: 2px;
+    }
+
+    .term-pill-group label:active {
+      transform: scale(0.97);
+    }
+
+    /* Footer: summary + rule text */
+    .term-pill-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 1rem;
+      margin-top: 0.5rem;
+      font-size: 0.8rem;
+    }
+
+    .term-pill-summary {
+      color: #495057;
+      font-weight: 500;
+    }
+
+    .term-pill-rule {
+      color: #868e96;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    /* Small screens: stack footer, allow horizontal scroll on pills instead of wrapping */
+    @media (max-width: 480px) {
+      .term-pill-footer {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.15rem;
+      }
+
+      .term-pill-rule {
+        text-align: left;
+      }
+    }
+  </style>
 </div>
 
 {% endblock %}
