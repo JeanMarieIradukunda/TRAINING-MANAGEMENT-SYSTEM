@@ -498,6 +498,13 @@ class BaseListView(TrainerAccessMixin, LoginRequiredMixin, ListView):
     module_accessor = 'module'
     unassigned_module_label = 'Unassigned module'
 
+    # When group_by_trainer is on but group_by_module is off, a trainer's
+    # records normally render as a plain table. Setting compact_grid = True
+    # instead renders them as a dense, wrapping grid of small chip-cards
+    # (see Modules), so many more records are visible per screen without
+    # repeating the trainer's name on every one. Used by ModuleListView.
+    compact_grid = False
+
     # Optional secondary "Add multiple" button in the topbar, for models
     # that support the bulk-create workflow (Learning Outcomes / Indicative
     # Contents) alongside the regular single-record "Add" button.
@@ -616,6 +623,7 @@ class BaseListView(TrainerAccessMixin, LoginRequiredMixin, ListView):
             'has_thumbnail': bool(self.thumbnail_field),
             'group_by_trainer': self.group_by_trainer,
             'group_by_module': self.group_by_module,
+            'compact_grid': self.compact_grid,
             'bulk_create_url_name': self.bulk_create_url_name,
             'bulk_create_label': self.bulk_create_label,
             'quick_add_url_name': self.quick_add_url_name,
@@ -1081,6 +1089,11 @@ class ModuleListView(BaseListView):
 
     group_by_trainer = True
     trainer_accessor = 'trainer'
+    # Render each trainer's modules as a dense wrapping grid of compact
+    # chip-cards instead of a full-width table, so many more modules fit
+    # on screen at once (see crud_list.html + .module-chip-grid in
+    # style.css).
+    compact_grid = True
 
     # Jump straight from a module row to bulk-adding its Learning Outcomes.
     quick_add_url_name = 'outcome-bulk-create'

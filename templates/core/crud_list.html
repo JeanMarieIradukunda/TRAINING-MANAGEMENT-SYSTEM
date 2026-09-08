@@ -26,8 +26,99 @@
 {% if group_by_trainer %}
 <div class="card-panel table-panel">
   {% if trainer_groups %}
-  <div class="trainer-accordion">
+  {% if not compact_grid %}
+  <div class="trainer-accordion-toolbar">
+    <span class="trainer-accordion-toolbar-count">{{ trainer_groups|length }} trainer{{ trainer_groups|length|pluralize }}</span>
+    <div class="trainer-accordion-toolbar-actions">
+      <button type="button" class="trainer-accordion-toggle-all" data-accordion-action="expand">
+        <i class="fa-solid fa-angles-down"></i> Expand all
+      </button>
+      <button type="button" class="trainer-accordion-toggle-all" data-accordion-action="collapse">
+        <i class="fa-solid fa-angles-up"></i> Collapse all
+      </button>
+    </div>
+  </div>
+  {% endif %}
+  <div class="trainer-accordion{% if compact_grid %} trainer-accordion-static{% endif %}">
     {% for group in trainer_groups %}
+    {% if compact_grid %}
+    <div class="trainer-group trainer-group-static">
+      <div class="trainer-group-label">
+        <span class="trainer-group-icon {% if not group.trainer_id %}trainer-group-icon-muted{% endif %}">
+          <i class="fa-solid fa-chalkboard-user"></i>
+        </span>
+        <span class="trainer-group-name">{{ group.trainer_name }}</span>
+        <span class="trainer-group-count">{{ group.rows|length }} module{{ group.rows|length|pluralize }}</span>
+      </div>
+      <div class="trainer-group-body">
+        <div class="table-responsive">
+          <table class="module-data-table">
+            <thead>
+              <tr>
+                <th>Code</th>
+                <th>Module name</th>
+                <th>Trade</th>
+                <th>Level</th>
+                <th>Hours</th>
+                <th>Term</th>
+                {% if toggle_url_name %}<th>Status</th>{% endif %}
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in group.rows %}
+              <tr data-searchable{% if not row.is_active %} class="dt-row-locked"{% endif %}>
+                <td class="dt-code">{{ row.cells.0 }}</td>
+                <td class="dt-name">{{ row.cells.1 }}</td>
+                <td>{{ row.cells.2 }}</td>
+                <td>{{ row.cells.3 }}</td>
+                <td>{{ row.cells.4 }}h</td>
+                <td>{{ row.cells.5 }}</td>
+                {% if toggle_url_name %}
+                <td>
+                  {% if row.is_active %}
+                  <span class="status-pill status-active">Active</span>
+                  {% else %}
+                  <span class="status-pill status-locked">Locked</span>
+                  {% endif %}
+                </td>
+                {% endif %}
+                <td class="text-end dt-actions">
+                  {% if toggle_url_name and can_toggle_module %}
+                  <form method="post" action="{% url toggle_url_name pk=row.pk %}" class="d-inline">
+                    {% csrf_token %}
+                    {% if row.is_active %}
+                    <button type="submit" class="action-icon action-icon-sm" title="Turn Off (lock this module)"
+                            onclick="return confirm('Lock this module? It will be hidden from the public Scheme of Work / Lesson Plan generators until you turn it back on.');">
+                      <i class="fa-solid fa-lock-open"></i>
+                    </button>
+                    {% else %}
+                    <button type="submit" class="action-icon action-icon-sm" title="Turn On (unlock this module)">
+                      <i class="fa-solid fa-lock"></i>
+                    </button>
+                    {% endif %}
+                  </form>
+                  {% endif %}
+                  {% if quick_add_url_name %}
+                  <a href="{% url quick_add_url_name %}?{{ quick_add_param }}={{ row.pk }}" class="action-icon action-icon-sm quick-add" title="{{ quick_add_label|default:'Add related records' }}">
+                    <i class="fa-solid fa-layer-group"></i>
+                  </a>
+                  {% endif %}
+                  <a href="{% url edit_url_name pk=row.pk %}" class="action-icon action-icon-sm edit" title="Edit">
+                    <i class="fa-solid fa-pen"></i>
+                  </a>
+                  <a href="{% url delete_url_name pk=row.pk %}" class="action-icon action-icon-sm delete" title="Delete">
+                    <i class="fa-solid fa-trash"></i>
+                  </a>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    {% else %}
     <details class="trainer-group">
       <summary class="trainer-group-summary">
         <span class="trainer-group-toggle"><i class="fa-solid fa-chevron-right"></i></span>
@@ -139,6 +230,7 @@
         {% endif %}
       </div>
     </details>
+    {% endif %}
     {% endfor %}
   </div>
   <div id="tableSearchEmpty" class="empty-state d-none">
