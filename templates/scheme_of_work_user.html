@@ -1178,7 +1178,9 @@
       function exportSchemeAsDocx() {
         if (!exportDocxBtn) return;
         var genDoc = document.getElementById('genDoc');
-        var payload = TMSGen.collectExportPayload(genDoc);
+        // Landscape: the 9-column scheme-of-work table needs the extra
+        // width to match how it actually prints/exports to PDF.
+        var payload = TMSGen.collectExportPayload(genDoc, { orientation: 'landscape' });
         var filename = TMSGen.filenameSafe(payload.title, 'Scheme of Work') + '.docx';
 
         var originalHtml = exportDocxBtn.innerHTML;
@@ -2169,8 +2171,8 @@
 
         if (unit.isIntegratedAssessment) {
           var iaDefaults = integratedAssessmentDefaults(unit.outcomes);
-          learningUnitCell = 'Integrated Assessment';
-          learningHoursCell = 'Trainer set Hours';
+          learningUnitCell = 'Int Asses';
+          learningHoursCell = '...';
           contentCell = '<ul class="gen-bullets">' + iaDefaults.contentBullets.map(function (text) {
             return '<li>' + TMSGen.escapeHtml(text) + '</li>';
           }).join('') + '</ul>';
@@ -2182,7 +2184,7 @@
           var faDefaults = formativeAssessmentDefaults(unit.outcome, unit.contents);
           learningUnitCell = TMSGen.escapeHtml(TMSGen.shortOutcomeText(unit.outcome.outcome_text)) +
             ' \u2014 Formative Assessment';
-          learningHoursCell = 'Formative Assessment';
+          learningHoursCell = 'FA';
           contentCell = '<ul class="gen-bullets">' + faDefaults.contentBullets.map(function (text) {
             return '<li>' + TMSGen.escapeHtml(text) + '</li>';
           }).join('') + '</ul>';
@@ -2353,7 +2355,7 @@
               cell.innerHTML = '<span class="gen-ai-error-text">AI did not return content — click to fill in manually.</span>';
               return;
             }
-            cell.innerHTML = TMSGen.escapeHtml(line) + '<span class="gen-ai-badge">AI</span>';
+            cell.innerHTML = TMSGen.escapeHtml(line);
             cell.classList.add('gen-ai-filled');
           });
 
@@ -2364,7 +2366,7 @@
             if (!placeText) {
               placeCell.innerHTML = '<span class="gen-ai-error-text">AI did not return content — click to fill in manually.</span>';
             } else {
-              placeCell.innerHTML = TMSGen.escapeHtml(placeText) + '<span class="gen-ai-badge">AI</span>';
+              placeCell.innerHTML = TMSGen.escapeHtml(placeText);
               placeCell.classList.add('gen-ai-filled');
             }
           }

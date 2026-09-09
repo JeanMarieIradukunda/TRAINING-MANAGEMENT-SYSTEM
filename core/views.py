@@ -1,7 +1,10 @@
+import base64
 import datetime
 import json
 import logging
 import re
+import urllib.error
+import urllib.request
 from functools import wraps
 from io import BytesIO
 from urllib.parse import quote
@@ -21,8 +24,11 @@ from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
 from django.views.decorators.http import require_POST
 from django.views.generic import TemplateView, ListView, CreateView, UpdateView, DeleteView
 from docx import Document
+from docx.enum.section import WD_ORIENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.shared import Pt
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
+from docx.shared import Emu, Inches, Mm, Pt, RGBColor
 from groq import Groq, APIError, APIConnectionError, RateLimitError
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font
@@ -629,6 +635,15 @@ class BaseListView(TrainerAccessMixin, LoginRequiredMixin, ListView):
             'quick_add_url_name': self.quick_add_url_name,
             'quick_add_label': self.quick_add_label,
             'quick_add_param': self.quick_add_param,
+            # A trainer account can be granted trainer_allowed=True on this
+            # *list* view (e.g. Learning Outcomes / Indicative Contents) so
+            # they can see their own records, while the Create/Update/
+            # Delete/BulkCreate views for those same models stay admin-only
+            # (see TrainerAccessMixin). Without this flag the template would
+            # still render Edit/Delete/Add-multiple/quick-add links a
+            # trainer can't actually use, sending them into a 403. The
+            # template hides those links whenever this is True.
+            'viewer_is_trainer': bool(self.trainer_profile),
         })
 
         if self.group_by_trainer:
@@ -1640,6 +1655,7 @@ def login_required_json(view_func):
 # Expected JSON body shape (all keys optional/best-effort):
 #   {
 #     "title": "...", "subtitle": "...",
+#     "logos": [{"src": "data:image/png;base64,..." | "https://...", "alt": "..."}, ...],
 #     "meta": [[label, value], ...],
 #     "tables": [ [ {"section": bool, "cells": [
 #         {"text": "...", "colspan": 1, "header": bool}, ... ]}, ... ], ... ],
@@ -1647,6 +1663,176 @@ def login_required_json(view_func):
 #     "footer": "..."
 #   }
 # ---------------------------------------------------------------------------
+
+# Fallback brand palette used when a payload doesn't supply its own
+# "theme" (older callers, or a page that hasn't been wired up to send
+# one). Pages that DO send a theme - see _resolve_theme() below - use the
+# exact --sow-navy / --sow-gold / etc custom-property values read live
+# from the on-screen document, so the export always tracks the CSS
+# instead of drifting from it.
+_DOCX_NAVY_HEX = "0F1B3D"
+_DOCX_NAVY_DEEP_HEX = "0A1330"
+_DOCX_GOLD_HEX = "C9A227"
+_DOCX_MUTED_HEX = "6B7280"
+_DOCX_LINE_HEX = "D7DBE4"
+_DOCX_ROW_ALT_HEX = "F6F8FB"
+_DOCX_WHITE = RGBColor(0xFF, 0xFF, 0xFF)
+
+# Every key here is optional in payload["theme"]; any missing key falls
+# back to the constant above. Keys match the CSS custom-property names
+# (minus the "--sow-" prefix) so the JS side can forward them verbatim.
+_THEME_DEFAULTS = {
+    "navy": _DOCX_NAVY_HEX,
+    "navyDeep": _DOCX_NAVY_DEEP_HEX,
+    "gold": _DOCX_GOLD_HEX,
+    "muted": _DOCX_MUTED_HEX,
+    "line": _DOCX_LINE_HEX,
+    "rowAlt": _DOCX_ROW_ALT_HEX,
+}
+
+
+def _resolve_theme(payload):
+    """Merges a payload's theme dict (hex colours read live from the
+    on-screen document's CSS custom properties) over the fallback
+    palette, so the export always matches whatever the page currently
+    looks like rather than a hardcoded guess."""
+    theme = dict(_THEME_DEFAULTS)
+    supplied = payload.get("theme") or {}
+    for key in _THEME_DEFAULTS:
+        value = supplied.get(key)
+        if isinstance(value, str) and re.fullmatch(r"[0-9A-Fa-f]{6}", value.strip().lstrip("#")):
+            theme[key] = value.strip().lstrip("#").upper()
+    return theme
+
+
+def _hex_to_rgbcolor(hex_color):
+    return RGBColor(int(hex_color[0:2], 16), int(hex_color[2:4], 16), int(hex_color[4:6], 16))
+
+
+def _shade_cell(cell, hex_color):
+    """Sets a table cell's background fill (python-docx has no public API
+    for this, so it drops to the underlying OOXML <w:shd> element)."""
+    shd = OxmlElement("w:shd")
+    shd.set(qn("w:val"), "clear")
+    shd.set(qn("w:color"), "auto")
+    shd.set(qn("w:fill"), hex_color)
+    cell._tc.get_or_add_tcPr().append(shd)
+
+
+def _set_table_fixed_layout(table):
+    """Forces Word to honour explicit column widths (python-docx's default
+    "autofit" table layout lets Word recompute widths from cell content,
+    which throws away any column proportions we set)."""
+    tbl_pr = table._tbl.tblPr
+    layout = OxmlElement("w:tblLayout")
+    layout.set(qn("w:type"), "fixed")
+    tbl_pr.append(layout)
+    table.autofit = False
+
+
+def _set_column_widths(table, weights, usable_width_emu):
+    """Applies proportional column widths (a list of relative numbers,
+    e.g. the on-screen <colgroup> percentages) to every column/cell of a
+    table, matching the printed layout instead of Word's equal-share
+    default. `usable_width_emu` is the page's printable width (page
+    width minus left/right margins) so the table fills the page exactly
+    as it does between the browser's print margins. Widths need setting
+    on every cell, not just table.columns, since python-docx's
+    table.columns[i].width alone is ignored by Word once cells have
+    their own (or no) width."""
+    if not weights:
+        return
+    total = sum(w for w in weights if w) or 1
+    for col_idx, weight in enumerate(weights):
+        if col_idx >= len(table.columns):
+            break
+        share = (weight or 0) / total
+        width = Emu(int(usable_width_emu * share))
+        table.columns[col_idx].width = width
+        for row in table.rows:
+            if col_idx < len(row.cells):
+                row.cells[col_idx].width = width
+
+
+def _set_cell_border(cell, **kwargs):
+    """Sets one or more borders on a table cell. Each kwarg (top/bottom/
+    left/right) takes a dict like {"sz": 8, "color": "D7DBE4", "val":
+    "single"} - python-docx has no public API for per-cell borders, so
+    this drops to the underlying OOXML <w:tcBorders> element."""
+    tc_pr = cell._tc.get_or_add_tcPr()
+    borders = tc_pr.find(qn("w:tcBorders"))
+    if borders is None:
+        borders = OxmlElement("w:tcBorders")
+        tc_pr.append(borders)
+    for edge, spec in kwargs.items():
+        tag = f"w:{edge}"
+        el = borders.find(qn(tag))
+        if el is None:
+            el = OxmlElement(tag)
+            borders.append(el)
+        el.set(qn("w:val"), spec.get("val", "single"))
+        el.set(qn("w:sz"), str(spec.get("sz", 4)))
+        el.set(qn("w:space"), "0")
+        el.set(qn("w:color"), spec.get("color", "auto"))
+
+
+def _clear_table_borders(table):
+    """Removes the default 'Table Grid' style borders from a table so
+    only the explicit per-cell borders we add (e.g. the meta panel's
+    dashed row separators) show - matching the borderless CSS grid the
+    meta panel and sign-off block use on screen."""
+    tbl_pr = table._tbl.tblPr
+    borders = OxmlElement("w:tblBorders")
+    for edge in ("top", "left", "bottom", "right", "insideH", "insideV"):
+        el = OxmlElement(f"w:{edge}")
+        el.set(qn("w:val"), "nil")
+        borders.append(el)
+    tbl_pr.append(borders)
+
+
+def _set_paragraph_bottom_border(paragraph, hex_color, size=18):
+    """Adds a coloured bottom border under a paragraph - used as the gold
+    underline beneath the document title, matching the ::after rule under
+    .gen-doc-title on screen. Also drops to raw OOXML since python-docx
+    doesn't expose paragraph borders directly."""
+    p_pr = paragraph._p.get_or_add_pPr()
+    p_bdr = OxmlElement("w:pBdr")
+    bottom = OxmlElement("w:bottom")
+    bottom.set(qn("w:val"), "single")
+    bottom.set(qn("w:sz"), str(size))
+    bottom.set(qn("w:space"), "4")
+    bottom.set(qn("w:color"), hex_color)
+    p_bdr.append(bottom)
+    p_pr.append(p_bdr)
+
+
+def _resolve_logo_bytes(src):
+    """
+    Turns a logo `src` (as captured from the on-screen <img>) into raw
+    image bytes python-docx can embed. Logos are stored as either a data
+    URI (most common - see Logo.image's "Base64 string or image URL" help
+    text), a bare base64 string, or a plain http(s) URL. Returns None
+    (skip that logo) rather than raising, so one bad/unreachable logo
+    never breaks the whole export.
+    """
+    if not src:
+        return None
+    src = src.strip()
+    try:
+        if src.startswith("data:"):
+            header, _, encoded = src.partition(",")
+            if "base64" not in header:
+                return None
+            return base64.b64decode(encoded, validate=True)
+        if src.startswith("http://") or src.startswith("https://"):
+            req = urllib.request.Request(src, headers={"User-Agent": "TMS-export/1.0"})
+            with urllib.request.urlopen(req, timeout=6) as resp:
+                return resp.read()
+        # Bare base64 (no data: prefix).
+        return base64.b64decode(src, validate=True)
+    except (ValueError, OSError, urllib.error.URLError):
+        return None
+
 def _parse_export_payload(request):
     """Shared JSON parsing/validation for the three export endpoints below."""
     try:
@@ -1695,38 +1881,130 @@ def _docx_response(document, filename):
 
 def _build_export_docx(payload):
     """
-    Builds a simple, clean Word document from a collectExportPayload()
-    JSON structure: title heading, optional subtitle/meta, one Word table
-    per captured HTML table (merging cells for any colspan, and bolding
-    "section"/subhead rows), then the sign-off lines and footer text.
+    Builds a branded Word document from a collectExportPayload() JSON
+    structure, matching the on-screen/printed "gen-doc" preview as
+    closely as Word's model allows: same colours (read live from the
+    page's own CSS custom properties via payload["theme"], not a
+    hardcoded guess), same page size/orientation/margins as the
+    @page print rule, the same proportional column widths as the
+    printed table, institution logo(s), a navy/gold title with the
+    gold underline, a borderless two-column meta panel with dashed row
+    separators, one Word table per captured HTML table (merging cells
+    for any colspan; shading header/"section" rows navy-on-white with
+    the gold rail the term-separator rows use on screen; zebra-striping
+    body rows), a three-column sign-off block, and the footer text.
     """
     document = Document()
+    theme = _resolve_theme(payload)
+    navy = _hex_to_rgbcolor(theme["navy"])
+    navy_hex = theme["navy"]
+    gold_hex = theme["gold"]
+    muted = _hex_to_rgbcolor(theme["muted"])
+    row_alt_hex = theme["rowAlt"]
+    line_hex = theme["line"]
 
+    # ---- Page setup ---------------------------------------------------------
+    # Mirrors the on-screen @page rule (15mm/13mm/16mm) and lets the
+    # caller request landscape (payload["orientation"]) for wide tables -
+    # matching what most people actually pick in "Save as PDF" for a
+    # 9-column scheme of work, since the page's own @page size stays
+    # "auto" (left to the browser's print dialog) and can't tell us.
     for section in document.sections:
-        section.top_margin = Pt(36)
-        section.bottom_margin = Pt(36)
-        section.left_margin = Pt(36)
-        section.right_margin = Pt(36)
+        # python-docx's default template page size is US Letter; this
+        # codebase's documents are printed/exported at A4 (matching the
+        # school's own paper size), so set that explicitly rather than
+        # relying on whatever locale the underlying template happens to
+        # default to.
+        section.page_width = Mm(210)
+        section.page_height = Mm(297)
+        section.top_margin = Mm(15)
+        section.left_margin = Mm(13)
+        section.right_margin = Mm(13)
+        section.bottom_margin = Mm(16)
+        if (payload.get("orientation") or "").strip().lower() == "landscape":
+            section.orientation = WD_ORIENT.LANDSCAPE
+            section.page_width, section.page_height = section.page_height, section.page_width
+    usable_width_emu = (
+        document.sections[0].page_width
+        - document.sections[0].left_margin
+        - document.sections[0].right_margin
+    )
 
+    # ---- Institution logo(s) --------------------------------------------
+    # Mirrors the on-screen #docLogos strip: every configured Logo, laid
+    # out side by side and centered above the title.
+    logos = payload.get("logos") or []
+    if logos:
+        p = document.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        added_any = False
+        for i, logo in enumerate(logos):
+            image_bytes = _resolve_logo_bytes((logo or {}).get("src"))
+            if not image_bytes:
+                continue
+            if added_any:
+                p.add_run("    ")
+            try:
+                p.add_run().add_picture(BytesIO(image_bytes), height=Pt(46))
+                added_any = True
+            except Exception:
+                # Corrupt/unsupported image data - skip this logo rather
+                # than failing the whole export.
+                continue
+        if not added_any:
+            # Nothing actually embedded (e.g. every logo failed to
+            # resolve) - drop the now-empty paragraph.
+            p._p.getparent().remove(p._p)
+
+    # ---- Title / subtitle -------------------------------------------------
     title = (payload.get("title") or "Document").strip()
-    heading = document.add_heading(title, level=1)
+    heading = document.add_paragraph()
     heading.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    heading.paragraph_format.space_after = Pt(6)
+    run = heading.add_run(title.upper())
+    run.bold = True
+    run.font.size = Pt(18)
+    run.font.color.rgb = navy
+    _set_paragraph_bottom_border(heading, gold_hex, size=18)
 
     subtitle = (payload.get("subtitle") or "").strip()
     if subtitle:
-        p = document.add_paragraph(subtitle)
+        p = document.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        run = p.add_run(subtitle)
+        run.italic = True
+        run.font.size = Pt(9)
+        run.font.color.rgb = muted
+    document.add_paragraph()
 
+    # ---- Meta info panel ---------------------------------------------------
+    # On screen this is a borderless two-column CSS grid on a light card
+    # background with a dashed line under every row but the last two -
+    # so instead of the old solid "Table Grid" box, strip all borders and
+    # add that same dashed bottom rule per row, right-align the value
+    # column, and shade the whole panel the row-alt colour like the card.
     meta = payload.get("meta") or []
     if meta:
         meta_table = document.add_table(rows=0, cols=2)
-        meta_table.style = "Table Grid"
-        for label, value in meta:
+        _clear_table_borders(meta_table)
+        _set_table_fixed_layout(meta_table)
+        _set_column_widths(meta_table, [1, 1], usable_width_emu)
+        last_index = len(meta) - 1
+        for i, (label, value) in enumerate(meta):
             row = meta_table.add_row().cells
-            row[0].paragraphs[0].add_run(str(label)).bold = True
-            row[1].text = str(value)
+            _shade_cell(row[0], row_alt_hex)
+            _shade_cell(row[1], row_alt_hex)
+            if i != last_index:
+                _set_cell_border(row[0], bottom={"val": "dashed", "sz": 4, "color": line_hex})
+                _set_cell_border(row[1], bottom={"val": "dashed", "sz": 4, "color": line_hex})
+            label_run = row[0].paragraphs[0].add_run(str(label))
+            label_run.bold = True
+            label_run.font.color.rgb = navy
+            row[1].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.RIGHT
+            row[1].paragraphs[0].add_run(str(value))
         document.add_paragraph()
 
+    # ---- Body table(s) ------------------------------------------------------
     for table_rows in payload.get("tables") or []:
         if not table_rows:
             continue
@@ -1735,12 +2013,30 @@ def _build_export_docx(payload):
 
         doc_table = document.add_table(rows=0, cols=n_cols)
         doc_table.style = "Table Grid"
+        _set_table_fixed_layout(doc_table)
 
+        # Column-width hints captured from the on-screen <colgroup>/th
+        # widths (see collectExportPayload's colWidths). Falls back to
+        # equal-width columns (weights of 1 each) when a caller doesn't
+        # send any, so older payloads still render sensibly.
+        col_weights = payload.get("colWidths") or []
+        if len(col_weights) != n_cols:
+            col_weights = [1] * n_cols
+
+        body_row_index = 0
         for row in table_rows:
             cells = row.get("cells", [])
             doc_row = doc_table.add_row().cells
             col_index = 0
             is_section = bool(row.get("section"))
+            is_header_row = bool(cells) and all(c.get("header") for c in cells)
+
+            if not is_section and not is_header_row:
+                body_row_index += 1
+            row_shade = None
+            if not is_section and not is_header_row and body_row_index % 2 == 0:
+                row_shade = row_alt_hex
+
             for cell in cells:
                 if col_index >= n_cols:
                     break
@@ -1752,22 +2048,52 @@ def _build_export_docx(payload):
                     target = target.merge(doc_row[end_index])
 
                 run = target.paragraphs[0].add_run(str(cell.get("text", "")))
-                if cell.get("header") or is_section:
+                is_header_cell = bool(cell.get("header"))
+                if is_header_cell or is_section:
                     run.bold = True
+                    run.font.color.rgb = _DOCX_WHITE
+                    _shade_cell(target, navy_hex)
+                    if is_header_cell:
+                        target.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    if is_section:
+                        # The gold left rail the .gen-term-separator rows
+                        # carry on screen.
+                        _set_cell_border(target, left={"val": "single", "sz": 24, "color": gold_hex})
+                elif row_shade:
+                    _shade_cell(target, row_shade)
 
                 col_index = end_index + 1
+        _set_column_widths(doc_table, col_weights, usable_width_emu)
         document.add_paragraph()
 
+    # ---- Sign-off ------------------------------------------------------------
+    # On screen this is a three-column CSS grid, each column holding a
+    # label/name pair plus a signature line - build it as a matching
+    # borderless three-column table instead of stacked paragraphs so the
+    # three blocks line up side by side the same way.
     signoff = payload.get("signoff") or []
-    if signoff:
-        for line in signoff:
+    active_lines = [
+        line for line in signoff
+        if (line.get("label") or "").strip() or (line.get("name") or "").strip()
+    ]
+    if active_lines:
+        signoff_table = document.add_table(rows=1, cols=len(active_lines))
+        _clear_table_borders(signoff_table)
+        _set_table_fixed_layout(signoff_table)
+        _set_column_widths(signoff_table, [1] * len(active_lines), usable_width_emu)
+        for i, line in enumerate(active_lines):
             label = (line.get("label") or "").strip()
             name = (line.get("name") or "").strip()
-            if not (label or name):
-                continue
-            p = document.add_paragraph()
-            p.add_run(f"{label} ").bold = True
-            p.add_run(name)
+            cell = signoff_table.rows[0].cells[i]
+            _set_cell_border(cell, top={"val": "single", "sz": 6, "color": line_hex})
+            p = cell.paragraphs[0]
+            label_run = p.add_run(f"{label} ")
+            label_run.bold = True
+            label_run.font.color.rgb = navy
+            label_run.font.size = Pt(10)
+            name_run = p.add_run(name)
+            name_run.font.size = Pt(10)
+        document.add_paragraph()
 
     footer = (payload.get("footer") or "").strip()
     if footer:
@@ -1776,6 +2102,7 @@ def _build_export_docx(payload):
         for run in p.runs:
             run.italic = True
             run.font.size = Pt(9)
+            run.font.color.rgb = muted
 
     return document
 

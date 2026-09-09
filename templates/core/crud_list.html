@@ -12,6 +12,7 @@
       <i class="fa-solid fa-magnifying-glass"></i>
       <input type="text" id="tableSearch" class="form-control" placeholder="Quick search...">
     </div>
+    {% if not viewer_is_trainer %}
     {% if bulk_create_url_name %}
     <a href="{% url bulk_create_url_name %}" class="btn btn-outline-gold">
       <i class="fa-solid fa-layer-group me-1"></i> {{ bulk_create_label|default:"Add multiple" }}
@@ -20,6 +21,7 @@
     <a href="{% url create_url_name %}" class="btn btn-gold">
       <i class="fa-solid fa-plus me-1"></i> Add {{ title|slice:":-1" }}
     </a>
+    {% endif %}
   </div>
 </div>
 
