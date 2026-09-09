@@ -23,17 +23,17 @@
        ============================================================ */
 
     :root {
-      --sow-navy: #0f1b3d;
-      --sow-navy-deep: #0a1330;
-      --sow-navy-soft: #1c2b52;
+      --sow-navy: #262b33;
+      --sow-navy-deep: #1a1d22;
+      --sow-navy-soft: #3a4048;
       --sow-gold: #c9a227;
       --sow-gold-soft: #e8d9a8;
       --sow-teal: #2dd4bf;
       --sow-ink: #1c2230;
       --sow-body: #303a4d;
       --sow-muted: #6b7280;
-      --sow-line: #d7dbe4;
-      --sow-line-soft: #e9ecf2;
+      --sow-line: #b9c1cf;
+      --sow-line-soft: #cfd5e0;
       --sow-row-alt: #f6f8fb;
       --sow-bg-card: #ffffff;
     }
@@ -288,11 +288,27 @@
       vertical-align: middle;
       text-align: left;
       word-break: break-word;
-      /* ~0.06in cell margin, matching Word's 0.05-0.08in recommendation */
-      padding: 0.22rem 0.3rem;
+      /* A bit more breathing room than the previous 0.22rem/line-height
+         1.15 so multi-line cell content (Resources, Indicative Content)
+         doesn't read as cramped. */
+      padding: 0.3rem 0.4rem;
       border-bottom: 1px solid var(--sow-line-soft);
       border-right: 1px solid var(--sow-line-soft);
-      line-height: 1.15;
+      line-height: 1.3;
+    }
+
+    /* Resources and Indicative Content carry the densest text (a
+       comma-separated tool list / a bulleted list of content items), so
+       they get extra vertical padding on top of the table-wide bump
+       above for clearer separation from the cell edges and neighbouring
+       rows. */
+    .gen-table-v2 th:nth-child(4),
+    .gen-table-v2 td:nth-child(4),
+    .gen-table-v2 th:nth-child(6),
+    .gen-table-v2 td:nth-child(6) {
+      padding-top: 0.45rem;
+      padding-bottom: 0.45rem;
+      word-spacing: 0.06em;
     }
 
     .gen-table-v2 td:last-child,
@@ -468,9 +484,9 @@
     }
 
     .gen-doc .gen-table-wrap ul.gen-bullets li {
-      margin-bottom: 0.08rem;
+      margin-bottom: 0.3rem;
       padding-left: 0;
-      line-height: 1.2;
+      line-height: 1.35;
     }
 
     .gen-doc .gen-table-wrap ul.gen-bullets li:last-child {
@@ -2171,8 +2187,8 @@
 
         if (unit.isIntegratedAssessment) {
           var iaDefaults = integratedAssessmentDefaults(unit.outcomes);
-          learningUnitCell = 'Int Asses';
-          learningHoursCell = '...';
+          learningUnitCell = 'Integrated Assessment';
+          learningHoursCell = 'Trainer set Hours';
           contentCell = '<ul class="gen-bullets">' + iaDefaults.contentBullets.map(function (text) {
             return '<li>' + TMSGen.escapeHtml(text) + '</li>';
           }).join('') + '</ul>';
@@ -2184,7 +2200,7 @@
           var faDefaults = formativeAssessmentDefaults(unit.outcome, unit.contents);
           learningUnitCell = TMSGen.escapeHtml(TMSGen.shortOutcomeText(unit.outcome.outcome_text)) +
             ' \u2014 Formative Assessment';
-          learningHoursCell = 'FA';
+          learningHoursCell = 'Formative Assessment';
           contentCell = '<ul class="gen-bullets">' + faDefaults.contentBullets.map(function (text) {
             return '<li>' + TMSGen.escapeHtml(text) + '</li>';
           }).join('') + '</ul>';
