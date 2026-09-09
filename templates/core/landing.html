@@ -4,540 +4,907 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Training Management System</title>
-  <meta name="description" content="Padri Vjeko Centre Training Management System — generate structured Schemes of Work, Lesson Plans and Assessment Plans for accredited TVET training programmes.">
+  <title>Training Management System — TMS</title>
+  <meta name="description" content="TMS Training Management System — generate structured Schemes of Work, Lesson Plans and Assessment Plans for accredited TVET training programmes.">
+  
+  <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-  <script>document.documentElement.classList.add('js');</script>
+  
   <style>
-    :root{
-      --ink:#142027;
-      --ink-2:#1c2b33;
-      --ink-3:#24363f;
-      --paper:#ece6d8;
-      --paper-2:#f6f1e6;
-      --blueprint:#4a7fa5;
-      --blueprint-deep:#2b5876;
-      --brass:#c1934e;
-      --brass-deep:#96702f;
-      --text-ink:#1b2226;
-      --text-ink-soft:#5a6a70;
-      --text-on-ink:#e9e3d4;
-      --text-on-ink-soft:#93a5a6;
-      --line-ink:rgba(27,34,38,.16);
-      --line-on-ink:rgba(233,227,212,.18);
-      --radius:3px;
-      --font-display:'Space Grotesk',sans-serif;
-      --font-body:'DM Sans',sans-serif;
-      --measure:62ch;
+    :root {
+      --bg-main: #0B0F17;
+      --bg-surface: #131B2A;
+      --bg-surface-elevated: #1C273D;
+      --accent-primary: #3B82F6;
+      --accent-hover: #2563EB;
+      --accent-gold: #F59E0B;
+      --accent-gold-soft: rgba(245, 158, 11, 0.15);
+      --text-main: #F8FAFC;
+      --text-muted: #94A3B8;
+      --border-line: rgba(255, 255, 255, 0.08);
+      --border-highlight: rgba(255, 255, 255, 0.18);
+      --glass-bg: rgba(19, 27, 42, 0.75);
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+      --font-display: 'Plus Jakarta Sans', sans-serif;
+      --font-code: 'Space Grotesk', sans-serif;
+      --shadow-glow: 0 0 40px -10px rgba(59, 130, 246, 0.3);
     }
 
-    *,*::before,*::after{box-sizing:border-box;}
-    html{scroll-behavior:smooth;}
-    @media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto;} }
-
-    body{
-      margin:0;
-      font-family:var(--font-body);
-      color:var(--text-ink);
-      background:var(--paper);
-      font-variant-numeric:tabular-nums;
-      -webkit-font-smoothing:antialiased;
+    *, *::before, *::after { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    
+    body {
+      margin: 0;
+      font-family: var(--font-display);
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+      position: relative;
     }
 
-    h1,h2,h3{font-family:var(--font-display);margin:0;letter-spacing:-0.01em;}
-    p{margin:0;}
-    a{color:inherit;text-decoration:none;}
-
-    .measure{max-width:var(--measure);}
-
-    /* ---------- title-block strip ---------- */
-    .strip{
-      position:sticky;top:0;z-index:40;
-      display:flex;align-items:center;justify-content:space-between;
-      gap:1rem;
-      padding:.85rem clamp(1.25rem,4vw,2.5rem);
-      background:var(--ink);
-      color:var(--text-on-ink);
-      border-bottom:1px solid var(--line-on-ink);
-    }
-    .strip-brand{
-      display:flex;align-items:center;gap:.6rem;
-      font-family:var(--font-display);font-weight:600;font-size:1rem;
-    }
-    .strip-brand .mark{
-      width:.55rem;height:.55rem;border-radius:1px;
-      background:var(--brass);transform:rotate(45deg);flex:none;
-    }
-    .strip-counts{display:flex;align-items:stretch;gap:0;font-size:.82rem;color:var(--text-on-ink-soft);}
-    .strip-counts .cell{
-      padding:0 .9rem;border-left:1px solid var(--line-on-ink);
-      display:flex;flex-direction:column;line-height:1.25;
-    }
-    .strip-counts .cell:first-child{border-left:none;}
-    .strip-counts strong{font-family:var(--font-display);color:var(--text-on-ink);font-size:.95rem;}
-    @media (max-width:720px){ .strip-counts{display:none;} }
-
-    /* ---------- shell / rail ---------- */
-    .shell{display:grid;grid-template-columns:14rem 1fr;}
-    @media (max-width:960px){ .shell{grid-template-columns:1fr;} }
-
-    .rail{
-      position:sticky;top:3.2rem;align-self:start;
-      height:calc(100vh - 3.2rem);
-      padding:2.5rem 1.5rem;
-      background:var(--ink);
-      color:var(--text-on-ink-soft);
-      display:flex;flex-direction:column;justify-content:space-between;
-    }
-    @media (max-width:960px){ .rail{display:none;} }
-    .rail-index{display:flex;flex-direction:column;gap:1.1rem;}
-    .rail-index a{
-      display:flex;gap:.6rem;align-items:baseline;
-      font-size:.86rem;color:var(--text-on-ink-soft);
-      transition:color .15s ease;
-    }
-    .rail-index a:hover,.rail-index a:focus-visible{color:var(--text-on-ink);}
-    .rail-index a span.no{font-family:var(--font-display);color:var(--brass);font-size:.78rem;}
-    .rail-signin{
-      font-size:.8rem;padding-top:1.5rem;border-top:1px solid var(--line-on-ink);
-      display:flex;align-items:center;gap:.5rem;color:var(--text-on-ink-soft);
-    }
-    .rail-signin a{color:var(--text-on-ink);}
-    .rail-signin a:hover{color:var(--brass);}
-
-    .content{background:var(--paper);}
-
-    section{padding:clamp(3rem,7vw,6.5rem) clamp(1.25rem,4vw,3rem);}
-    .section-inner{max-width:64rem;margin:0 auto;}
-
-    .section-head{margin-bottom:clamp(2rem,4vw,3rem);}
-    .section-head .kicker{
-      display:flex;align-items:baseline;gap:.6rem;
-      font-size:.82rem;color:var(--text-ink-soft);margin-bottom:.6rem;
-    }
-    .section-head .kicker .no{font-family:var(--font-display);color:var(--blueprint-deep);}
-    .section-head h2{font-size:clamp(1.5rem,2.6vw,2.1rem);font-weight:600;max-width:26ch;}
-    .section-head p{margin-top:.85rem;color:var(--text-ink-soft);max-width:var(--measure);line-height:1.55;}
-
-    /* ---------- hero ---------- */
-    .hero{
-      background:var(--ink);color:var(--text-on-ink);
-      position:relative;overflow:hidden;
-      padding-top:clamp(3.5rem,8vw,6rem);
-      background-image:
-        linear-gradient(var(--line-on-ink) 1px, transparent 1px),
-        linear-gradient(90deg, var(--line-on-ink) 1px, transparent 1px);
-      background-size:42px 42px;
-      background-position:-1px -1px;
-    }
-    .hero::after{
-      content:"";position:absolute;inset:0;
-      background:radial-gradient(ellipse at 78% 30%, rgba(74,127,165,.22), transparent 60%);
-      pointer-events:none;
-    }
-    .hero-grid{
-      position:relative;z-index:1;
-      display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);
-      gap:clamp(2rem,4vw,3rem);align-items:center;
-      max-width:72rem;margin:0 auto;
-    }
-    @media (max-width:900px){ .hero-grid{grid-template-columns:1fr;} }
-
-    .hero-eyebrow{
-      font-size:.82rem;color:var(--text-on-ink-soft);
-      display:flex;align-items:center;gap:.55rem;margin-bottom:1.1rem;
-    }
-    .hero-eyebrow .dot{width:.4rem;height:.4rem;border-radius:50%;background:var(--brass);}
-    .hero h1{
-      font-size:clamp(2.1rem,4.6vw,3.2rem);line-height:1.08;font-weight:600;
-      max-width:15ch;
-    }
-    .hero-sub{
-      margin-top:1.4rem;font-size:1.02rem;line-height:1.6;
-      color:var(--text-on-ink-soft);max-width:44ch;
+    /* ---------- Full-Page Background Slider ---------- */
+    .bg-slider-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: -2;
+      overflow: hidden;
     }
 
-    .spec-line{
-      margin-top:1.75rem;display:flex;flex-wrap:wrap;gap:0;
-      border:1px solid var(--line-on-ink);border-radius:var(--radius);
-      overflow:hidden;width:fit-content;
-    }
-    .spec-line div{
-      padding:.55rem .95rem;border-left:1px solid var(--line-on-ink);
-      font-size:.78rem;color:var(--text-on-ink-soft);
-    }
-    .spec-line div:first-child{border-left:none;}
-    .spec-line strong{display:block;color:var(--text-on-ink);font-family:var(--font-display);font-size:.86rem;font-weight:600;}
-
-    .hero-actions{margin-top:2.1rem;display:flex;flex-wrap:wrap;gap:.6rem;}
-    .action{
-      font-family:var(--font-display);font-weight:500;font-size:.92rem;
-      padding:.72rem 1.15rem;border-radius:var(--radius);
-      border:1px solid transparent;
-    }
-    .action-primary{background:var(--brass);color:var(--ink);}
-    .action-primary:hover{background:var(--brass-deep);}
-    .action-ghost{border-color:var(--line-on-ink);color:var(--text-on-ink);}
-    .action-ghost:hover{border-color:var(--text-on-ink-soft);}
-
-    .hero-signin{
-      margin-top:1.6rem;display:inline-flex;align-items:center;gap:.5rem;
-      font-size:.86rem;color:var(--text-on-ink-soft);border-bottom:1px solid transparent;
-    }
-    .hero-signin:hover{color:var(--text-on-ink);border-color:var(--text-on-ink-soft);}
-
-    /* hero drafting illustration */
-    .hero-art{position:relative;}
-    .hero-art svg{width:100%;height:auto;display:block;}
-    .draw-in{stroke-dasharray:600;stroke-dashoffset:600;animation:draw 1.4s ease forwards .2s;}
-    .sheet-in{opacity:0;transform:translateY(10px);animation:rise .6s ease forwards;}
-    .sheet-in.d1{animation-delay:.15s;}
-    .sheet-in.d2{animation-delay:.32s;}
-    .sheet-in.d3{animation-delay:.5s;}
-    @keyframes draw{to{stroke-dashoffset:0;}}
-    @keyframes rise{to{opacity:1;transform:translateY(0);}}
-    @media (prefers-reduced-motion: reduce){
-      .draw-in{stroke-dashoffset:0;animation:none;}
-      .sheet-in{opacity:1;transform:none;animation:none;}
+    .bg-slide {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      transform: translateX(100%);
+      transition: transform 1.2s ease-in-out;
     }
 
-    /* ---------- documents (spec list) ---------- */
-    .doc-list{border-top:1px solid var(--line-ink);}
-    .doc-row{
-      display:grid;grid-template-columns:3rem 1fr auto;gap:1.5rem;align-items:start;
-      padding:1.75rem 0;border-bottom:1px solid var(--line-ink);
+    .bg-slide.active {
+      transform: translateX(0);
     }
-    @media (max-width:640px){ .doc-row{grid-template-columns:2.2rem 1fr;} .doc-row .doc-open{grid-column:2;margin-top:.6rem;} }
-    .doc-tag{
-      font-family:var(--font-display);font-weight:600;font-size:1.05rem;
-      color:var(--blueprint-deep);
-    }
-    .doc-body h3{font-size:1.15rem;font-weight:600;}
-    .doc-body p{margin-top:.5rem;color:var(--text-ink-soft);line-height:1.55;max-width:52ch;}
-    .doc-open{
-      align-self:center;font-size:.85rem;font-family:var(--font-display);font-weight:500;
-      color:var(--blueprint-deep);white-space:nowrap;
-      display:inline-flex;align-items:center;gap:.4rem;
-      border-bottom:1px solid transparent;
-    }
-    .doc-open:hover{border-color:var(--blueprint-deep);}
 
-    /* ---------- process (rail timeline) ---------- */
-    .process-section{background:var(--ink);color:var(--text-on-ink);}
-    .process-section .section-head .kicker{color:var(--text-on-ink-soft);}
-    .process-section .section-head .kicker .no{color:var(--brass);}
-    .process-section .section-head h2{color:var(--text-on-ink);}
-    .process-section .section-head p{color:var(--text-on-ink-soft);}
+    .bg-slide.exit-left {
+      transform: translateX(-100%);
+    }
 
-    .timeline{position:relative;padding-left:2.4rem;}
-    .timeline::before{
-      content:"";position:absolute;left:.62rem;top:.35rem;bottom:.35rem;width:1px;
-      background:repeating-linear-gradient(var(--line-on-ink) 0 6px, transparent 6px 11px);
+    .bg-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(11, 15, 23, 0.88);
+      backdrop-filter: blur(4px);
+      z-index: -1;
+      pointer-events: none;
     }
-    .tl-step{position:relative;padding-bottom:2.4rem;}
-    .tl-step:last-child{padding-bottom:0;}
-    .tl-step::before{
-      content:"";position:absolute;left:-2.4rem;top:.2rem;
-      width:.85rem;height:.85rem;border-radius:50%;
-      background:var(--ink);border:1px solid var(--brass);
-    }
-    .tl-step .no{font-family:var(--font-display);font-size:.8rem;color:var(--brass);}
-    .tl-step h3{margin-top:.35rem;font-size:1.05rem;font-weight:600;}
-    .tl-step p{margin-top:.4rem;color:var(--text-on-ink-soft);line-height:1.55;max-width:46ch;}
 
-    /* ---------- access (spec sheet) ---------- */
-    .spec-sheet{display:grid;grid-template-columns:1fr 1fr;gap:clamp(2rem,4vw,3.5rem);}
-    @media (max-width:760px){ .spec-sheet{grid-template-columns:1fr;} }
-    .spec-col h3{font-size:.95rem;font-weight:600;color:var(--blueprint-deep);padding-bottom:.75rem;border-bottom:1px solid var(--line-ink);}
-    .spec-col dl{margin:0;}
-    .spec-col > dl > div{padding:1.15rem 0;border-bottom:1px solid var(--line-ink);}
-    .spec-col dt{font-family:var(--font-display);font-size:.92rem;font-weight:600;}
-    .spec-col dd{margin:.4rem 0 0;color:var(--text-ink-soft);line-height:1.55;font-size:.94rem;}
-    .spec-note{
-      margin-top:1.5rem;padding:.9rem 1rem;border:1px solid var(--line-ink);border-radius:var(--radius);
-      font-size:.85rem;color:var(--text-ink-soft);display:flex;gap:.6rem;
-    }
-    .spec-note i{color:var(--blueprint-deep);margin-top:.15rem;}
+    h1, h2, h3, h4 { margin: 0; font-weight: 700; letter-spacing: -0.02em; }
+    p { margin: 0; color: var(--text-muted); }
+    a { color: inherit; text-decoration: none; }
 
-    /* ---------- closing / title block footer ---------- */
-    .closing{background:var(--ink);color:var(--text-on-ink);}
-    .closing-inner{
-      max-width:64rem;margin:0 auto;
-      display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:1.5rem;
-      padding-bottom:2.5rem;border-bottom:1px solid var(--line-on-ink);
+    /* ---------- Navigation Bar ---------- */
+    .navbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--glass-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-line);
+      transition: all 0.3s ease;
     }
-    .closing h2{font-size:clamp(1.4rem,2.6vw,1.9rem);font-weight:600;max-width:20ch;}
-    .closing p{margin-top:.6rem;color:var(--text-on-ink-soft);max-width:38ch;line-height:1.55;}
 
-    .title-block{
-      max-width:64rem;margin:2.5rem auto 0;
-      display:grid;grid-template-columns:repeat(4,1fr);
-      border:1px solid var(--line-on-ink);border-radius:var(--radius);overflow:hidden;
+    .nav-container {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 1rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
     }
-    @media (max-width:760px){ .title-block{grid-template-columns:repeat(2,1fr);} }
-    .title-block div{
-      padding:1rem 1.15rem;border-left:1px solid var(--line-on-ink);
-    }
-    .title-block div:first-child,
-    .title-block div:nth-child(3){border-left:none;}
-    @media (max-width:760px){ .title-block div:nth-child(3){border-left:1px solid var(--line-on-ink);} }
-    .title-block .label{font-size:.72rem;color:var(--text-on-ink-soft);}
-    .title-block .value{margin-top:.3rem;font-family:var(--font-display);font-size:.88rem;color:var(--text-on-ink);}
 
-    footer.site-footer{
-      background:var(--ink);color:var(--text-on-ink-soft);
-      padding:1.5rem clamp(1.25rem,4vw,3rem) 2.5rem;
-      display:flex;flex-wrap:wrap;gap:1.25rem;justify-content:space-between;
-      max-width:64rem;margin:0 auto;font-size:.82rem;
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-weight: 800;
+      font-size: 1.25rem;
+      color: var(--text-main);
     }
-    footer.site-footer nav{display:flex;flex-wrap:wrap;gap:1.25rem;}
-    footer.site-footer a:hover{color:var(--text-on-ink);}
 
-    :focus-visible{outline:2px solid var(--brass);outline-offset:2px;}
+    .nav-brand .logo-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--accent-primary), var(--accent-gold));
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 1rem;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .nav-links a {
+      font-size: 0.92rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      transition: color 0.2s ease;
+      position: relative;
+    }
+
+    .nav-links a:hover, .nav-links a.active {
+      color: var(--text-main);
+    }
+
+    .nav-links a.active::after {
+      content: '';
+      position: absolute;
+      bottom: -6px;
+      left: 0;
+      width: 100%;
+      height: 2px;
+      background: var(--accent-primary);
+      border-radius: 2px;
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .nav-stats {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.4rem 1rem;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-line);
+      border-radius: 50px;
+      font-size: 0.8rem;
+    }
+
+    .nav-stats span {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      color: var(--text-muted);
+    }
+
+    .nav-stats strong {
+      color: var(--text-main);
+      font-family: var(--font-code);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.65rem 1.3rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      border-radius: var(--radius-sm);
+      transition: all 0.2s ease;
+      cursor: pointer;
+      border: 1px solid transparent;
+    }
+
+    .btn-primary {
+      background: var(--accent-primary);
+      color: #fff;
+      box-shadow: var(--shadow-glow);
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hover);
+      transform: translateY(-1px);
+    }
+
+    .btn-outline {
+      border-color: var(--border-highlight);
+      color: var(--text-main);
+      background: rgba(255,255,255,0.02);
+    }
+
+    .btn-outline:hover {
+      background: rgba(255,255,255,0.08);
+      border-color: var(--text-main);
+    }
+
+    .mobile-menu-btn {
+      display: none;
+      background: none;
+      border: none;
+      color: var(--text-main);
+      font-size: 1.4rem;
+      cursor: pointer;
+    }
+
+    /* ---------- Hero Section & Image Slider ---------- */
+    .hero {
+      position: relative;
+      padding: 5rem 1.5rem 4rem;
+      max-width: 1280px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: 3.5rem;
+      align-items: center;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.35rem 0.85rem;
+      background: var(--accent-gold-soft);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      border-radius: 50px;
+      color: var(--accent-gold);
+      font-size: 0.82rem;
+      font-weight: 600;
+      margin-bottom: 1.5rem;
+    }
+
+    .hero-title {
+      font-size: clamp(2.2rem, 3.8vw, 3.4rem);
+      line-height: 1.15;
+      margin-bottom: 1.25rem;
+      background: linear-gradient(180deg, #FFFFFF 0%, #94A3B8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-description {
+      font-size: 1.05rem;
+      line-height: 1.6;
+      margin-bottom: 2rem;
+      max-width: 540px;
+    }
+
+    .hero-cta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    /* Slider Wrapper Styles */
+    .slider-card-container {
+      position: relative;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-highlight);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+      overflow: hidden;
+    }
+
+    .tab-header {
+      display: flex;
+      gap: 0.5rem;
+      border-bottom: 1px solid var(--border-line);
+      padding-bottom: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .tab-btn {
+      padding: 0.45rem 0.9rem;
+      border-radius: var(--radius-sm);
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .tab-btn.active {
+      background: var(--bg-surface-elevated);
+      color: var(--text-main);
+      border: 1px solid var(--border-line);
+    }
+
+    .slider-frame {
+      position: relative;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      aspect-ratio: 16 / 10;
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      transition: opacity 0.6s ease-in-out;
+    }
+
+    .slide.active {
+      opacity: 1;
+    }
+
+    .slide img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .slide-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, transparent 40%, rgba(11, 15, 23, 0.9) 100%);
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 1.25rem;
+    }
+
+    .slide-badge {
+      font-family: var(--font-code);
+      font-size: 0.72rem;
+      color: var(--accent-gold);
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 0.25rem;
+    }
+
+    .slide-title {
+      font-size: 1.1rem;
+      color: var(--text-main);
+      font-weight: 700;
+    }
+
+    /* Slider Controls */
+    .slider-nav {
+      position: absolute;
+      top: 50%;
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      padding: 0 0.5rem;
+      transform: translateY(-50%);
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .slider-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--glass-bg);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--border-line);
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      pointer-events: auto;
+      transition: all 0.2s ease;
+    }
+
+    .slider-btn:hover {
+      background: var(--accent-primary);
+      border-color: var(--accent-primary);
+    }
+
+    .slider-dots {
+      display: flex;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      opacity: 0.4;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .dot.active {
+      opacity: 1;
+      background: var(--accent-primary);
+      width: 20px;
+      border-radius: 4px;
+    }
+
+    /* ---------- Documents Grid ---------- */
+    .section {
+      padding: 5rem 1.5rem;
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+
+    .section-title {
+      text-align: center;
+      margin-bottom: 3.5rem;
+    }
+
+    .section-title h2 {
+      font-size: 2.2rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-line);
+      border-radius: var(--radius-md);
+      padding: 2rem;
+      transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+      border-color: var(--border-highlight);
+      box-shadow: 0 12px 30px rgba(0,0,0,0.3);
+    }
+
+    .card-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: var(--radius-sm);
+      background: rgba(59, 130, 246, 0.1);
+      color: var(--accent-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .card h3 {
+      font-size: 1.25rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .card p {
+      font-size: 0.95rem;
+      line-height: 1.5;
+      margin-bottom: 1.5rem;
+    }
+
+    .card-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--accent-primary);
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    .card-link:hover {
+      text-decoration: underline;
+    }
+
+    /* ---------- Process Section ---------- */
+    .process-timeline {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1.5rem;
+      position: relative;
+    }
+
+    .step-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-line);
+      border-radius: var(--radius-md);
+      padding: 1.75rem;
+      position: relative;
+    }
+
+    .step-number {
+      font-family: var(--font-code);
+      font-size: 2rem;
+      font-weight: 700;
+      color: rgba(255, 255, 255, 0.1);
+      position: absolute;
+      top: 1rem;
+      right: 1.25rem;
+    }
+
+    .step-card h3 {
+      font-size: 1.1rem;
+      margin-bottom: 0.5rem;
+    }
+
+    /* ---------- Footer ---------- */
+    .footer-spec {
+      background: var(--bg-surface);
+      border-top: 1px solid var(--border-line);
+      padding: 3rem 1.5rem 1.5rem;
+      margin-top: 4rem;
+    }
+
+    .footer-container {
+      max-width: 1280px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr;
+      gap: 3rem;
+      padding-bottom: 2rem;
+      border-bottom: 1px solid var(--border-line);
+    }
+
+    .footer-bottom {
+      max-width: 1280px;
+      margin: 1.5rem auto 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    /* Mobile Responsive Breakpoints */
+    @media (max-width: 960px) {
+      .hero { grid-template-columns: 1fr; padding-top: 3rem; }
+      .nav-stats { display: none; }
+      .nav-links { display: none; }
+      .mobile-menu-btn { display: block; }
+      .nav-links.active {
+        display: flex;
+        flex-direction: column;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: var(--bg-surface);
+        padding: 1.5rem;
+        border-bottom: 1px solid var(--border-line);
+      }
+      .footer-container { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
 
-  <header class="strip">
-    <div class="strip-brand"><span class="mark" aria-hidden="true"></span>TMS</div>
-    <div class="strip-counts">
-      <div class="cell"><strong>{{ module_count }}</strong>module{{ module_count|pluralize }}</div>
-      <div class="cell"><strong>{{ lesson_plan_count }}</strong>lesson plan{{ lesson_plan_count|pluralize }}</div>
-      <div class="cell"><strong>{{ assessment_plan_count }}</strong>assessment plan{{ assessment_plan_count|pluralize }}</div>
+  <!-- Full-Page Background Slider Layer -->
+  <div class="bg-slider-container">
+    <div class="bg-slide active" style="background-image: url('https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=1920&q=80');"></div>
+    <div class="bg-slide" style="background-image: url('https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1920&q=80');"></div>
+    <div class="bg-slide" style="background-image: url('https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=1920&q=80');"></div>
+  </div>
+  <div class="bg-overlay"></div>
+
+  <!-- Navigation Bar -->
+  <header class="navbar">
+    <div class="nav-container">
+      <a href="#" class="nav-brand">
+        <div class="logo-icon"><i class="fa-solid fa-graduation-cap"></i></div>
+        <span>TMS</span>
+      </a>
+
+      <nav>
+        <ul class="nav-links" id="navLinks">
+          <li><a href="#overview" class="active">Overview</a></li>
+          <li><a href="#documents">Documents</a></li>
+          <li><a href="#process">Process</a></li>
+          <li><a href="#access">Access</a></li>
+        </ul>
+      </nav>
+
+      <div class="nav-actions">
+        <div class="nav-stats">
+          <span>Modules: <strong>{{ module_count }}</strong></span>
+          <span>•</span>
+          <span>Lesson Plans: <strong>{{ lesson_plan_count }}</strong></span>
+        </div>
+        <a href="{% url 'login' %}" class="btn btn-outline">
+          <i class="fa-solid fa-lock"></i> Sign In
+        </a>
+        <button class="mobile-menu-btn" id="menuToggle" aria-label="Toggle navigation">
+          <i class="fa-solid fa-bars"></i>
+        </button>
+      </div>
     </div>
   </header>
 
-  <div class="shell">
-    <aside class="rail" aria-label="Page index">
-      <nav class="rail-index">
-        <a href="#overview"><span class="no">01</span>Overview</a>
-        <a href="#documents"><span class="no">02</span>Documents</a>
-        <a href="#process"><span class="no">03</span>Process</a>
-        <a href="#access"><span class="no">04</span>Access</a>
-      </nav>
-      <div class="rail-signin">
-        <i class="fa-solid fa-lock" aria-hidden="true"></i>
-        <a href="{% url 'login' %}">Administrator / trainer sign in</a>
+  <main>
+    <!-- Dynamic Hero Section -->
+    <section class="hero" id="overview">
+      <div>
+        <div class="hero-badge">
+          <i class="fa-solid fa-sparkles"></i> Training Management System
+        </div>
+        <h1 class="hero-title">Turn curriculum into complete accredited document sets.</h1>
+        <p class="hero-description">
+          Generate structured Schemes of Work, Lesson Plans, and Assessment Plans mapped directly from TMS's verified curriculum records.
+        </p>
+
+        <div class="hero-cta">
+          <a href="{% url 'schemeofwork-user' %}" class="btn btn-primary">
+            Create Scheme of Work <i class="fa-solid fa-arrow-right"></i>
+          </a>
+          <a href="{% url 'lessonplan-user' %}" class="btn btn-outline">
+            Lesson Plan
+          </a>
+          <a href="{% url 'assessmentplan-user' %}" class="btn btn-outline">
+            Assessment Plan
+          </a>
+        </div>
       </div>
-    </aside>
 
-    <div class="content">
+      <!-- Online Image Slider Card Container -->
+      <div class="slider-card-container">
+        <div class="tab-header">
+          <button class="tab-btn active" onclick="goToSlide(0)">Scheme of Work</button>
+          <button class="tab-btn" onclick="goToSlide(1)">Lesson Plan</button>
+          <button class="tab-btn" onclick="goToSlide(2)">Assessment Plan</button>
+        </div>
 
-      <!-- Overview / hero -->
-      <section class="hero" id="overview">
-        <div class="hero-grid">
+        <div class="slider-frame">
+          <!-- Slide 1 -->
+          <div class="slide active">
+            <img src="https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=1000&q=80" alt="Scheme of Work Planning">
+            <div class="slide-overlay">
+              <span class="slide-badge">Scheme of Work</span>
+              <h3 class="slide-title">Term & Outcome Mapping</h3>
+            </div>
+          </div>
+
+          <!-- Slide 2 -->
+          <div class="slide">
+            <img src="https://images.unsplash.com/photo-1524178232363-1fb2b075b655?auto=format&fit=crop&w=1000&q=80" alt="Lesson Plan Execution">
+            <div class="slide-overlay">
+              <span class="slide-badge">Lesson Plan</span>
+              <h3 class="slide-title">Structured Classroom Delivery</h3>
+            </div>
+          </div>
+
+          <!-- Slide 3 -->
+          <div class="slide">
+            <img src="https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=1000&q=80" alt="Assessment Evaluation">
+            <div class="slide-overlay">
+              <span class="slide-badge">Assessment Plan</span>
+              <h3 class="slide-title">Accredited Outcome Verification</h3>
+            </div>
+          </div>
+
+          <!-- Controls -->
+          <div class="slider-nav">
+            <button class="slider-btn" id="prevBtn" aria-label="Previous Slide"><i class="fa-solid fa-chevron-left"></i></button>
+            <button class="slider-btn" id="nextBtn" aria-label="Next Slide"><i class="fa-solid fa-chevron-right"></i></button>
+          </div>
+        </div>
+
+        <!-- Pagination Dots -->
+        <div class="slider-dots">
+          <span class="dot active" onclick="goToSlide(0)"></span>
+          <span class="dot" onclick="goToSlide(1)"></span>
+          <span class="dot" onclick="goToSlide(2)"></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Documents Grid Section -->
+    <section class="section" id="documents">
+      <div class="section-title">
+        <h2>Three Documents, One Unified Standard</h2>
+        <p>Built directly from live trade and sector records.</p>
+      </div>
+
+      <div class="grid-3">
+        <div class="card">
           <div>
-            <div class="hero-eyebrow"><span class="dot" aria-hidden="true"></span>Training Management System</div>
-            <h1>Turn a trade and level into a complete set of training documents</h1>
-            <p class="hero-sub">Padri Vjeko Centre's platform for producing a Scheme of Work, Lesson Plan and Assessment Plan for any accredited trade and level — built from the Centre's own curriculum records, so every document matches what's currently taught.</p>
-
-            <div class="spec-line">
-              <div><strong>Any trade, any level</strong>drawn from the Centre's curriculum</div>
-              <div><strong>3 document types</strong>scheme, lesson, assessment</div>
-            </div>
-
-            <div class="hero-actions">
-              <a href="{% url 'schemeofwork-user' %}" class="action action-primary">Scheme of Work</a>
-              <a href="{% url 'lessonplan-user' %}" class="action action-ghost">Lesson Plan</a>
-              <a href="{% url 'assessmentplan-user' %}" class="action action-ghost">Assessment Plan</a>
-            </div>
-            <a href="{% url 'login' %}" class="hero-signin"><i class="fa-solid fa-lock" aria-hidden="true"></i> Administrator / trainer sign in</a>
+            <div class="card-icon"><i class="fa-solid fa-layer-group"></i></div>
+            <h3>Scheme of Work</h3>
+            <p>Term-by-term breakdown of learning outcomes, content schedules, learning activities, and required resources.</p>
           </div>
-
-          <div class="hero-art" aria-hidden="true">
-            <svg viewBox="0 0 480 420" xmlns="http://www.w3.org/2000/svg">
-              <g class="sheet-in d1">
-                <rect x="70" y="150" width="230" height="170" rx="2" fill="var(--paper-2)" stroke="var(--blueprint)" stroke-width="1.5"/>
-                <rect x="70" y="150" width="230" height="30" fill="var(--blueprint-deep)"/>
-                <text x="84" y="170" font-family="Space Grotesk" font-size="13" fill="var(--paper-2)">SOW</text>
-                <line x1="88" y1="200" x2="270" y2="200" stroke="var(--ink)" stroke-opacity=".25" stroke-width="2"/>
-                <line x1="88" y1="222" x2="250" y2="222" stroke="var(--ink)" stroke-opacity=".25" stroke-width="2"/>
-                <line x1="88" y1="244" x2="260" y2="244" stroke="var(--ink)" stroke-opacity=".18" stroke-width="2"/>
-                <line x1="88" y1="266" x2="220" y2="266" stroke="var(--ink)" stroke-opacity=".18" stroke-width="2"/>
-              </g>
-              <g class="sheet-in d2">
-                <rect x="140" y="95" width="230" height="170" rx="2" fill="var(--paper-2)" stroke="var(--blueprint)" stroke-width="1.5"/>
-                <rect x="140" y="95" width="230" height="30" fill="var(--blueprint)"/>
-                <text x="154" y="115" font-family="Space Grotesk" font-size="13" fill="var(--paper-2)">LP</text>
-                <line x1="158" y1="145" x2="340" y2="145" stroke="var(--ink)" stroke-opacity=".22" stroke-width="2"/>
-                <line x1="158" y1="167" x2="300" y2="167" stroke="var(--ink)" stroke-opacity=".22" stroke-width="2"/>
-                <line x1="158" y1="189" x2="330" y2="189" stroke="var(--ink)" stroke-opacity=".16" stroke-width="2"/>
-              </g>
-              <g class="sheet-in d3">
-                <rect x="205" y="40" width="200" height="150" rx="2" fill="var(--paper-2)" stroke="var(--brass)" stroke-width="1.5"/>
-                <rect x="205" y="40" width="200" height="30" fill="var(--brass)"/>
-                <text x="219" y="60" font-family="Space Grotesk" font-size="13" fill="var(--ink)">AP</text>
-                <line x1="223" y1="90" x2="380" y2="90" stroke="var(--ink)" stroke-opacity=".25" stroke-width="2"/>
-                <line x1="223" y1="112" x2="350" y2="112" stroke="var(--ink)" stroke-opacity=".25" stroke-width="2"/>
-              </g>
-              <g stroke="var(--brass)" stroke-width="1.5" fill="none">
-                <line class="draw-in" x1="70" y1="330" x2="300" y2="330" stroke-dasharray="4 5"/>
-                <line x1="70" y1="322" x2="70" y2="338"/>
-                <line x1="300" y1="322" x2="300" y2="338"/>
-              </g>
-              <circle cx="70" cy="330" r="3" fill="var(--brass)"/>
-              <text x="105" y="352" font-family="Space Grotesk" font-size="12" fill="var(--text-on-ink-soft)" style="fill:var(--paper-2)">L.O. 3.2 — indicative content</text>
-            </svg>
-          </div>
+          <a href="{% url 'schemeofwork-user' %}" class="card-link">Generate Document <i class="fa-solid fa-chevron-right"></i></a>
         </div>
-      </section>
 
-      <!-- Documents -->
-      <section id="documents">
-        <div class="section-inner">
-          <div class="section-head">
-            <div class="kicker"><span class="no">02</span>Documents</div>
-            <h2>Three documents, one consistent standard</h2>
-            <p>Every document is drafted from the Centre's own sector, trade and module records, so what you generate always reflects the curriculum as it is currently configured.</p>
-          </div>
-
-          <div class="doc-list">
-            <div class="doc-row">
-              <div class="doc-tag">A</div>
-              <div class="doc-body">
-                <h3>Scheme of Work</h3>
-                <p>A term-by-term breakdown of a module's learning outcomes, indicative content, learning activities, resources and formative assessment evidence.</p>
-              </div>
-              <a href="{% url 'schemeofwork-user' %}" class="doc-open">Open <i class="fa-solid fa-chevron-right" aria-hidden="true"></i></a>
-            </div>
-            <div class="doc-row">
-              <div class="doc-tag">B</div>
-              <div class="doc-body">
-                <h3>Lesson Plan</h3>
-                <p>A complete, classroom-ready session plan for a single learning outcome — objectives, introduction, development steps, reflection and assessment.</p>
-              </div>
-              <a href="{% url 'lessonplan-user' %}" class="doc-open">Open <i class="fa-solid fa-chevron-right" aria-hidden="true"></i></a>
-            </div>
-            <div class="doc-row">
-              <div class="doc-tag">C</div>
-              <div class="doc-body">
-                <h3>Assessment Plan</h3>
-                <p>One row per learning outcome, covering assessment type, required resources and a practical note on administering it — ready for scheduling.</p>
-              </div>
-              <a href="{% url 'assessmentplan-user' %}" class="doc-open">Open <i class="fa-solid fa-chevron-right" aria-hidden="true"></i></a>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Process -->
-      <section class="process-section" id="process">
-        <div class="section-inner">
-          <div class="section-head">
-            <div class="kicker"><span class="no">03</span>Process</div>
-            <h2>From sign-in to a finished document, in four steps</h2>
-            <p>The same process applies whichever of the three documents you're producing.</p>
-          </div>
-
-          <div class="timeline">
-            <div class="tl-step">
-              <div class="no">01</div>
-              <h3>Sign in</h3>
-              <p>Sign in with your administrator or trainer account. Trainer accounts are created by an administrator.</p>
-            </div>
-            <div class="tl-step">
-              <div class="no">02</div>
-              <h3>Choose trade, level &amp; module</h3>
-              <p>Select the sector, trade, level and module you're planning training for, then the relevant learning outcome(s).</p>
-            </div>
-            <div class="tl-step">
-              <div class="no">03</div>
-              <h3>Generate the document</h3>
-              <p>Choose Scheme of Work, Lesson Plan or Assessment Plan. The system drafts the content from your curriculum data for you to review.</p>
-            </div>
-            <div class="tl-step">
-              <div class="no">04</div>
-              <h3>Review, edit &amp; print</h3>
-              <p>Adjust any field as needed, then print or export the finished document for your records or submission.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Access -->
-      <section id="access">
-        <div class="section-inner">
-          <div class="section-head">
-            <div class="kicker"><span class="no">04</span>Access</div>
-            <h2>Who can sign in, and how generation access works</h2>
-            <p>The three generators are only available to signed-in accounts — there is no anonymous access.</p>
-          </div>
-
-          <div class="spec-sheet">
-            <div class="spec-col">
-              <h3>Account types</h3>
-              <dl>
-                <div>
-                  <dt>Administrator</dt>
-                  <dd>Manages the full curriculum — sectors, trades, levels, modules, trainers and generation access — and generates all three documents without restriction.</dd>
-                </div>
-                <div>
-                  <dt>Trainer</dt>
-                  <dd>Signs in with an account issued by an administrator, and generates documents for the modules assigned to them.</dd>
-                </div>
-                <div>
-                  <dt>No account yet</dt>
-                  <dd>Contact your institution's administrator to have one created.</dd>
-                </div>
-              </dl>
-            </div>
-            <div class="spec-col">
-              <h3>Generation allowance</h3>
-              <dl>
-                <div>
-                  <dt>First generation</dt>
-                  <dd>Free, and shared across the Scheme of Work, Lesson Plan and Assessment Plan generators.</dd>
-                </div>
-                <div>
-                  <dt>After that</dt>
-                  <dd>Continued access requires paid access, activated by an administrator once payment is confirmed.</dd>
-                </div>
-                <div>
-                  <dt>Once granted</dt>
-                  <dd>Paid access stays active for a fixed period, and can be renewed at any time by an administrator.</dd>
-                </div>
-              </dl>
-              <div class="spec-note">
-                <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
-                <span>Payment instructions and renewal are handled directly by your administrator after your free generation has been used.</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Closing / title block -->
-      <section class="closing">
-        <div class="closing-inner">
+        <div class="card">
           <div>
-            <h2>Ready to plan your next training programme?</h2>
-            <p>Sign in to generate a Scheme of Work, Lesson Plan or Assessment Plan for any trade and level.</p>
+            <div class="card-icon"><i class="fa-solid fa-book-open-reader"></i></div>
+            <h3>Lesson Plan</h3>
+            <p>Classroom-ready session guide covering objectives, introduction, interactive tasks, and learner reflections.</p>
           </div>
-          <a href="{% url 'login' %}" class="action action-primary">Sign in</a>
+          <a href="{% url 'lessonplan-user' %}" class="card-link">Generate Document <i class="fa-solid fa-chevron-right"></i></a>
         </div>
 
-        <div class="title-block">
-          <div><div class="label">Institution</div><div class="value">Padri Vjeko Centre</div></div>
-          <div><div class="label">Documents</div><div class="value">Scheme, Lesson, Assessment</div></div>
-          <div><div class="label">Access</div><div class="value">Sign-in required</div></div>
-          <div><div class="label">Revision</div><div class="value">{% now "Y" %}</div></div>
+        <div class="card">
+          <div>
+            <div class="card-icon"><i class="fa-solid fa-clipboard-check"></i></div>
+            <h3>Assessment Plan</h3>
+            <p>Comprehensive overview specifying evaluation methods, resource requirements, and practical notes per outcome.</p>
+          </div>
+          <a href="{% url 'assessmentplan-user' %}" class="card-link">Generate Document <i class="fa-solid fa-chevron-right"></i></a>
         </div>
+      </div>
+    </section>
 
-        <footer class="site-footer">
-          <span>Training Management System</span>
-          <nav>
-            <a href="{% url 'schemeofwork-user' %}">Scheme of Work</a>
-            <a href="{% url 'lessonplan-user' %}">Lesson Plan</a>
-            <a href="{% url 'assessmentplan-user' %}">Assessment Plan</a>
-            <a href="{% url 'login' %}">Trainer / Admin login</a>
-          </nav>
-        </footer>
-      </section>
+    <!-- Interactive Process Flow Section -->
+    <section class="section" id="process">
+      <div class="section-title">
+        <h2>How It Works</h2>
+        <p>Four simple steps from selection to finished output.</p>
+      </div>
 
+      <div class="process-timeline">
+        <div class="step-card">
+          <span class="step-number">01</span>
+          <h3>Sign In</h3>
+          <p>Access your assigned trainer or administrator profile.</p>
+        </div>
+        <div class="step-card">
+          <span class="step-number">02</span>
+          <h3>Select Module</h3>
+          <p>Choose your target sector, trade, level, and outcome.</p>
+        </div>
+        <div class="step-card">
+          <span class="step-number">03</span>
+          <h3>Generate</h3>
+          <p>Produce instantly structured draft content dynamically.</p>
+        </div>
+        <div class="step-card">
+          <span class="step-number">04</span>
+          <h3>Review & Export</h3>
+          <p>Fine-tune parameters and print or export your document.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer Block -->
+  <footer class="footer-spec" id="access">
+    <div class="footer-container">
+      <div>
+        <h3>TMS</h3>
+        <p style="margin-top:0.5rem;">Training Management System for accredited TVET training programmes.</p>
+      </div>
+      <div>
+        <h4 style="color:var(--text-main); margin-bottom: 0.75rem;">Access Rules</h4>
+        <p style="font-size:0.85rem;">Account registration and generation access are managed by institutional administrators.</p>
+      </div>
+      <div>
+        <h4 style="color:var(--text-main); margin-bottom: 0.75rem;">Quick Links</h4>
+        <p style="font-size:0.85rem;"><a href="{% url 'login' %}">Trainer Login</a></p>
+      </div>
     </div>
-  </div>
 
+    <div class="footer-bottom">
+      <span>&copy; {% now "Y" %} TMS. All rights reserved.</span>
+      <span>Revision Status: Active</span>
+    </div>
+  </footer>
+
+  <!-- Interactivity Scripts -->
+  <script>
+    // Full-Page Background Slider Logic
+    let currentBgSlide = 0;
+    const bgSlides = document.querySelectorAll('.bg-slide');
+    const totalBgSlides = bgSlides.length;
+
+    function autoSlideBg() {
+      const current = bgSlides[currentBgSlide];
+      const nextIndex = (currentBgSlide + 1) % totalBgSlides;
+      const next = bgSlides[nextIndex];
+
+      // Prepare next slide position on the right side
+      next.style.transition = 'none';
+      next.classList.remove('exit-left', 'active');
+      
+      // Force reflow
+      void next.offsetWidth;
+
+      // Animate current out to left and next in from right
+      next.style.transition = 'transform 1.2s ease-in-out';
+      current.classList.remove('active');
+      current.classList.add('exit-left');
+      
+      next.classList.add('active');
+
+      currentBgSlide = nextIndex;
+    }
+
+    setInterval(autoSlideBg, 6000);
+
+    // Inner Card Slider Logic
+    let currentSlide = 0;
+    const slides = document.querySelectorAll('.slide');
+    const dots = document.querySelectorAll('.dot');
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const totalSlides = slides.length;
+    let autoSlideInterval;
+
+    function updateSlider(index) {
+      slides.forEach(slide => slide.classList.remove('active'));
+      dots.forEach(dot => dot.classList.remove('active'));
+      tabBtns.forEach(btn => btn.classList.remove('active'));
+
+      currentSlide = (index + totalSlides) % totalSlides;
+
+      slides[currentSlide].classList.add('active');
+      dots[currentSlide].classList.add('active');
+      tabBtns[currentSlide].classList.add('active');
+    }
+
+    function goToSlide(index) {
+      updateSlider(index);
+      resetAutoSlide();
+    }
+
+    function nextSlide() {
+      updateSlider(currentSlide + 1);
+    }
+
+    function prevSlide() {
+      updateSlider(currentSlide - 1);
+    }
+
+    function startAutoSlide() {
+      autoSlideInterval = setInterval(nextSlide, 5000);
+    }
+
+    function resetAutoSlide() {
+      clearInterval(autoSlideInterval);
+      startAutoSlide();
+    }
+
+    // Event Listeners for Controls
+    document.getElementById('nextBtn').addEventListener('click', () => {
+      nextSlide();
+      resetAutoSlide();
+    });
+
+    document.getElementById('prevBtn').addEventListener('click', () => {
+      prevSlide();
+      resetAutoSlide();
+    });
+
+    // Mobile Menu Toggle
+    const menuToggle = document.getElementById('menuToggle');
+    const navLinks = document.getElementById('navLinks');
+
+    menuToggle.addEventListener('click', () => {
+      navLinks.classList.toggle('active');
+    });
+
+    // Initialize Auto Play
+    startAutoSlide();
+  </script>
 </body>
 </html>

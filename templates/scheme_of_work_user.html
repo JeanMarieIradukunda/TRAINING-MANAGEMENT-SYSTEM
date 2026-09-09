@@ -38,19 +38,11 @@
       --sow-bg-card: #ffffff;
     }
 
-    /* Base style.css already sets body { font-family: 'DM Sans', system-ui, sans-serif }
-       site-wide. We only want Inter inside the printable document itself (.gen-doc),
-       not on the whole page, so this page still matches the rest of the TMS. */
     body.gen-body {
       color: var(--sow-body);
       -webkit-font-smoothing: antialiased;
     }
 
-    /* ---------- Shell layout override ----------
-       Base style.css centers .gen-shell with a fairly narrow max-width and
-       large auto side margins. The scheme-of-work table has 9 columns and
-       needs real width, so here we widen the shell and swap the centered
-       auto-margins for small fixed side padding instead. */
     .gen-shell {
       max-width: 100% !important;
       width: 100%;
@@ -126,9 +118,6 @@
       color: var(--sow-navy);
       margin: 0.1rem 0 0.35rem;
       text-transform: uppercase;
-      /* Now carries "Scheme of Work — MOD-CODE — Module Name" once a
-         module has been generated, so a long module name doesn't force
-         an overly cramped single line. */
       line-height: 1.25;
     }
 
@@ -169,8 +158,6 @@
       color: var(--sow-navy-soft);
       white-space: nowrap;
       margin: 0;
-      /* base style.css sets .gen-meta-grid dt { text-transform: uppercase; letter-spacing: 0.06em; }
-         reset both so labels render in normal sentence case as designed */
       text-transform: none;
       letter-spacing: normal;
     }
@@ -183,7 +170,7 @@
       font-weight: 500;
     }
 
-    /* ---------- Section headings (e.g. "Weekly scheme of work") ---------- */
+    /* ---------- Section headings ---------- */
     .gen-section-title {
       font-family: 'Inter', sans-serif;
       font-size: 13pt;
@@ -203,112 +190,78 @@
       font-size: 0.9em;
     }
 
-    /* ---------- Table wrapper ---------- */
+    /* ---------- Table wrapper & Upgraded Table Layout ---------- */
     .gen-table-wrap {
       border: 1px solid var(--sow-line);
       border-radius: 8px;
-      /* base style.css sets overflow-x: auto for small-screen scroll fallback —
-         use overflow-y only here so that behavior isn't cancelled */
       overflow-x: auto;
       overflow-y: hidden;
       margin-bottom: 2.1rem;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.02);
     }
 
-    /* table-layout: auto (rather than fixed) lets narrow columns like Weeks
-       & Dates / Learning Hours shrink to their actual content instead of
-       being forced into an equal share of the table width; the remaining
-       width is then distributed across the content-heavy columns. */
     .gen-table-v2 {
-      table-layout: auto;
+      table-layout: fixed;
       width: 100%;
       border-collapse: separate;
       border-spacing: 0;
       font-family: 'Inter', 'Aptos', 'Calibri', sans-serif;
-      font-size: 9.5pt;
+      font-size: 9pt;
+      background-color: #ffffff;
     }
 
-    /* These widths are hints only (table-layout is auto) — actual rendered
-       width also depends on content, but they keep the relative proportions
-       sane on first paint. Weeks & Hours get no wide hint on purpose; see
-       the shrink-to-fit rule below for how they're kept genuinely small. */
-    .gen-table-v2 col.col-lu {
-      width: 12%;
-    }
-
-    .gen-table-v2 col.col-ic {
-      width: 19%;
-    }
-
-    .gen-table-v2 col.col-activ {
-      width: 14%;
-    }
-
-    .gen-table-v2 col.col-resources {
-      width: 14%;
-    }
-
-    .gen-table-v2 col.col-place {
-      width: 8%;
-    }
-
-    .gen-table-v2 col.col-evidence {
-      width: 12%;
-    }
-
-    .gen-table-v2 col.col-obs {
-      width: 10%;
-    }
+    /* Structured Column Widths for Professional Balance */
+    .gen-table-v2 col.col-weeks { width: 10%; }
+    .gen-table-v2 col.col-lu { width: 13%; }
+    .gen-table-v2 col.col-hours { width: 7%; }
+    .gen-table-v2 col.col-ic { width: 22%; }
+    .gen-table-v2 col.col-activ { width: 13%; }
+    .gen-table-v2 col.col-resources { width: 16%; }
+    .gen-table-v2 col.col-place { width: 7%; }
+    .gen-table-v2 col.col-evidence { width: 12%; }
+    .gen-table-v2 col.col-obs { width: 10%; }
 
     .gen-table-v2 thead th {
       background: var(--sow-navy);
       background-image: linear-gradient(180deg, var(--sow-navy) 0%, var(--sow-navy-deep) 100%);
       color: #ffffff;
-      font-family: 'Inter', 'Aptos', 'Calibri', sans-serif;
-      font-size: 9.5pt;
+      font-family: 'Inter', sans-serif;
+      font-size: 8.5pt;
       font-weight: 700;
-      letter-spacing: 0.01em;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
       text-align: center;
       vertical-align: middle;
-      padding: 0.22rem 0.3rem;
-      line-height: 1.15;
-      border-bottom: 2px solid var(--sow-gold);
-      /* base style.css sets .gen-table th { text-transform: uppercase; white-space: nowrap; }
-         both leak through onto this element unless explicitly reset here */
-      text-transform: none;
+      padding: 0.65rem 0.5rem;
+      line-height: 1.25;
+      border-bottom: 2.5px solid var(--sow-gold);
+      border-right: 1px solid rgba(255, 255, 255, 0.18);
       white-space: normal;
+      word-break: break-word;
     }
 
-    .gen-table-v2 thead th:not(:last-child) {
-      border-right: 1px solid rgba(255, 255, 255, 0.14);
+    .gen-table-v2 thead th:last-child {
+      border-right: none;
     }
 
     .gen-table-v2 th,
     .gen-table-v2 td {
-      font-size: 9.5pt;
-      vertical-align: middle;
+      font-size: 8.75pt;
+      vertical-align: top;
       text-align: left;
+      word-wrap: break-word;
       word-break: break-word;
-      /* A bit more breathing room than the previous 0.22rem/line-height
-         1.15 so multi-line cell content (Resources, Indicative Content)
-         doesn't read as cramped. */
-      padding: 0.3rem 0.4rem;
+      padding: 0.6rem 0.65rem;
       border-bottom: 1px solid var(--sow-line-soft);
       border-right: 1px solid var(--sow-line-soft);
-      line-height: 1.3;
+      line-height: 1.4;
     }
 
-    /* Resources and Indicative Content carry the densest text (a
-       comma-separated tool list / a bulleted list of content items), so
-       they get extra vertical padding on top of the table-wide bump
-       above for clearer separation from the cell edges and neighbouring
-       rows. */
-    .gen-table-v2 th:nth-child(4),
+    /* Highlighted Data Densities */
     .gen-table-v2 td:nth-child(4),
-    .gen-table-v2 th:nth-child(6),
     .gen-table-v2 td:nth-child(6) {
-      padding-top: 0.45rem;
-      padding-bottom: 0.45rem;
-      word-spacing: 0.06em;
+      padding: 0.65rem 0.75rem;
+      line-height: 1.45;
     }
 
     .gen-table-v2 td:last-child,
@@ -320,27 +273,14 @@
       border-bottom: none;
     }
 
-    /* Shrink-to-fit for Weeks & Dates (col 1) and Learning Hours (col 3):
-       width: 1% is a well-known table trick that, combined with
-       white-space: nowrap on the cell content, makes an auto-layout column
-       take only the width its content actually needs instead of an equal
-       fixed share — freeing space for the content-heavy columns. */
-    .gen-table-v2 th:nth-child(1),
+    /* Column Specific Text Alignments */
     .gen-table-v2 td:nth-child(1),
-    .gen-table-v2 th:nth-child(3),
-    .gen-table-v2 td:nth-child(3) {
-      width: 1%;
-      white-space: nowrap;
+    .gen-table-v2 td:nth-child(3),
+    .gen-table-v2 td:nth-child(7) {
       text-align: center;
     }
 
-    /* Alternating row shading for readability. Term-separator and
-       week-pager rows are explicitly excluded from the nth-child
-       selector (rather than relying on those rows' own rules simply
-       having higher specificity) so a term separator's colour can
-       never depend on whether it happens to land on an odd or even
-       row of the table — see the print media query below for why that
-       distinction matters. */
+    /* Alternating Row Shading */
     .gen-table-v2 tbody tr:nth-child(even):not(.gen-term-separator):not(.gen-week-pager-row) td {
       background: var(--sow-row-alt);
     }
@@ -349,7 +289,6 @@
       background: #ffffff;
     }
 
-    /* Keep rows intact when printed / exported */
     .gen-table-v2 tbody tr {
       break-inside: avoid;
       page-break-inside: avoid;
@@ -359,15 +298,11 @@
       display: table-header-group;
     }
 
-    /* Week label: a plain, professional in-flow label (standard document
-       font weight/size) rather than a highlighter-style pill/badge. A
-       thin gold underline keeps it identifiable at a glance without
-       looking like highlighted text. */
     .gen-week-pill {
       display: inline-block;
       font-family: 'Inter', sans-serif;
       font-weight: 700;
-      font-size: 9.5pt;
+      font-size: 8.5pt;
       color: var(--sow-navy);
       background: transparent;
       border: none;
@@ -379,12 +314,7 @@
       white-space: nowrap;
     }
 
-    /* ---------- Term separator row ----------
-       A visually distinct full-width band inserted between terms so each
-       term's block of Learning Outcomes / Indicative Content reads as a
-       clearly separate, formally divided section, on screen and when
-       printed. A gold left rail plus a subtle navy gradient keeps it
-       readable without looking like a plain flat highlight. */
+    /* ---------- Term separator row ---------- */
     .gen-table-v2 tbody tr.gen-term-separator td {
       background: linear-gradient(120deg, var(--sow-navy) 0%, var(--sow-navy-deep) 100%) !important;
       padding: 0.65rem 1.1rem;
@@ -436,11 +366,7 @@
       white-space: nowrap;
     }
 
-    /* ---------- Week pager (one-week-at-a-time navigation) ----------
-       Screen-only (see .no-print) - lets a trainer step through
-       Week 1 -> Week 2 -> Week 3 ... within a term instead of seeing a
-       merged multi-week range. The printed document still shows every
-       week's row in full (see the @media print override below). */
+    /* ---------- Week pager ---------- */
     .gen-table-v2 tbody tr.gen-week-pager-row td {
       background: var(--sow-row-alt) !important;
       border-bottom: 1px solid var(--sow-line);
@@ -467,25 +393,16 @@
       padding: 0.15rem 0.6rem;
     }
 
-    /* ---------- Bulleted list rendering inside table cells ----------
-       Used ONLY by Indicative Content now (always a <ul>). Learning
-       Activities, Resources, Learning Place and Evidence are all plain,
-       single-line comma-separated text — no list markup. Rendered with
-       no bullet marker (list-style: none) so multi-line Indicative
-       Content reads as clean stacked lines rather than a dotted list.
-       Scoped to .gen-doc .gen-table-wrap so this beats the higher-
-       specificity ".gen-table ul.gen-bullets" rule in the base
-       style.css (this table still carries the shared "gen-table"
-       class), regardless of stylesheet load order. */
+    /* ---------- Bulleted lists inside cells ---------- */
     .gen-doc .gen-table-wrap ul.gen-bullets {
       margin: 0;
-      padding-left: 0;
-      list-style: none;
+      padding-left: 1rem;
+      list-style-type: disc;
     }
 
     .gen-doc .gen-table-wrap ul.gen-bullets li {
-      margin-bottom: 0.3rem;
-      padding-left: 0;
+      margin-bottom: 0.25rem;
+      padding-left: 0.15rem;
       line-height: 1.35;
     }
 
@@ -507,16 +424,14 @@
     .gen-editable-cell:focus {
       outline: 1.5px dashed var(--teal, #2dd4bf);
       background: rgba(45, 212, 191, 0.12);
-      /* base style.css's [contenteditable="true"]:focus adds its own box-shadow ring;
-         suppress it here so cells don't show both a ring and a dashed outline at once */
       box-shadow: none;
     }
 
     .gen-placeholder-text {
       color: #9aa3b8;
       font-style: italic;
-      font-size: 9pt;
-      line-height: 1.2;
+      font-size: 8.5pt;
+      line-height: 1.25;
     }
 
     .gen-editable-cell:focus .gen-placeholder-text,
@@ -528,14 +443,15 @@
     .gen-week-cell {
       display: flex;
       flex-direction: column;
-      gap: 0.12rem;
+      align-items: center;
+      gap: 0.2rem;
     }
 
     .gen-editable-inline {
       display: inline-block;
       color: #9aa3b8;
       font-style: italic;
-      font-size: 8.5pt;
+      font-size: 8.25pt;
       line-height: 1.2;
     }
 
@@ -556,7 +472,7 @@
       gap: 0.4rem;
       color: #6b7280;
       font-style: italic;
-      font-size: 9pt;
+      font-size: 8.5pt;
     }
 
     .gen-ai-loading-text .fa-spin {
@@ -588,7 +504,7 @@
     .gen-ai-error-text {
       color: #b42318;
       font-style: italic;
-      font-size: 9pt;
+      font-size: 8.5pt;
     }
 
     /* ---------- Sign-off block ---------- */
@@ -601,9 +517,6 @@
       border-top: 1px solid var(--sow-line);
     }
 
-    /* Matches base style.css's ".gen-signoff-grid .gen-signoff-line" specificity
-       (two classes) — a plain ".gen-signoff-line" rule loses that cascade fight
-       even when declared later, since specificity outranks source order. */
     .gen-signoff-grid .gen-signoff-line {
       font-size: 10pt;
       font-weight: 600;
@@ -643,7 +556,7 @@
       color: var(--sow-navy-soft);
     }
 
-    /* ---------- Screen chrome: hero / cards / toolbar polish ---------- */
+    /* ---------- Screen chrome ---------- */
     .gen-hero {
       background: linear-gradient(135deg, var(--sow-navy-deep) 0%, var(--sow-navy) 55%, var(--sow-navy-soft) 100%);
     }
@@ -681,18 +594,14 @@
     }
 
     /* ============================================================
-   UPGRADED PRINT / EXPORT RULES (DYNAMIC & FLEXIBLE)
-   ============================================================ */
+       PRINT / EXPORT RULES
+       ============================================================ */
     @page {
-      /* Allows the user to select Orientation (Portrait/Landscape)
-     and Paper Size (A4, Letter, etc.) in the browser print settings */
       size: auto;
-      margin: 15mm 13mm 16mm;
+      margin: 12mm 10mm 14mm;
     }
 
     @media print {
-
-      /* 1. Reset Root & Body for Page-Flow (Kills Scrollbars) */
       html,
       body,
       body.gen-body {
@@ -701,23 +610,17 @@
         width: auto !important;
         height: auto !important;
         overflow: visible !important;
-        /* Forces hidden scroll data to render */
         overflow-x: visible !important;
         overflow-y: visible !important;
         position: static !important;
-        /* Prevents absolute containers pinning height */
       }
 
-      /* Hide unnecessary UI elements */
       .no-print,
       .gen-ai-badge,
       ::-webkit-scrollbar {
         display: none !important;
       }
 
-      /* 1b. Hide placeholder text in cells the trainer never filled in, plus
-     any transient loading/error states — none of these belong on a
-     printed/exported document. The cell itself still prints, just empty. */
       .gen-placeholder-text,
       .gen-editable-inline[data-placeholder="true"],
       .gen-ai-loading-text,
@@ -725,7 +628,6 @@
         display: none !important;
       }
 
-      /* 2. Container Layout Resets */
       .gen-shell {
         padding: 0 !important;
         margin: 0 !important;
@@ -744,29 +646,23 @@
         overflow: visible !important;
       }
 
-      /* 3. Force Tables & Wrappers to Expand (No Scrolling) */
       .gen-table-wrap {
         border-radius: 0;
-        border: 1px solid #999;
+        border: 1px solid var(--sow-line);
         overflow: visible !important;
-        /* Critical: Unlocks hidden table rows */
         max-height: none !important;
-        /* Overrides any fixed heights */
         width: 100% !important;
         display: table !important;
-        /* Forces traditional block flow */
       }
 
       table,
       .gen-table-v2 {
         width: 100% !important;
-        table-layout: auto !important;
-        /* Allows cells to adjust to content size */
+        table-layout: fixed !important;
         border-collapse: collapse !important;
         page-break-inside: auto;
       }
 
-      /* 4. Smart Page-Breaks (Prevents ugly split lines/headers) */
       tr {
         page-break-inside: avoid !important;
         break-inside: avoid !important;
@@ -774,30 +670,27 @@
 
       thead {
         display: table-header-group !important;
-        /* Repeats table header on every page */
       }
 
       .gen-doc-title,
       .gen-section-title,
       .gen-signoff-grid,
-      h1,
-      h2,
-      h3,
-      h4,
-      h5,
-      h6 {
+      h1, h2, h3, h4, h5, h6 {
         break-inside: avoid !important;
         page-break-inside: avoid !important;
         page-break-after: avoid !important;
-        /* Stops headings from being left alone at bottom */
       }
 
-      /* 5. Color and Text Adjustments */
       .gen-table-v2 thead th {
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
         background: var(--sow-navy, #002060) !important;
         color: #fff !important;
+      }
+
+      .gen-table-v2 th,
+      .gen-table-v2 td {
+        border: 1px solid #b9c1cf !important;
       }
 
       .gen-table-v2 tbody tr:nth-child(even):not(.gen-term-separator):not(.gen-week-pager-row) td {
@@ -810,7 +703,6 @@
       .gen-editable-inline {
         background: none !important;
         outline: none !important;
-        border: none !important;
       }
 
       .gen-week-pill {
@@ -818,10 +710,6 @@
         print-color-adjust: exact !important;
       }
 
-      /* The on-screen pager only shows one week's row per term at a time
-     (inline style="display:none" on the rest). For print/PDF export we
-     want the complete scheme, so every week row is forced visible again
-     - the pager controls themselves are already hidden by .no-print. */
       .gen-week-row {
         display: table-row !important;
       }
@@ -830,11 +718,6 @@
         background: var(--sow-navy, #002060) !important;
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
-      }
-
-      /* 6. Dynamic Page Numbering */
-      .gen-doc-footer::after {
-        /* content: "Page " counter(page) " of " counter(pages); */
       }
     }
   </style>
@@ -1068,7 +951,6 @@
         </div>
 
         <div class="gen-doc-footer">
-          <!-- <span>Training Management System</span> -->
           <span>Scheme of Work · <span id="docFooterModule"></span></span>
         </div>
       </article>
@@ -1101,7 +983,6 @@
       var AI_ENDPOINT = '/api/scheme-of-work/ai-generate/';
 
       var DEFAULT_DOC_TITLE = 'Scheme of Work';
-
 
       var RESERVED_WEEKS_COUNT = 3;
       var RESERVED_WEEK_KINDS = ['revision', 'exams', 'marks'];
@@ -1136,12 +1017,8 @@
       var sectorsById = indexBy(data.sectors, 'id');
       var modulesById = indexBy(data.modules, 'id');
 
-
-      var currentContext = null; // { mod, trade, level, sector, outcomes, hoursPerWeek }
-
+      var currentContext = null;
       var hoursPerWeekManuallySet = false;
-
- 
       var currentBaseWeeksByTerm = {};
 
       function indexBy(list, key) {
@@ -1149,7 +1026,6 @@
         (list || []).forEach(function (item) { map[item[key]] = item; });
         return map;
       }
-
 
       function buildDocTitle(mod) {
         if (!mod) return DEFAULT_DOC_TITLE;
@@ -1171,7 +1047,6 @@
           .trim();
       }
 
-
       function printWithFilename() {
         var originalTitle = document.title;
         var suggested = currentContext
@@ -1181,8 +1056,6 @@
         document.title = suggested;
         TMSGen.print();
 
-        // 'afterprint' fires reliably in Chrome/Firefox/Edge for both
-        // the "Print" and "Save as PDF" destinations.
         var restore = function () {
           document.title = originalTitle;
           window.removeEventListener('afterprint', restore);
@@ -1190,12 +1063,9 @@
         window.addEventListener('afterprint', restore);
       }
 
-
       function exportSchemeAsDocx() {
         if (!exportDocxBtn) return;
         var genDoc = document.getElementById('genDoc');
-        // Landscape: the 9-column scheme-of-work table needs the extra
-        // width to match how it actually prints/exports to PDF.
         var payload = TMSGen.collectExportPayload(genDoc, { orientation: 'landscape' });
         var filename = TMSGen.filenameSafe(payload.title, 'Scheme of Work') + '.docx';
 
@@ -1211,7 +1081,6 @@
             exportDocxBtn.disabled = false;
             exportDocxBtn.innerHTML = originalHtml;
           });
-        // Fallback in case 'afterprint' doesn't fire in some browser (rare).
         setTimeout(restore, 5000);
       }
 
@@ -1355,7 +1224,6 @@
         recalcAutoHoursPerWeek();
       }
 
-
       function getTermWeeksArray() {
         return Array.prototype.slice.call(termWeeksGrid.querySelectorAll('.gen-term-week-input'))
           .map(function (el) { return Math.max(1, parseInt(el.value, 10) || 12); });
@@ -1419,9 +1287,7 @@
         resetTermFields();
         refreshStepChain();
         hoursPerWeekInput.addEventListener('input', function () { hoursPerWeekManuallySet = true; scheduleAutoRegenerate(); });
-        // Delegated: the term-week inputs are rebuilt every time the
-        // term count changes, so a single listener on their container
-        // covers whichever inputs currently exist.
+
         termWeeksGrid.addEventListener('input', function (e) {
           if (e.target && e.target.classList.contains('gen-term-week-input')) {
             recalcAutoHoursPerWeek();
@@ -1433,18 +1299,13 @@
         editSelectionBtn.addEventListener('click', function () {
           selectorFields.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
-        printBtn.addEventListener('click', printWithFilename); // was: TMSGen.print
+        printBtn.addEventListener('click', printWithFilename);
         if (exportDocxBtn) exportDocxBtn.addEventListener('click', exportSchemeAsDocx);
         aiGenerateBtn.addEventListener('click', onAiGenerate);
         var refreshBtn = document.getElementById('docStaleRefreshBtn');
         if (refreshBtn) refreshBtn.addEventListener('click', function () { onGenerate({ silent: true }); });
       }
 
-      // Reflects Trade -> Level -> Module progress onto the step chain:
-      // a step is "complete" (checkmark, filled marker) once it has a
-      // value, and "active" (highlighted, awaiting input) as soon as
-      // the step before it is complete - so the chain always shows
-      // exactly where the trainer is in the 3-step pick.
       function refreshStepChain() {
         var stepTrade = document.getElementById('step-trade');
         var stepLevel = document.getElementById('step-level');
@@ -1511,11 +1372,6 @@
         resetTermFields();
       }
 
-      // Reverts "Terms to generate" / Weeks per term to a neutral
-      // single-term default whenever the module selection is cleared or
-      // changed away (trade/level change), so a previous module's term
-      // structure never lingers on screen after its module is no longer
-      // selected.
       function resetTermFields() {
         currentBaseWeeksByTerm = { 1: 12 };
         populateTermSelectionOptions([1]);
@@ -1531,12 +1387,9 @@
         if (allocationConflictAlert) allocationConflictAlert.classList.add('d-none');
         currentContext = null;
         hoursPerWeekManuallySet = false;
-        setDocTitle(null); // NEW: revert the doc title to the plain default
+        setDocTitle(null);
       }
 
-      // Shows the payment-required message in place of the document area,
-      // reusing the same "empty state" visual language (.gen-alert-empty)
-      // already used above for noDataAlert - no new visual language.
       function showAccessBlocked(message) {
         docSection.classList.add('d-none');
         if (allocationConflictAlert) allocationConflictAlert.classList.add('d-none');
@@ -1546,11 +1399,6 @@
         accessBlockedAlert.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
 
-      // Shows an Allocation Conflict / missing-content message in place
-      // of the document area instead of generating invalid, incomplete,
-      // or empty-content weeks (see buildWeekUnits, placeUnitsIntoTerms,
-      // and findOutcomesMissingContent). Reuses the same "empty state"
-      // visual language as showAccessBlocked - no new visual language.
       function showAllocationConflict(message) {
         docSection.classList.add('d-none');
         accessBlockedAlert.classList.add('d-none');
@@ -1559,9 +1407,6 @@
         allocationConflictAlert.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
 
-      // Checks the trainer's free/paid generation access before any
-      // document is rendered. Consumes the free generation server-side the
-      // first time it's used - see core/views.py: check_generation_access.
       function checkGenerationAccess(callback) {
         fetch('/api/generation/check-access/', {
           method: 'POST',
@@ -1616,25 +1461,12 @@
         var termWeeksArray = getTermWeeksArray();
         if (!termWeeksArray.length) termWeeksArray = [12];
 
-        // Which actual term numbers to generate for this run — read
-        // straight from "Terms to generate for this Scheme", which is
-        // itself built from the module's own recorded terms (see
-        // populateTermSelectionOptions / getSelectedTermsList). E.g.
-        // "Terms 2-3" only builds Terms 2 and 3, with headings that
-        // read "Term 2" / "Term 3" (never renumbered). The Weeks per
-        // term fields above already contain exactly one entry per term
-        // in this list, in the same order (see renderTermWeeksInputs).
         var selectedTerms = getSelectedTermsList(mod);
 
         var outcomes = data.outcomes
           .filter(function (o) { return o.module_id === moduleId; })
           .sort(function (a, b) { return a.id - b.id; });
 
-        // FIX "No indicative content this week": never attempt to
-        // generate a schedule for an outcome that has no Indicative
-        // Content at all - there is no valid content to recalculate
-        // the allocation around, so block generation up front instead
-        // of ever producing an empty-content row (see Check G).
         var missingContentOutcomes = findOutcomesMissingContent(outcomes);
         if (missingContentOutcomes.length) {
           showAllocationConflict(
@@ -1648,37 +1480,12 @@
           return;
         }
 
-        // Fixed schedule structure first: the user's terms/weeks are
-        // split into teaching weeks BEFORE any content is considered,
-        // so hours-per-week and module content can only ever affect
-        // how things fit inside that structure - never the structure
-        // itself. Only the selected term numbers are built, and ONLY
-        // those weeks are ever used (see buildTermStructure) - the
-        // generator never creates additional weeks, terms, or shifts
-        // a module into an unselected term.
         var termStructure = buildTermStructure(termWeeksArray, selectedTerms);
-
-        // The final RESERVED_WEEKS_COUNT weeks of that structure are
-        // always reserved for Revision / Exams - Collections / Marks
-        // Publication and are never available for teaching content -
-        // see splitTeachingAndReservedSlots.
         var slotSplit = splitTeachingAndReservedSlots(termStructure);
-
-        // Build the week-by-week content plan (minimum weeks each LO
-        // needs at this pace, plus its Formative Assessment hour and
-        // the single closing Integrated Assessment) and place it into
-        // the teaching weeks only (see buildWeekUnits/placeUnitsIntoTerms).
         var weekUnits = buildWeekUnits(outcomes, hoursPerWeek);
         var unitsPlacement = placeUnitsIntoTerms(weekUnits, termStructure, slotSplit.teachingSlots);
         var terms = unitsPlacement.terms;
 
-        // ALLOCATION CONFLICT: either the required teaching hours
-        // don't fit within the weeks left after reserving the final
-        // RESERVED_WEEKS_COUNT weeks, or there aren't even enough
-        // selected weeks to reserve in full. Never invent extra
-        // weeks/terms, shrink the reservation, or cram content into
-        // the last available week - show the conflict and stop
-        // instead (see placeUnitsIntoTerms / splitTeachingAndReservedSlots).
         if (unitsPlacement.shortfallUnits > 0 || slotSplit.reservedCount < RESERVED_WEEKS_COUNT) {
           var reservedNote = slotSplit.reservedCount < RESERVED_WEEKS_COUNT
             ? ('Only ' + slotSplit.reservedCount + ' of the required ' + RESERVED_WEEKS_COUNT +
@@ -1722,16 +1529,10 @@
           mod: mod,
           hoursPerWeek: hoursPerWeek,
           termWeeksArray: termWeeksArray,
-          // Reported term/week counts reflect exactly the terms
-          // selected for THIS run (termStructure), never how many
-          // week units the content happened to produce, and never the
-          // module's full term list when only some terms were picked.
           totalWeeks: termStructure.reduce(function (a, t) { return a + t.totalWeeks; }, 0),
           totalTerms: termStructure.length,
           totalScheduledWeeks: totalScheduledWeeks,
           reservedWeeks: slotSplit.reservedCount,
-          // So renderMeta can build the "Terms covered" line straight
-          // from the same structure the table was built from.
           termStructure: termStructure,
         });
         renderTable(terms);
@@ -1742,10 +1543,6 @@
         document.getElementById('docPreparedBy').textContent = mod.trainer_name || '';
         document.getElementById('docFooterModule').textContent = mod.mod_code + ' \u2014 ' + mod.mod_name;
 
-        // NEW: doc title reflects the selected module — "Scheme of Work
-        // — MOD-CODE — Module Name" — identically on screen and in the
-        // printed / saved-as-PDF output, since both render this same
-        // #docTitleText element.
         setDocTitle(mod);
 
         docSection.classList.remove('d-none');
@@ -1776,15 +1573,6 @@
           ['Trainer', mod.trainer_name || '\u2014'],
           ['Term', mod.term || '\u2014'],
           ['Total learning hours', mod.learning_hours + ' hrs'],
-          // ['Training hours per week', (Math.round(ctx.hoursPerWeek * 100) / 100) + ' hrs/week'],
-          // Confirms exactly what was generated for THIS run (requirement 1)
-          // right in the printed document, not just in the table headings —
-          // built from termStructure so it can never disagree with the
-          // headings or with the recommendation/coverage notices above the
-          // table, all of which are derived from the same termStructure.
-          // ['Terms covered', describeTermsCovered(ctx.termStructure)],
-          // ['Total weeks', totalWeeksLabel],
-          // ['Reserved (Revision/Exams/Marks)', ctx.reservedWeeks + ' week' + (ctx.reservedWeeks === 1 ? '' : 's')],
         ];
         var el = document.getElementById('docMeta');
         el.innerHTML = rows.map(function (r) {
@@ -1798,21 +1586,12 @@
           .map(function (c) { return c.indic_name; });
       }
 
-      // Learning Outcomes with zero Indicative Content items - these
-      // can never be scheduled without either an empty content week or
-      // manufactured content, so generation is blocked upstream instead
-      // (see performGenerate / Check G).
       function findOutcomesMissingContent(outcomes) {
         return (outcomes || []).filter(function (o) {
           return contentsForOutcome(o.id).length === 0;
         });
       }
 
-      /**
-       * Splits `items` into `n` chunks as evenly as possible, preserving
-       * order (e.g. 5 indicative-content items over 3 weeks -> 2/2/1).
-       * Always returns exactly `n` arrays (some may be empty).
-       */
       function splitIntoChunks(items, n) {
         var chunks = [];
         var list = items || [];
@@ -1827,49 +1606,6 @@
         return chunks;
       }
 
-      /**
-       * Scheduling rule (per Training Hours per Week):
-       *   - Each Learning Outcome is taught over ceil(learning_hours /
-       *     hoursPerWeek) weeks, at hoursPerWeek per week (see
-       *     buildWeekUnits).
-       *   - Once an outcome's teaching hours are fully delivered, 1 hour
-       *     of Formative Assessment for THAT outcome is scheduled -
-       *     folded into that same final teaching week when there is
-       *     spare capacity that week (hoursThisWeek + 1 <= hoursPerWeek),
-       *     otherwise given its own dedicated 1-hour week immediately
-       *     after (see buildWeekUnits).
-       *   - Once every Learning Outcome (and its Formative Assessment)
-       *     has been scheduled, exactly ONE closing "Integrated
-       *     Assessment" week is added at the very end of the module -
-       *     no separate Revision, Examinations, or Marking block.
-       *   - Scheduling stops there: any remaining nominal teaching-week
-       *     capacity in the term structure is simply left unscheduled
-       *     (no row is generated for it), so the table only ever shows
-       *     weeks that actually carry real content.
-       */
-
-      /**
-       * Turns the user's raw per-term week counts (termWeeksArray) into
-       * the term structure content is scheduled into: each term keeps
-       * its own exact total week count (never changed by content or
-       * hours-per-week) and every one of those weeks is available for
-       * scheduling - there is no longer a fixed end-of-term reserved
-       * block, since Formative Assessment and the single closing
-       * Integrated Assessment are now scheduled as part of the ordinary
-       * flow (see buildWeekUnits/placeUnitsIntoTerms).
-       *
-       * @param {number[]} termWeeksArray Per-term week counts, in the
-       *   same order as selectedTerms (termWeeksArray[i] is the weeks
-       *   for selectedTerms[i]) - see renderTermWeeksInputs, which keeps
-       *   the Weeks per term fields 1-for-1 with "Terms to generate".
-       * @param {number[]} [selectedTerms] Which actual (real, e.g.
-       *   school-year) term numbers to build a structure for, e.g.
-       *   [2, 3] to generate only Terms 2-3 (see getSelectedTermsList).
-       *   Every entry keeps its own real term number as `termNumber`,
-       *   so a Term 2-3 run's headings read "Term 2" / "Term 3" -
-       *   never renumbered to "Term 1" / "Term 2". Defaults to
-       *   1..termWeeksArray.length.
-       */
       function buildTermStructure(termWeeksArray, selectedTerms) {
         var weeks = termWeeksArray || [];
         var termNumbers = (selectedTerms && selectedTerms.length)
@@ -1882,16 +1618,11 @@
           return {
             termNumber: termNumber,
             totalWeeks: totalWeeks,
-            // Every week is a candidate teaching slot now - see the
-            // scheduling rule note above buildTermStructure.
             teachingWeeksCount: totalWeeks,
           };
         });
       }
 
-      // Flattens every term's weeks into one ordered list of
-      // { termIndex, localWeek } slots that content can be scheduled
-      // into, term by term, in order.
       function buildTeachingSlots(termStructure) {
         var slots = [];
         termStructure.forEach(function (t, termIndex) {
@@ -1901,7 +1632,6 @@
         });
         return slots;
       }
-
 
       function splitTeachingAndReservedSlots(termStructure) {
         var allSlots = buildTeachingSlots(termStructure);
@@ -1913,7 +1643,6 @@
           totalSlots: allSlots.length,
         };
       }
-
 
       function buildWeekUnits(outcomes, hoursPerWeek) {
         var units = [];
@@ -1950,7 +1679,6 @@
             slotIndex++;
           }
 
-
           if (lastUnit) {
             if (lastUnit.hoursThisWeek + 1 <= hoursPerWeek) {
               lastUnit.formativeAssessmentHours = 1;
@@ -1966,7 +1694,6 @@
             }
           }
         });
-
 
         if (outcomes.length) {
           units.push({
@@ -1997,7 +1724,7 @@
         var shortfallUnits = Math.max(0, weekUnits.length - totalTeachingWeeks);
 
         weekUnits.forEach(function (unit, idx) {
-          if (idx >= teachingSlots.length) return; // no valid, selected week left - see shortfallUnits above
+          if (idx >= teachingSlots.length) return;
           var slot = teachingSlots[idx];
           unit.localWeek = slot.localWeek;
 
@@ -2012,7 +1739,6 @@
           shortfallUnits: shortfallUnits,
         };
       }
-
 
       function reservedWeekDefaults(kind) {
         var CONFIG = {
@@ -2070,7 +1796,6 @@
           : 'Terms ' + nums.join(', ');
       }
 
-
       function renderTable(terms) {
         var tbody = document.getElementById('docTableBody');
 
@@ -2083,7 +1808,6 @@
         var html = terms.map(renderTermBlock).join('');
         tbody.innerHTML = html;
 
-        // Clear a cell's placeholder text the first time the trainer clicks into it.
         tbody.querySelectorAll('.gen-editable-cell, .gen-editable-inline').forEach(function (cell) {
           cell.addEventListener('focus', function onFocus() {
             var placeholder = cell.querySelector ? cell.querySelector('.gen-placeholder-text') : null;
@@ -2144,7 +1868,6 @@
         return html;
       }
 
-
       function formativeAssessmentDefaults(outcome, contents) {
         var shortName = TMSGen.shortOutcomeText(outcome.outcome_text);
         var contentBullet = contents && contents.length
@@ -2173,12 +1896,11 @@
       }
 
       function renderWeekRow(unit, termNumber, isVisible) {
-
         var weekLabel = 'Term ' + termNumber + ' \u2013 Week ' + unit.localWeek;
         var weekCell = '' +
           '<div class="gen-week-cell">' +
           '<span class="gen-week-pill" contenteditable="false">' + TMSGen.escapeHtml(weekLabel) + '</span>' +
-          '<span class="gen-editable-inline" contenteditable="true" data-placeholder="true">[Insert Date]</span>' +
+          '<span class="gen-editable-inline" contenteditable="true" data-placeholder="true">...</span>' +
           '</div>';
 
         var learningUnitCell, learningHoursCell, contentCell,
@@ -2238,9 +1960,6 @@
             ? ('<ul class="gen-bullets">' + contentItems.join('') + '</ul>')
             : '<span class="text-muted">No indicative content this week.</span>';
 
-          // These stay AI-fillable/editable placeholders (filled via the
-          // "Generate with AI" button, or manually) since they concern
-          // an ordinary Learning Outcome delivery week.
           activitiesCell = '<span class="gen-placeholder-text">[Methodologies, comma-separated, max 3]</span>';
           resourcesCell = '<span class="gen-placeholder-text">[Tools, equipment &amp; materials, comma-separated]</span>';
           placeCell = '<span class="gen-placeholder-text">[Specify location, e.g. Classroom / Lab / Workshop]</span>';
@@ -2315,8 +2034,6 @@
       function markRowsLoading(outcomeIds) {
         var fields = ['learning_activities', 'resources', 'learning_place', 'evidence'];
         outcomeIds.forEach(function (id) {
-          // An outcome can now span several week rows (one per term/week
-          // it's taught in), so every matching row gets the same draft.
           var rows = document.querySelectorAll('tr[data-outcome-id="' + id + '"]');
           rows.forEach(function (row) {
             fields.forEach(function (field) {
@@ -2347,14 +2064,9 @@
       }
 
       function fillRowWithAiResult(outcomeId, result) {
-        // Same outcome, every week row it appears in (across terms/weeks)
-        // gets the same AI draft applied.
         var rows = document.querySelectorAll('tr[data-outcome-id="' + outcomeId + '"]');
         if (!rows.length) return;
 
-        // Learning Activities (max 3 methodologies), Resources, and
-        // Evidence (max 2 assessment types) all render as a single
-        // comma-separated line — plain text, no bullets/numbering.
         var csvFieldConfig = {
           learning_activities: { value: result.learning_activities, maxItems: 3 },
           resources: { value: result.resources, maxItems: null },
@@ -2375,7 +2087,6 @@
             cell.classList.add('gen-ai-filled');
           });
 
-          // Learning Place stays a single plain-text value (not a list).
           var placeCell = row.querySelector('[data-field="learning_place"]');
           if (placeCell) {
             var placeText = (result.learning_place || '').toString().trim();
