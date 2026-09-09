@@ -2232,18 +2232,14 @@ def _export_filename(title, fallback):
 # Admin verifies the payment and flips `is_paid` on for the trainer from
 # the Django admin (see TrainerAccessAdmin in admin.py).
 GENERATION_ACCESS_BLOCKED_MESSAGE = (
-    "Free Generation Used\n\n"
-    "You have used your 1 free generation. To generate another Scheme, "
-    "Lesson Plan, or Assessment Plan, please make a payment of 1000 FRW via "
-    "MTN MoMo.\n\n"
-    "Payment Number/Code: 0787306250/444322\n"
-    "Amount: 1000 FRW\n\n"
-    "After payment, please contact Jean Marie Vianney on WhatsApp. An "
-    "administrator will verify your payment and activate your generation "
-    "access.\n\n"
-    "Note: Your access will be activated after payment verification."
+    "Free Generation Limit Reached 🔒\n\n"
+    "To generate additional Schemes, Lesson Plans, or Assessment Plans, "
+    "please complete a quick payment:\n\n"
+    "• Amount: 2,000 FRW\n"
+    "• MTN MoMo: 0787306250 (Code: 444322)\n\n"
+    "Next Step: Send your payment screenshot via WhatsApp to 0787306250 "
+    "for quick verification and access activation."
 )
-
 
 @require_POST
 @csrf_protect
