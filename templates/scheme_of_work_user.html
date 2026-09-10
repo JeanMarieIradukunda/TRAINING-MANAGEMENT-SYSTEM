@@ -36,6 +36,7 @@
       --sow-line-soft: #cfd5e0;
       --sow-table-border: #e6e9f2;
       --sow-row-alt: #f6f8fb;
+      --sow-row-alt-table: #fafbfc;
       --sow-bg-card: #ffffff;
     }
 
@@ -239,13 +240,10 @@
       padding: 0.75rem 0.6rem;
       line-height: 1.35;
       border-bottom: 2px solid var(--sow-table-border);
-      border-right: 1px solid rgba(255, 255, 255, 0.14);
+      box-shadow: 0 3px 6px -3px rgba(19, 22, 27, 0.35);
+      position: relative;
       white-space: normal;
       word-break: break-word;
-    }
-
-    .gen-table-v2 thead th:last-child {
-      border-right: none;
     }
 
     .gen-table-v2 th,
@@ -259,7 +257,6 @@
       word-break: break-word;
       padding: 0.7rem 0.75rem;
       border-bottom: 1px solid var(--sow-line-soft);
-      border-right: 1px solid var(--sow-line-soft);
       line-height: 1.5;
     }
 
@@ -268,11 +265,6 @@
     .gen-table-v2 td:nth-child(6) {
       padding: 0.75rem 0.85rem;
       line-height: 1.55;
-    }
-
-    .gen-table-v2 td:last-child,
-    .gen-table-v2 th:last-child {
-      border-right: none;
     }
 
     .gen-table-v2 tbody tr:last-child td {
@@ -286,13 +278,23 @@
       text-align: center;
     }
 
+    .gen-table-v2 td:nth-child(3) {
+      font-variant-numeric: tabular-nums;
+    }
+
     /* Alternating Row Shading */
     .gen-table-v2 tbody tr:nth-child(even):not(.gen-term-separator):not(.gen-week-pager-row) td {
-      background: var(--sow-row-alt);
+      background: var(--sow-row-alt-table);
     }
 
     .gen-table-v2 tbody tr:nth-child(odd):not(.gen-term-separator):not(.gen-week-pager-row) td {
       background: #ffffff;
+    }
+
+    /* Screen-only row highlight to help trainers track a row while editing
+       - :hover never fires in print, so this has no effect on PDF export. */
+    .gen-table-v2 tbody tr:not(.gen-term-separator):not(.gen-week-pager-row):hover td {
+      background: #eef2fb;
     }
 
     .gen-table-v2 tbody tr {
@@ -355,6 +357,9 @@
       display: inline-flex;
       align-items: center;
       gap: 0.5rem;
+      padding: 0.25rem 0.75rem;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 6px;
     }
 
     .gen-term-sep-meta {
@@ -692,13 +697,14 @@
 
       .gen-table-v2 th,
       .gen-table-v2 td {
-        border: 1px solid #b9c1cf !important;
+        border: none !important;
+        border-bottom: 1px solid var(--sow-table-border, #e6e9f2) !important;
       }
 
       .gen-table-v2 tbody tr:nth-child(even):not(.gen-term-separator):not(.gen-week-pager-row) td {
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
-        background: #f6f8fb !important;
+        background: var(--sow-row-alt-table, #fafbfc) !important;
       }
 
       .gen-editable-cell,
