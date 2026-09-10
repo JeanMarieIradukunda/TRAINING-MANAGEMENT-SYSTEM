@@ -107,6 +107,11 @@ urlpatterns = [
         views.generate_assessment_plan_ai_content,
         name='assessmentplan-ai-generate'
     ),
+    path(
+        'api/lesson-plan/notes/generate/',
+        views.generate_lesson_plan_notes,
+        name='lessonplan-notes-generate'
+    ),
 
     # Document export ("Download as Word/Excel") for the three generator pages
     path(

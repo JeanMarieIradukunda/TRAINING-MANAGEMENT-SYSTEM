@@ -3201,6 +3201,532 @@ Rules:
 
 
 # ---------------------------------------------------------------------------
+# AI (Groq) endpoint used by the Lesson Plan (Session Plan) generator page's
+# "Generate notes" modal.
+#
+# Unlike generate_lesson_plan_ai_content above (which drafts the session
+# plan's own content - trainer/learner activities, resources, timing), this
+# endpoint turns the Development/Body of the plan as CURRENTLY RENDERED on
+# screen (read straight out of the DOM by the browser - same approach as
+# TMSGen.collectExportPayload for the Word export, see
+# collectLessonPlanForNotes() in lesson_plan_user.html) into proper
+# "Session Notes": the teacher's board-writing notes and the students'
+# summary/revision notes for the session.
+#
+# Session Notes deliberately cover ONLY the Development/Body - no
+# Introduction, greetings, attendance, trainer/learner activity bullets,
+# timing, or other lesson-plan sections - broken into Step 1 -> final Step,
+# each split into its topic(s) with a real explanation, key points, key
+# terms/definitions, and an example, followed by a generated
+# ASSIGNMENT / ASSESSMENT section testing that same content. These are
+# shown in a modal the trainer can read from while teaching, and exported
+# to PDF via the browser's print dialog, scoped to that modal only.
+# ---------------------------------------------------------------------------
+MAX_NOTES_STEPS = 12
+NOTES_QUESTION_TYPES = {"short_answer", "definition", "understanding", "application", "practical"}
+
+
+def _step_activity_block(step):
+    """Renders one Development/Body step's trainer/learner activity bullets
+    as a small plain-text block of RAW MATERIAL for the AI prompt - this is
+    what the step is about, not what the finished notes should look like
+    (kept out of generate_lesson_plan_notes itself just to keep that
+    function's prompt-building readable)."""
+    lines = []
+    trainer_items = [str(t).strip() for t in (step.get("trainer_activity") or []) if str(t).strip()]
+    learner_items = [str(t).strip() for t in (step.get("learner_activity") or []) if str(t).strip()]
+    if trainer_items:
+        lines.append("Trainer's activity: " + "; ".join(trainer_items))
+    if learner_items:
+        lines.append("Learner's activity: " + "; ".join(learner_items))
+    return "\n".join(lines) or "(no activity detail supplied for this step)"
+
+
+STRICT_JSON_RETRY_REMINDER = (
+    "Return compact, valid JSON. Double check every opening brace/bracket "
+    "has a matching close before responding."
+)
+
+
+def _extract_json_object(text):
+    """Trims stray text/markdown fences from around the outermost JSON
+    object in raw model output before it's handed to json.loads - the
+    model occasionally still wraps its answer in ```json fences or adds a
+    stray character despite response_format=json_object."""
+    text = (text or "").strip()
+    if text.startswith("```"):
+        text = text.strip("`")
+        if text.lower().startswith("json"):
+            text = text[4:]
+        text = text.strip()
+    start = text.find("{")
+    end = text.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        return text[start:end + 1]
+    return text
+
+
+def _repair_balanced_json(text):
+    """Lightweight bracket-balancing repair pass for near-valid JSON where
+    the model closed an object/array one brace or bracket too early or too
+    late - the specific corruption seen on long, deeply nested "steps"
+    payloads. Walks the string tracking bracket depth and string state:
+    once the outermost object's brackets balance back to zero, anything
+    after that point is dropped (handles "closed one brace too early, with
+    junk trailing after"); any brackets still open at the end of the
+    string are closed off, innermost first (handles "closed one brace too
+    late"/never closed). This is NOT a general JSON fixer - anything it
+    can't resolve is simply left for json.loads to reject, so callers
+    still fail gracefully rather than getting a silently wrong repair.
+    """
+    stack = []
+    in_string = False
+    escape = False
+    end_index = None
+    for i, ch in enumerate(text):
+        if in_string:
+            if escape:
+                escape = False
+            elif ch == "\\":
+                escape = True
+            elif ch == '"':
+                in_string = False
+            continue
+        if ch == '"':
+            in_string = True
+        elif ch in "{[":
+            stack.append(ch)
+        elif ch in "}]":
+            if stack:
+                stack.pop()
+            if not stack and end_index is None:
+                end_index = i
+    repaired = text[:end_index + 1] if end_index is not None else text
+    if stack:
+        repaired += "".join("}" if c == "{" else "]" for c in reversed(stack))
+    return repaired
+
+
+def _parse_ai_json(raw_content):
+    """Try to parse `raw_content` as a JSON object: as-is first, then
+    through the bracket-balancing repair pass above. Returns the parsed
+    dict/list on success, or None if both attempts fail."""
+    candidate = _extract_json_object(raw_content)
+    try:
+        return json.loads(candidate)
+    except json.JSONDecodeError:
+        pass
+    try:
+        return json.loads(_repair_balanced_json(candidate))
+    except json.JSONDecodeError:
+        return None
+
+
+def _is_json_validate_failure(exc):
+    """True if `exc` is the Groq APIError raised when response_format=
+    json_object rejects the model's own output (code 'json_validate_failed')."""
+    if getattr(exc, "code", None) == "json_validate_failed":
+        return True
+    body = getattr(exc, "body", None)
+    if isinstance(body, dict):
+        return body.get("error", {}).get("code") == "json_validate_failed"
+    return False
+
+
+def _groq_json_completion(client, model_name, system_prompt, user_prompt, max_completion_tokens, temperature=0.4):
+    """
+    Calls Groq for a single JSON completion, resilient to the "mismatched/
+    misplaced closing braces on long nested output" failure mode:
+
+      1. If the call raises Groq's APIError with code 'json_validate_failed',
+         or succeeds but the content can't be parsed as JSON (even after
+         the repair pass below), retry ONCE with an extra system reminder
+         telling the model to double-check its bracket matching.
+      2. Before giving up, run the raw output through the lightweight
+         bracket-balancing repair pass in _repair_balanced_json rather than
+         failing outright on an otherwise-good response that's just
+         missing (or has one extra) closing brace/bracket.
+
+    Returns (data, raw_content) on success. RateLimitError, APIConnectionError,
+    and any non-json_validate_failed APIError are left to propagate unchanged
+    for the caller's existing exception handling. Raises ValueError(raw_content)
+    if both the original and retried completions produce unparseable JSON, so
+    the caller can give up gracefully with a clear user-facing error.
+    """
+    current_system_prompt = system_prompt
+    last_raw = ""
+    for attempt in range(2):
+        try:
+            completion = client.chat.completions.create(
+                model=model_name,
+                messages=[
+                    {"role": "system", "content": current_system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                temperature=temperature,
+                max_completion_tokens=max_completion_tokens,
+                response_format={"type": "json_object"},
+            )
+        except APIError as e:
+            if attempt == 0 and _is_json_validate_failure(e):
+                logger.warning(
+                    "Groq rejected its own output (json_validate_failed) on "
+                    "the first attempt, retrying once with a stricter system reminder"
+                )
+                current_system_prompt = system_prompt + " " + STRICT_JSON_RETRY_REMINDER
+                continue
+            raise
+
+        raw_content = (completion.choices[0].message.content or "").strip()
+        last_raw = raw_content
+        data = _parse_ai_json(raw_content)
+        if data is not None:
+            return data, raw_content
+
+        if attempt == 0:
+            logger.warning(
+                "Groq returned JSON that failed to parse (even after the repair "
+                "pass) on the first attempt, retrying once with a stricter "
+                "system reminder: %s", raw_content
+            )
+            current_system_prompt = system_prompt + " " + STRICT_JSON_RETRY_REMINDER
+            continue
+
+    raise ValueError(last_raw)
+
+
+def _step_notes_user_prompt(context_block, step, step_number, total_steps):
+    """Builds the per-step prompt for generate_lesson_plan_notes - a much
+    smaller, flatter JSON shape (just this one step's topics) than the old
+    single giant nested "steps -> topics" call, which is what made longer
+    plans (4+ steps with multiple topics each) prone to the model
+    mismatching closing braces in the first place."""
+    label = step["title"] or f"Step {step_number}"
+    return f"""Below is ONE step (step {step_number} of {total_steps}) from the
+DEVELOPMENT/BODY of a session/lesson plan I have already written. The
+activity lines are raw planning notes for what the trainer/learners DO -
+they are NOT the teaching content itself.
+
+SESSION CONTEXT:
+{context_block}
+
+STEP {step_number}: {label}
+{_step_activity_block(step)}
+
+Turn this ONE step into proper SESSION NOTES content - the teacher's
+board-writing notes and the students' summary/revision notes for this
+step only. Identify the topic(s) actually taught in this step (usually
+1-3 topics; infer them sensibly from the step's title and activity lines
+and your own subject knowledge - do not just copy the activity bullets).
+For EVERY topic, write:
+- "topic": a short topic name.
+- "explanation": a clear explanation, a few sentences, real teaching
+  content in simple, clear, everyday English.
+- "key_points": an array of short key point strings.
+- "key_terms": an array of {{"term", "definition"}} pairs for any
+  important terms/vocabulary introduced by this topic (leave empty [] if
+  none are needed).
+- "example": one simple, practical example that helps a beginner
+  understand the topic (technical subjects: a short code snippet, command,
+  procedure, scenario, or calculation where relevant). Leave "" only if an
+  example genuinely does not apply.
+
+Rules:
+- Keep language simple, clear and classroom-friendly.
+- Explain every topic - do not skip important content, and do not invent
+  topics unrelated to what was actually planned for this step.
+- Respond with STRICT JSON ONLY, matching exactly this shape (no extra
+  fields, THIS STEP ONLY):
+{{
+  "topics": [
+    {{
+      "topic": "<short topic name>",
+      "explanation": "<clear explanation, a few sentences>",
+      "key_points": ["<point 1>", "<point 2>"],
+      "key_terms": [{{"term": "<term>", "definition": "<short definition>"}}],
+      "example": "<simple example, or \\"\\" if none applies>"
+    }}
+  ]
+}}
+""".strip()
+
+
+def _assessment_user_prompt(context_block, clean_steps_out):
+    """Builds the final prompt for generate_lesson_plan_notes' ASSIGNMENT/
+    ASSESSMENT section, run as its own (small) call after all per-step
+    notes above are generated, using the notes actually produced as the
+    content to test."""
+    content_lines = []
+    for step in clean_steps_out:
+        for t in step["topics"]:
+            content_lines.append(f"- {t['topic']}: {t['explanation']}")
+    content_block = "\n".join(content_lines) or "No session content was generated."
+
+    return f"""SESSION CONTEXT:
+{context_block}
+
+SESSION CONTENT COVERED (from the notes already written for this session):
+{content_block}
+
+Write an ASSIGNMENT / ASSESSMENT: 6-10 questions that directly test the
+content listed above. Mix the question types: short_answer, definition,
+understanding, application, practical - use whichever mix makes sense for
+this content, and it's fine to skip a type that doesn't fit.
+
+Respond with STRICT JSON ONLY, matching exactly this shape:
+{{
+  "assessment": {{
+    "questions": [
+      {{"type": "short_answer", "question": "<question testing the content above>"}}
+    ]
+  }}
+}}
+""".strip()
+
+
+@require_POST
+@csrf_protect
+@login_required_json
+def generate_lesson_plan_notes(request):
+    """
+    AI endpoint backing the "Generate notes" button on the Lesson Plan
+    (Session Plan) generator page.
+
+    Receives the session's Development/Body as currently rendered on
+    screen (topic/outcome/range/objectives for context, plus an ordered
+    list of Development/Body steps - title + trainer/learner activity) and
+    asks Groq to turn it into proper Session Notes: for every
+    Development/Body step, broken into its topic(s), each with a clear
+    explanation, key points, key terms/definitions and an example - ready
+    to be used as the teacher's board notes and the students' summary/
+    revision notes - followed by an ASSIGNMENT/ASSESSMENT section testing
+    that content. Introduction, activities, timing and every other
+    lesson-plan section are deliberately left out.
+
+    Returns:
+      {
+        "steps": [
+          {"topics": [
+            {"topic": "...", "explanation": "...", "key_points": [...],
+             "key_terms": [{"term": "...", "definition": "..."}],
+             "example": "..."}
+          ]},
+          ...  # one entry per Development/Body step supplied, same order
+        ],
+        "assessment": {"questions": [{"type": "...", "question": "..."}, ...]}
+      }
+
+    The Groq API key never leaves the server - the browser only ever talks
+    to this endpoint.
+    """
+    # --------------------------------------------------
+    # 1. Parse request safely
+    # --------------------------------------------------
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JsonResponse({"error": "Invalid JSON payload"}, status=400)
+
+    if not isinstance(payload, dict):
+        return JsonResponse({"error": "Invalid request payload"}, status=400)
+
+    topic = str(payload.get("topic", ""))[:200].strip()
+    outcome_text = str(payload.get("outcome_text", ""))[:500].strip()
+    range_text = str(payload.get("range", ""))[:500].strip()
+    objectives = [str(o)[:300] for o in (payload.get("objectives") or [])][:10]
+
+    raw_steps = payload.get("steps") if isinstance(payload.get("steps"), list) else []
+    steps = []
+    for s in raw_steps[:MAX_NOTES_STEPS]:
+        if not isinstance(s, dict):
+            continue
+        steps.append({
+            "title": str(s.get("title", ""))[:200].strip(),
+            "trainer_activity": [str(t)[:300] for t in (s.get("trainer_activity") or [])][:10],
+            "learner_activity": [str(t)[:300] for t in (s.get("learner_activity") or [])][:10],
+        })
+
+    if not steps:
+        return JsonResponse(
+            {"error": "No Development/Body steps were supplied - generate a session plan first."},
+            status=400,
+        )
+
+    # --------------------------------------------------
+    # 2. Build a structured, strict-JSON prompt
+    # --------------------------------------------------
+    system_prompt = (
+        "You are an experienced TVET (Technical and Vocational Education and "
+        "Training) trainer, preparing SESSION NOTES for a session you already "
+        "planned - the kind of clear, well-organised notes a teacher writes "
+        "on the board for students to copy and later use for revision. You "
+        "know the subject matter well and write real teaching content: "
+        "definitions, explanations, key points and simple, practical "
+        "examples - never a rephrasing of a to-do list of activities. Use "
+        "simple, clear, everyday English and avoid unnecessary jargon. You "
+        "always respond with a single valid JSON object and nothing else - "
+        "no markdown fences, no commentary, no explanations outside the "
+        "JSON."
+    )
+
+    context_bits = []
+    if topic:
+        context_bits.append(f"Session topic: {topic}")
+    if outcome_text:
+        context_bits.append(f"Learning outcome: {outcome_text}")
+    if range_text:
+        context_bits.append(f"Range (scope of this session): {range_text}")
+    if objectives:
+        context_bits.append("Objectives: " + "; ".join(objectives))
+    context_block = "\n".join(context_bits) or "No additional session context supplied."
+
+    def _clean_topic(raw_topic):
+        if not isinstance(raw_topic, dict):
+            return None
+        topic_name = str(raw_topic.get("topic", "")).strip()
+        explanation = str(raw_topic.get("explanation", "")).strip()
+        if not topic_name or not explanation:
+            return None
+
+        key_points = [
+            str(p).strip() for p in (raw_topic.get("key_points") or [])
+            if str(p).strip()
+        ][:8]
+
+        key_terms = []
+        for kt in (raw_topic.get("key_terms") or [])[:8]:
+            if not isinstance(kt, dict):
+                continue
+            term = str(kt.get("term", "")).strip()
+            definition = str(kt.get("definition", "")).strip()
+            if term and definition:
+                key_terms.append({"term": term, "definition": definition})
+
+        example = str(raw_topic.get("example", "")).strip()
+
+        return {
+            "topic": topic_name,
+            "explanation": explanation,
+            "key_points": key_points,
+            "key_terms": key_terms,
+            "example": example,
+        }
+
+    # --------------------------------------------------
+    # 3. Call Groq - ONCE PER Development/Body step (a much smaller, flatter
+    # JSON shape per call) instead of one giant nested call for the whole
+    # plan, plus one final call for the assessment. This is what actually
+    # keeps the "mismatched/misplaced closing braces on long nested output"
+    # failure from happening in the first place on longer plans (4+ steps
+    # with multiple topics each); _groq_json_completion below adds a
+    # retry-with-stricter-reminder + bracket-repair pass on top of that for
+    # whatever still slips through on any individual (now much smaller) call.
+    # --------------------------------------------------
+    try:
+        client = get_client()
+    except RuntimeError as e:
+        logger.error("Groq client not configured: %s", e)
+        return JsonResponse({"error": str(e)}, status=500)
+
+    model_name = getattr(settings, "GROQ_MODEL", "openai/gpt-oss-120b")
+
+    try:
+        clean_steps_out = []
+        for i, step in enumerate(steps, start=1):
+            step_prompt = _step_notes_user_prompt(context_block, step, i, len(steps))
+            step_data, _ = _groq_json_completion(
+                client, model_name, system_prompt, step_prompt,
+                max_completion_tokens=2048,
+            )
+            raw_topics = step_data.get("topics") if isinstance(step_data, dict) and isinstance(step_data.get("topics"), list) else []
+            clean_topics = [t for t in (_clean_topic(rt) for rt in raw_topics) if t]
+            if not clean_topics:
+                clean_topics = [{
+                    "topic": step["title"] or f"Step {i}",
+                    "explanation": (
+                        "Couldn't generate detailed notes for this step - refer to "
+                        "the session plan's Development/Body for the content covered here."
+                    ),
+                    "key_points": [],
+                    "key_terms": [],
+                    "example": "",
+                }]
+            clean_steps_out.append({"topics": clean_topics})
+
+        assessment_prompt = _assessment_user_prompt(context_block, clean_steps_out)
+        assessment_data, _ = _groq_json_completion(
+            client, model_name, system_prompt, assessment_prompt,
+            max_completion_tokens=2048,
+        )
+    except RateLimitError:
+        logger.warning("Groq rate limit hit")
+        return JsonResponse(
+            {"error": "The AI service is rate-limited right now. Please try again in a moment."},
+            status=429,
+        )
+    except APIConnectionError as e:
+        logger.error("Could not reach Groq: %s", e)
+        return JsonResponse(
+            {"error": "Could not reach the AI service. Check your internet connection and try again."},
+            status=502,
+        )
+    except APIError as e:
+        logger.error("Groq API error (%s): %s", getattr(e, "status_code", "?"), e)
+        message = str(e)
+        if getattr(e, "status_code", None) == 401:
+            message = "The Groq API key is invalid or missing. Check GROQ_API_KEY in your .env file."
+        elif "decommissioned" in message.lower():
+            message = (
+                f"The model '{model_name}' is no longer available on Groq. "
+                "Update GROQ_MODEL in your .env file to a current model "
+                "(see https://console.groq.com/docs/models)."
+            )
+        return JsonResponse({"error": message}, status=502)
+    except ValueError as e:
+        # Both the original completion and the stricter-reminder retry
+        # produced JSON that couldn't be parsed (even after the
+        # bracket-balancing repair pass) - give up gracefully with a clear
+        # user-facing error instead of a raw 500.
+        logger.error("AI returned invalid JSON after retry: %s", e)
+        return JsonResponse(
+            {"error": "AI returned invalid JSON. Please try generating notes again.", "raw_output": str(e)},
+            status=502,
+        )
+    except Exception as e:
+        logger.exception("Unexpected error calling Groq")
+        return JsonResponse({"error": "Internal server error", "detail": str(e)}, status=500)
+
+    # --------------------------------------------------
+    # 4. Validate & defensively coerce the assessment structure (the
+    # per-step "steps" output above is already cleaned/coerced as it's
+    # built in section 3).
+    # --------------------------------------------------
+    raw_assessment = assessment_data.get("assessment") if isinstance(assessment_data, dict) and isinstance(assessment_data.get("assessment"), dict) else {}
+    raw_questions = raw_assessment.get("questions") if isinstance(raw_assessment.get("questions"), list) else []
+    clean_questions = []
+    for q in raw_questions[:15]:
+        if not isinstance(q, dict):
+            continue
+        question_text = str(q.get("question", "")).strip()
+        if not question_text:
+            continue
+        q_type = str(q.get("type", "")).strip().lower()
+        if q_type not in NOTES_QUESTION_TYPES:
+            q_type = "short_answer"
+        clean_questions.append({"type": q_type, "question": question_text})
+
+    # --------------------------------------------------
+    # 5. Return success
+    # --------------------------------------------------
+    return JsonResponse({
+        "steps": clean_steps_out,
+        "assessment": {"questions": clean_questions},
+    })
+
+
+
+
+# ---------------------------------------------------------------------------
 # AI (Groq) endpoint used by the Assessment Plan generator page
 # ---------------------------------------------------------------------------
 @require_POST

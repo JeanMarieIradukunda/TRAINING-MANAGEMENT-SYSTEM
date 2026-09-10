@@ -178,6 +178,9 @@
           <button type="button" class="btn btn-outline-secondary btn-sm" id="exportDocxBtn">
             <i class="fa-solid fa-file-word me-1"></i> Download as Word
           </button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" id="generateNotesBtn">
+            <i class="fa-solid fa-note-sticky me-1"></i> Generate notes
+          </button>
         </div>
       </div>
 
@@ -304,6 +307,38 @@
 
   </div>
 
+  <!-- ==================== SESSION NOTES MODAL ====================
+       Opened by the "Generate notes" toolbar button once a session plan
+       has been generated — asks the AI endpoint for short, plain-English
+       explainer notes on every step of the plan (Introduction, each
+       Development/Body step, and the Conclusion) so the trainer has
+       talking points to deliver the session from. "Export to PDF" prints
+       just this modal via the browser's print dialog (see
+       body.printing-notes-modal in style.css and the click handler
+       below) — the same "save as PDF" approach used for the main
+       document, scoped to the modal only. -->
+  <div class="modal fade gen-notes-modal no-print" id="lessonNotesModal" tabindex="-1" aria-labelledby="lessonNotesModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="lessonNotesModalLabel">
+            <i class="fa-solid fa-note-sticky me-2"></i>Session notes
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="notesModalBody">
+          <!-- Filled in by renderNotesLoading()/renderNotes()/renderNotesError() -->
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-gold btn-sm" id="exportNotesPdfBtn" disabled>
+            <i class="fa-solid fa-file-pdf me-1"></i> Export to PDF
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Curriculum snapshot: sectors, trades, levels, trade/level links, modules,
        learning outcomes, indicative contents, trainers and logos — everything
        the cascading selects and the document below are built from. -->
@@ -358,9 +393,22 @@
       var selectorFields = document.getElementById('selectorFields');
       var docStepsBody = document.getElementById('docStepsBody');
 
+      // "Generate notes" modal — short, AI-drafted explainer notes on every
+      // step of the generated session plan (see collectLessonPlanForNotes/
+      // onGenerateNotes below).
+      var generateNotesBtn = document.getElementById('generateNotesBtn');
+      var lessonNotesModalEl = document.getElementById('lessonNotesModal');
+      var notesModalBody = document.getElementById('notesModalBody');
+      var exportNotesPdfBtn = document.getElementById('exportNotesPdfBtn');
+      var bsNotesModal = null;
+
       // Facilitation Technique(s) + Development/Body steps are drafted
       // server-side by Groq — see core/views.py: generate_lesson_plan_ai_content.
       var AI_ENDPOINT = '/api/lesson-plan/ai-generate/';
+
+      // Short explainer notes on every step of the generated plan — see
+      // core/views.py: generate_lesson_plan_notes.
+      var NOTES_ENDPOINT = '/api/lesson-plan/notes/generate/';
 
       var sectorsById = indexBy(data.sectors, 'id');
       var modulesById = indexBy(data.modules, 'id');
@@ -448,6 +496,232 @@
           });
       }
 
+      // -------------------------------------------------------------
+      // "Generate notes" — turns the Development/Body of the CURRENTLY
+      // RENDERED session plan into proper SESSION NOTES: the teacher's
+      // board-writing notes and the students' summary/revision notes,
+      // organised Step 1 → final step, each broken into its topic(s) with
+      // an explanation, key points, key terms and an example, followed by
+      // a generated Assignment/Assessment. Introduction, activities,
+      // timing and every other lesson-plan section are deliberately left
+      // out — see generate_lesson_plan_notes() in core/views.py. Reads
+      // the same on-screen data the trainer sees/has edited (same
+      // approach as TMSGen.collectExportPayload for the Word export
+      // above) rather than re-deriving it, so the notes always match
+      // what's on screen.
+      // -------------------------------------------------------------
+      var NOTES_QUESTION_TYPE_LABELS = {
+        short_answer: 'Short answer',
+        definition: 'Definition',
+        understanding: 'Understanding',
+        application: 'Application',
+        practical: 'Practical',
+      };
+
+      function textOf(id) {
+        var el = document.getElementById(id);
+        return el ? el.textContent.trim() : '';
+      }
+
+      // Reads a rendered bullet list (<li> items) back into a plain array;
+      // falls back to the block's own text if it isn't a list yet (e.g. the
+      // trainer hasn't touched an AI-failed field).
+      function listItemsOf(el) {
+        if (!el) return [];
+        var items = Array.prototype.map.call(el.querySelectorAll('li'), function (li) {
+          return li.textContent.trim();
+        }).filter(Boolean);
+        if (items.length) return items;
+        var text = el.textContent.trim();
+        return text ? [text] : [];
+      }
+
+      // Only the Development/Body steps (plus a little context for
+      // grounding) — Session Notes deliberately exclude the Introduction,
+      // Conclusion, activities and timing.
+      function collectLessonPlanForNotes() {
+        var steps = Array.prototype.map.call(docStepsBody.querySelectorAll('tr'), function (tr) {
+          var titleCell = tr.querySelector('.gen-step-cell');
+          var blocks = tr.querySelectorAll('.gen-sp-editable-block');
+          var title = titleCell ? titleCell.textContent.replace(/\s*AI\s*$/, '').trim() : '';
+          return {
+            title: title,
+            trainer_activity: listItemsOf(blocks[0]),
+            learner_activity: listItemsOf(blocks[1]),
+          };
+        }).filter(function (s) { return s.title || s.trainer_activity.length || s.learner_activity.length; });
+
+        return {
+          topic: textOf('spTopic') || topicInput.value || '',
+          outcome_text: textOf('spOutcome'),
+          range: textOf('spRange'),
+          objectives: listItemsOf(document.getElementById('spObjectives')),
+          steps: steps,
+        };
+      }
+
+      function renderNotesLoading() {
+        notesModalBody.innerHTML =
+          '<div class="gen-notes-loading text-center py-4">' +
+          '<i class="fa-solid fa-circle-notch fa-spin me-2"></i> Drafting the session notes…</div>';
+        if (exportNotesPdfBtn) exportNotesPdfBtn.disabled = true;
+      }
+
+      function renderNotesError(message) {
+        notesModalBody.innerHTML =
+          '<div class="gen-ai-error-text py-3">' +
+          TMSGen.escapeHtml(message || "Couldn't generate session notes right now — please try again.") +
+          '</div>';
+        if (exportNotesPdfBtn) exportNotesPdfBtn.disabled = true;
+      }
+
+      // stepTitles: the step labels as shown on the plan (e.g. "Step 1: Basic
+      // programming concepts"), in the same order sent to the API, so
+      // headings always match what's on screen even if the AI mangles them.
+      function renderNotes(topic, stepTitles, data) {
+        var apiSteps = (data && Array.isArray(data.steps)) ? data.steps : [];
+        var hasContent = apiSteps.some(function (s) {
+          return s && Array.isArray(s.topics) && s.topics.some(function (t) {
+            return t && (t.explanation || '').toString().trim();
+          });
+        });
+        if (!hasContent) {
+          renderNotesError();
+          return;
+        }
+
+        var html = '<div class="gen-notes-doc">';
+        html += '<h4 class="gen-notes-doc-title">' + TMSGen.escapeHtml(topic || 'Session') + ' — Session Notes</h4>';
+        html += '<p class="gen-notes-doc-subtitle">Board notes for teaching &amp; student revision</p>';
+
+        stepTitles.forEach(function (label, i) {
+          var stepOut = apiSteps[i] || {};
+          var topics = Array.isArray(stepOut.topics) ? stepOut.topics : [];
+          if (!topics.length) return;
+
+          html += '<section class="gen-notes-step">';
+          html += '<h5 class="gen-notes-step-heading">' + TMSGen.escapeHtml((label || ('Step ' + (i + 1))).toUpperCase()) + '</h5>';
+
+          topics.forEach(function (t) {
+            if (!t || !(t.explanation || '').toString().trim()) return;
+            html += '<div class="gen-notes-topic">';
+            html += '<h6 class="gen-notes-topic-heading">' + TMSGen.escapeHtml((t.topic || 'Topic').toString().trim()) + '</h6>';
+            html += '<p class="gen-notes-topic-explanation">' + TMSGen.escapeHtml(t.explanation.toString().trim()) + '</p>';
+
+            var keyPoints = Array.isArray(t.key_points)
+              ? t.key_points.filter(function (p) { return (p || '').toString().trim(); })
+              : [];
+            if (keyPoints.length) {
+              html += '<ul class="gen-notes-key-points">';
+              keyPoints.forEach(function (p) {
+                html += '<li>' + TMSGen.escapeHtml(p.toString().trim()) + '</li>';
+              });
+              html += '</ul>';
+            }
+
+            var keyTerms = Array.isArray(t.key_terms)
+              ? t.key_terms.filter(function (k) {
+                  return k && (k.term || '').toString().trim() && (k.definition || '').toString().trim();
+                })
+              : [];
+            if (keyTerms.length) {
+              html += '<dl class="gen-notes-key-terms">';
+              keyTerms.forEach(function (k) {
+                html += '<dt>' + TMSGen.escapeHtml(k.term.toString().trim()) + '</dt>' +
+                  '<dd>' + TMSGen.escapeHtml(k.definition.toString().trim()) + '</dd>';
+              });
+              html += '</dl>';
+            }
+
+            var example = (t.example || '').toString().trim();
+            if (example) {
+              html += '<div class="gen-notes-example"><span class="gen-notes-example-label">Example</span>' +
+                '<p>' + TMSGen.escapeHtml(example) + '</p></div>';
+            }
+
+            html += '</div>';
+          });
+
+          html += '</section>';
+        });
+
+        var questions = (data && data.assessment && Array.isArray(data.assessment.questions))
+          ? data.assessment.questions.filter(function (q) { return q && (q.question || '').toString().trim(); })
+          : [];
+        if (questions.length) {
+          html += '<section class="gen-notes-assessment">';
+          html += '<h5 class="gen-notes-step-heading gen-notes-assessment-heading">Assignment / Assessment</h5>';
+          html += '<ol class="gen-notes-assessment-list">';
+          questions.forEach(function (q) {
+            var typeLabel = NOTES_QUESTION_TYPE_LABELS[q.type] || 'Question';
+            html += '<li><span class="gen-notes-question-type">' + TMSGen.escapeHtml(typeLabel) + '</span> ' +
+              TMSGen.escapeHtml(q.question.toString().trim()) + '</li>';
+          });
+          html += '</ol></section>';
+        }
+
+        html += '<p class="text-end mb-0"><span class="gen-ai-badge">AI</span></p>';
+        html += '</div>';
+
+        notesModalBody.innerHTML = html;
+        if (exportNotesPdfBtn) exportNotesPdfBtn.disabled = false;
+      }
+
+      function onGenerateNotes() {
+        var payload = collectLessonPlanForNotes();
+        if (!payload.steps.length) {
+          TMS.toast('Generate a session plan first.', 'danger');
+          return;
+        }
+
+        var stepTitles = payload.steps.map(function (s) { return s.title; });
+
+        if (!bsNotesModal) bsNotesModal = new bootstrap.Modal(lessonNotesModalEl);
+        renderNotesLoading();
+        bsNotesModal.show();
+
+        fetch(NOTES_ENDPOINT, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken'),
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+          body: JSON.stringify(payload),
+        })
+          .then(function (response) {
+            if (!response.ok) {
+              return response.json().catch(function () { return {}; }).then(function (data) {
+                throw new Error(data.error || ('Notes request failed with status ' + response.status));
+              });
+            }
+            return response.json();
+          })
+          .then(function (data) {
+            renderNotes(payload.topic, stepTitles, data);
+          })
+          .catch(function (err) {
+            console.error(err);
+            renderNotesError(err && err.message);
+          });
+      }
+
+      // Prints ONLY the notes modal (see body.printing-notes-modal in
+      // style.css) — same "browser print → save as PDF" approach the main
+      // document's "Print / save as PDF" button uses, just scoped to the
+      // modal's content instead of the whole page.
+      function printNotesModal() {
+        document.title = TMSGen.filenameSafe(textOf('spTopic') || topicInput.value, 'Session Notes') + ' - Session Notes';
+        document.body.classList.add('printing-notes-modal');
+
+        function cleanup() {
+          document.body.classList.remove('printing-notes-modal');
+          window.removeEventListener('afterprint', cleanup);
+        }
+        window.addEventListener('afterprint', cleanup);
+        window.print();
+      }
+
       function init() {
         if (!data.modules || data.modules.length === 0) {
           noDataAlert.classList.remove('d-none');
@@ -494,6 +768,8 @@
         });
         printBtn.addEventListener('click', TMSGen.print);
         if (exportDocxBtn) exportDocxBtn.addEventListener('click', exportLessonPlanAsDocx);
+        if (generateNotesBtn) generateNotesBtn.addEventListener('click', onGenerateNotes);
+        if (exportNotesPdfBtn) exportNotesPdfBtn.addEventListener('click', printNotesModal);
         addStepRowBtn.addEventListener('click', function () {
           addStepRow({
             label: 'Step ' + (docStepsBody.children.length + 1),
