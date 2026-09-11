@@ -34,6 +34,15 @@ from groq import Groq, APIError, APIConnectionError, RateLimitError
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font
 from openpyxl.utils import get_column_letter
+from reportlab.lib import colors as pdf_colors
+from reportlab.lib.enums import TA_CENTER
+from reportlab.lib.pagesizes import A4, landscape
+from reportlab.lib.styles import ParagraphStyle
+from reportlab.lib.units import mm
+from reportlab.platypus import (
+    HRFlowable, Image as PdfImage, Paragraph, SimpleDocTemplate, Spacer,
+    Table as PdfTable, TableStyle,
+)
 
 from .models import (
     Logo, Sector, Trade, Level, TradeLevel, Trainer,
@@ -535,6 +544,28 @@ class GeneratedDocumentDownloadView(DoSRequiredMixin, View):
         response = HttpResponse(bytes(doc.file_data), content_type=doc.content_type)
         response["Content-Disposition"] = _content_disposition(doc.filename)
         return response
+
+
+class GeneratedDocumentDeleteView(DoSRequiredMixin, DeleteView):
+    """Lets the Dean of Studies remove a document (and its stored file
+    bytes) from the DoS Dashboard's oversight table. Reuses the same
+    confirm-then-POST template as every other delete flow in this app
+    (core/crud_delete.html) so this stays consistent with, e.g.,
+    SectorDeleteView/TradeDeleteView."""
+    model = GeneratedDocument
+    template_name = 'core/crud_delete.html'
+    title = 'Generated document'
+
+    def get_success_url(self):
+        return reverse_lazy('dos-dashboard')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update({
+            'title': self.title,
+            'list_url_name': 'dos-dashboard',
+        })
+        return context
 
 
 # ---------------------------------------------------------------------------
@@ -1813,6 +1844,19 @@ def _hex_to_rgbcolor(hex_color):
     return RGBColor(int(hex_color[0:2], 16), int(hex_color[2:4], 16), int(hex_color[4:6], 16))
 
 
+def _escape_pdf_text(text):
+    """reportlab's Paragraph markup is a small XML dialect, so any raw
+    &/</> in a captured cell's text (module names with an ampersand,
+    stray angle-bracket, etc.) needs to be escaped before it's handed
+    to Paragraph or the PDF export would throw / render wrong."""
+    return (
+        str(text if text is not None else "")
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+    )
+
+
 def _shade_cell(cell, hex_color):
     """Sets a table cell's background fill (python-docx has no public API
     for this, so it drops to the underlying OOXML <w:shd> element)."""
@@ -1979,6 +2023,12 @@ def _docx_response(document, filename):
         buffer.getvalue(),
         content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     )
+    response["Content-Disposition"] = _content_disposition(filename)
+    return response
+
+
+def _pdf_response(pdf_bytes, filename):
+    response = HttpResponse(pdf_bytes, content_type="application/pdf")
     response["Content-Disposition"] = _content_disposition(filename)
     return response
 
@@ -2238,6 +2288,225 @@ def _build_export_docx(payload):
     return document
 
 
+def _build_export_pdf(payload):
+    """
+    Builds a branded PDF from the same collectExportPayload() JSON
+    structure _build_export_docx() uses - same theme colours (read from
+    payload["theme"] via _resolve_theme), same A4 page size/orientation/
+    margins, institution logo(s), a navy title with a gold underline
+    rule, a shaded two-column meta panel, one table per captured HTML
+    table (merging colspan cells, shading header/"section" rows
+    navy-on-white, zebra-striping body rows), a sign-off row and the
+    footer text.
+
+    Unlike the generator pages' "Print / save as PDF" toolbar button
+    (a client-side window.print() the server never sees), this is
+    rendered server-side so - exactly like the Word/Excel exports - a
+    durable copy can be saved to GeneratedDocument for the Dean of
+    Studies Dashboard.
+    """
+    theme = _resolve_theme(payload)
+    navy = pdf_colors.HexColor(f"#{theme['navy']}")
+    gold = pdf_colors.HexColor(f"#{theme['gold']}")
+    muted = pdf_colors.HexColor(f"#{theme['muted']}")
+    row_alt = pdf_colors.HexColor(f"#{theme['rowAlt']}")
+    line = pdf_colors.HexColor(f"#{theme['line']}")
+    white = pdf_colors.white
+
+    is_landscape = (payload.get("orientation") or "").strip().lower() == "landscape"
+    page_size = landscape(A4) if is_landscape else A4
+    top_m, left_m, right_m, bottom_m = 15 * mm, 13 * mm, 13 * mm, 16 * mm
+    usable_width = page_size[0] - left_m - right_m
+
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=page_size,
+        topMargin=top_m, leftMargin=left_m, rightMargin=right_m, bottomMargin=bottom_m,
+        title=(payload.get("title") or "Document").strip(),
+    )
+    story = []
+
+    # ---- Institution logo(s) -----------------------------------------------
+    logos = payload.get("logos") or []
+    logo_flowables = []
+    for logo in logos:
+        image_bytes = _resolve_logo_bytes((logo or {}).get("src"))
+        if not image_bytes:
+            continue
+        try:
+            img = PdfImage(BytesIO(image_bytes))
+            img.drawHeight = 14 * mm
+            img.drawWidth = img.drawHeight * (img.imageWidth / float(img.imageHeight))
+            logo_flowables.append(img)
+        except Exception:
+            # Corrupt/unsupported image data - skip this logo rather than
+            # failing the whole export.
+            continue
+    if logo_flowables:
+        logo_row = PdfTable([logo_flowables])
+        logo_row.setStyle(TableStyle([
+            ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 6),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ]))
+        story.append(logo_row)
+        story.append(Spacer(1, 6))
+
+    # ---- Title / subtitle ---------------------------------------------------
+    title = (payload.get("title") or "Document").strip()
+    title_style = ParagraphStyle(
+        "ExportTitle", fontName="Helvetica-Bold", fontSize=16,
+        textColor=navy, alignment=TA_CENTER, spaceAfter=2,
+    )
+    story.append(Paragraph(_escape_pdf_text(title.upper()), title_style))
+    story.append(HRFlowable(width="30%", thickness=1.5, color=gold, spaceBefore=2, spaceAfter=8, hAlign="CENTER"))
+
+    subtitle = (payload.get("subtitle") or "").strip()
+    if subtitle:
+        subtitle_style = ParagraphStyle(
+            "ExportSubtitle", fontName="Helvetica-Oblique", fontSize=8.5,
+            textColor=muted, alignment=TA_CENTER, spaceAfter=8,
+        )
+        story.append(Paragraph(_escape_pdf_text(subtitle), subtitle_style))
+    story.append(Spacer(1, 4))
+
+    # ---- Meta info panel -----------------------------------------------------
+    meta = payload.get("meta") or []
+    if meta:
+        meta_data = [[_escape_pdf_text(label), _escape_pdf_text(value)] for label, value in meta]
+        meta_table = PdfTable(meta_data, colWidths=[usable_width / 2.0, usable_width / 2.0])
+        meta_style = [
+            ("BACKGROUND", (0, 0), (-1, -1), row_alt),
+            ("TEXTCOLOR", (0, 0), (0, -1), navy),
+            ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+            ("FONTNAME", (1, 0), (1, -1), "Helvetica"),
+            ("FONTSIZE", (0, 0), (-1, -1), 9),
+            ("ALIGN", (1, 0), (1, -1), "RIGHT"),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ("LEFTPADDING", (0, 0), (-1, -1), 8),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+        ]
+        if len(meta_data) > 1:
+            meta_style.append(("LINEBELOW", (0, 0), (-1, -2), 0.5, line))
+        meta_table.setStyle(TableStyle(meta_style))
+        story.append(meta_table)
+        story.append(Spacer(1, 10))
+
+    # ---- Body table(s) --------------------------------------------------------
+    cell_style = ParagraphStyle("ExportCell", fontName="Helvetica", fontSize=8, leading=10)
+    header_cell_style = ParagraphStyle(
+        "ExportHeaderCell", fontName="Helvetica-Bold", fontSize=8.5,
+        leading=10, textColor=white, alignment=TA_CENTER,
+    )
+    section_cell_style = ParagraphStyle(
+        "ExportSectionCell", fontName="Helvetica-Bold", fontSize=8.5,
+        leading=10, textColor=white,
+    )
+
+    for table_rows in payload.get("tables") or []:
+        if not table_rows:
+            continue
+        n_cols = max((sum(c.get("colspan", 1) for c in r.get("cells", [])) for r in table_rows), default=1)
+        n_cols = max(n_cols, 1)
+
+        col_weights = payload.get("colWidths") or []
+        if len(col_weights) != n_cols:
+            col_weights = [1] * n_cols
+        total_weight = sum(col_weights) or n_cols
+        col_widths = [usable_width * (w / total_weight) for w in col_weights]
+
+        grid = []
+        span_cmds = []
+        style_cmds = [
+            ("GRID", (0, 0), (-1, -1), 0.5, line),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ("LEFTPADDING", (0, 0), (-1, -1), 4),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+        ]
+
+        body_row_index = 0
+        for r_idx, row in enumerate(table_rows):
+            cells = row.get("cells", [])
+            is_section = bool(row.get("section"))
+            is_header_row = bool(cells) and all(c.get("header") for c in cells)
+            if not is_section and not is_header_row:
+                body_row_index += 1
+            row_shade = row_alt if (not is_section and not is_header_row and body_row_index % 2 == 0) else None
+
+            grid_row = [Paragraph("", cell_style) for _ in range(n_cols)]
+            col_index = 0
+            for cell in cells:
+                if col_index >= n_cols:
+                    break
+                colspan = max(int(cell.get("colspan", 1) or 1), 1)
+                end_index = min(col_index + colspan - 1, n_cols - 1)
+                text = _escape_pdf_text(cell.get("text", ""))
+                is_header_cell = bool(cell.get("header"))
+
+                if is_header_cell:
+                    para = Paragraph(text, header_cell_style)
+                elif is_section:
+                    para = Paragraph(text, section_cell_style)
+                else:
+                    para = Paragraph(text, cell_style)
+                grid_row[col_index] = para
+
+                if end_index > col_index:
+                    span_cmds.append(("SPAN", (col_index, r_idx), (end_index, r_idx)))
+                if is_header_cell or is_section:
+                    style_cmds.append(("BACKGROUND", (col_index, r_idx), (end_index, r_idx), navy))
+                elif row_shade:
+                    style_cmds.append(("BACKGROUND", (col_index, r_idx), (end_index, r_idx), row_shade))
+
+                col_index = end_index + 1
+            grid.append(grid_row)
+
+        body_table = PdfTable(grid, colWidths=col_widths, repeatRows=1 if grid else 0)
+        body_table.setStyle(TableStyle(style_cmds + span_cmds))
+        story.append(body_table)
+        story.append(Spacer(1, 10))
+
+    # ---- Sign-off --------------------------------------------------------------
+    signoff = payload.get("signoff") or []
+    active_lines = [
+        line for line in signoff
+        if (line.get("label") or "").strip() or (line.get("name") or "").strip()
+    ]
+    if active_lines:
+        signoff_style = ParagraphStyle("ExportSignoff", fontName="Helvetica", fontSize=9)
+        signoff_cells = []
+        for signoff_line in active_lines:
+            label = _escape_pdf_text((signoff_line.get("label") or "").strip())
+            name = _escape_pdf_text((signoff_line.get("name") or "").strip())
+            signoff_cells.append(Paragraph(f"<b>{label}</b> {name}", signoff_style))
+        signoff_table = PdfTable([signoff_cells], colWidths=[usable_width / len(signoff_cells)] * len(signoff_cells))
+        signoff_table.setStyle(TableStyle([
+            ("LINEABOVE", (0, 0), (-1, 0), 0.75, line),
+            ("TOPPADDING", (0, 0), (-1, -1), 6),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ]))
+        story.append(signoff_table)
+        story.append(Spacer(1, 6))
+
+    footer = (payload.get("footer") or "").strip()
+    if footer:
+        footer_style = ParagraphStyle(
+            "ExportFooter", fontName="Helvetica-Oblique", fontSize=8,
+            textColor=muted, alignment=TA_CENTER,
+        )
+        story.append(Paragraph(_escape_pdf_text(footer), footer_style))
+
+    doc.build(story)
+    buffer.seek(0)
+    return buffer.getvalue()
+
+
 @require_POST
 @csrf_protect
 @login_required_json
@@ -2356,6 +2625,63 @@ def export_assessment_plan_xlsx(request):
     _save_generated_document(
         request, GeneratedDocument.DOC_TYPE_ASSESSMENT_PLAN, payload,
         filename, response["Content-Type"], xlsx_bytes,
+    )
+    return response
+
+
+@require_POST
+@csrf_protect
+@login_required_json
+def export_scheme_of_work_pdf(request):
+    """"Download as PDF" for the Scheme of Work generator page - rendered
+    server-side (see _build_export_pdf) so, unlike the toolbar's
+    "Print / save as PDF" button, a copy is also saved to
+    GeneratedDocument for the Dean of Studies Dashboard."""
+    payload, error_response = _parse_export_payload(request)
+    if error_response:
+        return error_response
+    pdf_bytes = _build_export_pdf(payload)
+    filename = f"{_export_filename(payload.get('title'), 'Scheme of Work')}.pdf"
+    response = _pdf_response(pdf_bytes, filename)
+    _save_generated_document(
+        request, GeneratedDocument.DOC_TYPE_SCHEME_OF_WORK, payload,
+        filename, response["Content-Type"], pdf_bytes,
+    )
+    return response
+
+
+@require_POST
+@csrf_protect
+@login_required_json
+def export_lesson_plan_pdf(request):
+    """"Download as PDF" for the Lesson Plan / Session Plan generator page."""
+    payload, error_response = _parse_export_payload(request)
+    if error_response:
+        return error_response
+    pdf_bytes = _build_export_pdf(payload)
+    filename = f"{_export_filename(payload.get('title'), 'Lesson Plan')}.pdf"
+    response = _pdf_response(pdf_bytes, filename)
+    _save_generated_document(
+        request, GeneratedDocument.DOC_TYPE_LESSON_PLAN, payload,
+        filename, response["Content-Type"], pdf_bytes,
+    )
+    return response
+
+
+@require_POST
+@csrf_protect
+@login_required_json
+def export_assessment_plan_pdf(request):
+    """"Download as PDF" for the Assessment Plan generator page."""
+    payload, error_response = _parse_export_payload(request)
+    if error_response:
+        return error_response
+    pdf_bytes = _build_export_pdf(payload)
+    filename = f"{_export_filename(payload.get('title'), 'Assessment Plan')}.pdf"
+    response = _pdf_response(pdf_bytes, filename)
+    _save_generated_document(
+        request, GeneratedDocument.DOC_TYPE_ASSESSMENT_PLAN, payload,
+        filename, response["Content-Type"], pdf_bytes,
     )
     return response
 

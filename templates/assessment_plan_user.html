@@ -518,7 +518,7 @@
 
         <div class="gen-actions-row">
           <button type="button" class="btn btn-gold" id="generateBtn">
-            <i class="fa-solid fa-wand-magic-sparkles me-1"></i> Generate assessment plan
+            <i class="fa-solid fa-wand-magic-sparkles me-1"></i> Build Assessment Plan
           </button>
           <button type="button" class="btn btn-outline-secondary" id="resetBtn">
             <i class="fa-solid fa-rotate-left me-1"></i> Reset
@@ -556,6 +556,9 @@
           </button>
           <button type="button" class="btn btn-outline-secondary btn-sm" id="exportXlsxBtn">
             <i class="fa-solid fa-file-excel me-1"></i> Download as Excel
+          </button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" id="exportPdfBtn">
+            <i class="fa-solid fa-file-pdf me-1"></i> Download as PDF
           </button>
         </div>
       </div>
@@ -804,6 +807,7 @@
       var editSelectionBtn = document.getElementById('editSelectionBtn');
       var printBtn = document.getElementById('printBtn');
       var exportXlsxBtn = document.getElementById('exportXlsxBtn');
+      var exportPdfBtn = document.getElementById('exportPdfBtn');
       var aiGenerateBtn = document.getElementById('aiGenerateBtn');
       var docSection = document.getElementById('docSection');
       var noDataAlert = document.getElementById('noDataAlert');
@@ -886,6 +890,33 @@
           });
       }
 
+      /**
+       * "Download as PDF" — same captured payload as the Excel export, sent
+       * to a server-rendered PDF endpoint instead. Unlike the toolbar's
+       * "Print / save as PDF" button (a client-side window.print() the
+       * server never sees), this produces a real file the server can also
+       * save into GeneratedDocument for the Dean of Studies Dashboard.
+       */
+      function exportAssessmentPlanAsPdf() {
+        if (!exportPdfBtn) return;
+        var genDoc = document.getElementById('genDoc');
+        var payload = TMSGen.collectExportPayload(genDoc);
+        var filename = TMSGen.filenameSafe(payload.title, 'Assessment Plan') + '.pdf';
+
+        var originalHtml = exportPdfBtn.innerHTML;
+        exportPdfBtn.disabled = true;
+        exportPdfBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Preparing…';
+
+        TMSGen.exportDocument('{% url "assessmentplan-export-pdf" %}', payload, filename)
+          .catch(function (err) {
+            TMS.toast(err && err.message ? err.message : 'Could not generate the PDF document.', 'danger');
+          })
+          .finally(function () {
+            exportPdfBtn.disabled = false;
+            exportPdfBtn.innerHTML = originalHtml;
+          });
+      }
+
       function init() {
         if (!data.trades || data.trades.length === 0) {
           noDataAlert.classList.remove('d-none');
@@ -908,6 +939,7 @@
         });
         printBtn.addEventListener('click', printWithFilename);
         if (exportXlsxBtn) exportXlsxBtn.addEventListener('click', exportAssessmentPlanAsXlsx);
+        if (exportPdfBtn) exportPdfBtn.addEventListener('click', exportAssessmentPlanAsPdf);
         aiGenerateBtn.addEventListener('click', onAiGenerate);
 
         // Attached once, on the persistent tbody node - renderTable() only

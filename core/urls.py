@@ -19,6 +19,11 @@ urlpatterns = [
         views.GeneratedDocumentDownloadView.as_view(),
         name='dos-document-download'
     ),
+    path(
+        'dos/documents/<int:pk>/delete/',
+        views.GeneratedDocumentDeleteView.as_view(),
+        name='dos-document-delete'
+    ),
 
     # Sectors
     path('sectors/', views.SectorListView.as_view(), name='sector-list'),
@@ -136,6 +141,21 @@ urlpatterns = [
         'api/assessment-plan/export/xlsx/',
         views.export_assessment_plan_xlsx,
         name='assessmentplan-export-xlsx'
+    ),
+    path(
+        'api/scheme-of-work/export/pdf/',
+        views.export_scheme_of_work_pdf,
+        name='schemeofwork-export-pdf'
+    ),
+    path(
+        'api/lesson-plan/export/pdf/',
+        views.export_lesson_plan_pdf,
+        name='lessonplan-export-pdf'
+    ),
+    path(
+        'api/assessment-plan/export/pdf/',
+        views.export_assessment_plan_pdf,
+        name='assessmentplan-export-pdf'
     ),
     path(
         'api/generation/check-access/',
