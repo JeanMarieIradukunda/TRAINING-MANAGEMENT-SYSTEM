@@ -1,4 +1,5 @@
 {% load static %}
+{% load core_extras %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -37,7 +38,7 @@
           <div class="avatar">{{ user.username|slice:':1'|upper }}</div>
           <div>
             <div class="name">{{ user.username }}</div>
-            <div class="role">{% if user.trainer_profile %}Trainer{% else %}Administrator{% endif %}</div>
+            <div class="role">{% if user.trainer_profile %}Trainer{% elif user|is_dos %}Dean of Studies{% else %}Administrator{% endif %}</div>
           </div>
         </div>
         <form method="post" action="{% url 'logout' %}" class="topnav-logout-form">
@@ -55,10 +56,19 @@
   <nav class="topnav" id="topnavMenu">
     <div class="topnav-inner">
 
+      {% if not request.user|is_dos or request.user.is_superuser %}
+      {% comment %}
+        Home is left out of the nav entirely for Dean of Studies accounts
+        (non-superuser) - their whole account is scoped to the Generated
+        Documents screen, so a link back to the public landing page isn't
+        useful here. Every other role (trainer, admin, superuser, and
+        signed-out visitors) still sees it as before.
+      {% endcomment %}
       <a href="{% url 'landing' %}" class="topnav-link">
         <i class="fa-solid fa-house"></i> Home
       </a>
-      <a href="{% url 'dashboard' %}" class="topnav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+      {% endif %}
+      <a href="{% url 'dashboard' %}" class="topnav-link {% if request.resolver_match.url_name == 'dashboard' or request.resolver_match.url_name == 'dos-dashboard' %}active{% endif %}">
         <i class="fa-solid fa-gauge-high"></i> Dashboard
       </a>
 
@@ -72,6 +82,14 @@
         </a>
         <a href="{% url 'content-list' %}" class="topnav-link {% if 'content' in request.resolver_match.url_name %}active{% endif %}">
           <i class="fa-solid fa-file-lines"></i> Indicative Contents
+        </a>
+      {% elif request.user|is_dos and not request.user.is_superuser %}
+        <!-- Dean of Studies account: only the documents-oversight screen.
+             (A superuser is also treated as DoS by user_is_dos(), but stays
+             on the full admin nav below - see the dashboard fall-through
+             note in DashboardView.get().) -->
+        <a href="{% url 'dos-dashboard' %}" class="topnav-link {% if request.resolver_match.url_name == 'dos-dashboard' %}active{% endif %}">
+          <i class="fa-solid fa-file-shield"></i> Generated Documents
         </a>
       {% else %}
       <details class="topnav-dropdown {% if request.resolver_match.url_name in 'sector-list,sector-create,sector-edit,sector-delete,trade-list,trade-create,trade-edit,trade-delete,level-list,level-create,level-edit,level-delete,tradelevel-list,tradelevel-create,tradelevel-edit,tradelevel-delete,module-list,module-create,module-edit,module-delete,outcome-list,outcome-create,outcome-bulk-create,outcome-edit,outcome-delete,content-list,content-create,content-bulk-create,content-edit,content-delete' %}open has-active{% endif %}">

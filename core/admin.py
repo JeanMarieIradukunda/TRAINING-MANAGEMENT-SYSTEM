@@ -2,8 +2,22 @@ from django.contrib import admin
 from .models import (
     Logo, Sector, Trade, Level, TradeLevel, Trainer,
     Module, LearningOutcome, IndicativeContent, LessonPlan, AssessmentPlan,
-    TrainerAccess,
+    TrainerAccess, GeneratedDocument,
 )
+
+
+@admin.register(GeneratedDocument)
+class GeneratedDocumentAdmin(admin.ModelAdmin):
+    list_display = ('id', 'doc_type', 'title', 'generated_by_name', 'created_at', 'file_size')
+    list_filter = ('doc_type', 'created_at')
+    search_fields = ('title', 'filename', 'trainer__fname', 'trainer__lname', 'generated_by__username')
+    readonly_fields = ('generated_by', 'trainer', 'doc_type', 'title', 'meta_snapshot',
+                        'filename', 'content_type', 'file_size', 'created_at')
+    exclude = ('file_data',)
+
+    def has_add_permission(self, request):
+        # These are only ever created automatically by the export views.
+        return False
 
 
 @admin.register(Sector)

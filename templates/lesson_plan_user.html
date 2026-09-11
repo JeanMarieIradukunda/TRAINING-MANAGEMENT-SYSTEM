@@ -660,7 +660,6 @@
           html += '</ol></section>';
         }
 
-        html += '<p class="text-end mb-0"><span class="gen-ai-badge">AI</span></p>';
         html += '</div>';
 
         notesModalBody.innerHTML = html;
@@ -1189,7 +1188,7 @@
         }
 
         var items = clean.map(function (o) { return '<li>' + TMSGen.escapeHtml(o) + '</li>'; }).join('');
-        el.innerHTML = '<ul class="gen-bullets">' + items + '</ul> <span class="gen-ai-badge">AI</span>';
+        el.innerHTML = '<ul class="gen-bullets">' + items + '</ul>';
       }
 
       function renderObjectivesFailed() {
@@ -1209,7 +1208,7 @@
           renderTechniquesFailed();
           return;
         }
-        el.innerHTML = TMSGen.escapeHtml(clean) + ' <span class="gen-ai-badge">AI</span>';
+        el.innerHTML = TMSGen.escapeHtml(clean);
       }
 
       function renderTechniquesFailed() {
@@ -1270,7 +1269,6 @@
         renderActivityList('spIntroLearner', learnerItems, 'learner');
         document.getElementById('spIntroResources').textContent =
           (introduction && introduction.resources) ? introduction.resources : 'Attendance register, whiteboard, projector';
-        document.getElementById('spIntroTrainer').insertAdjacentHTML('beforeend', ' <span class="gen-ai-badge">AI</span>');
       }
 
       // Fixed opening sequence, used whenever the AI is unavailable/fails:
@@ -1332,7 +1330,7 @@
           var resources = (step && step.resources) ? TMSGen.escapeHtml(step.resources) : '';
 
           addStepRow({
-            label: 'Step ' + (i + 1) + ': ' + title + ' <span class="gen-ai-badge">AI</span>',
+            label: 'Step ' + (i + 1) + ': ' + title,
             trainerItems: trainerItems,
             learnerItems: learnerItems,
             resources: resources,
@@ -1478,7 +1476,7 @@
           renderConclusionSummaryFailed();
           return;
         }
-        el.innerHTML = TMSGen.escapeHtml(clean) + ' <span class="gen-ai-badge">AI</span>';
+        el.innerHTML = TMSGen.escapeHtml(clean);
       }
 
       function renderConclusionSummaryFailed() {
@@ -1516,7 +1514,7 @@
           return;
         }
         el.innerHTML = '<strong>' + TMSGen.escapeHtml(type) + ':</strong> ' +
-          TMSGen.escapeHtml(content) + ' <span class="gen-ai-badge">AI</span>';
+          TMSGen.escapeHtml(content);
       }
 
       function renderAssessmentFailed() {
@@ -1536,7 +1534,7 @@
           renderEvaluationFailed();
           return;
         }
-        el.innerHTML = '<p>' + TMSGen.escapeHtml(clean) + '</p><span class="gen-ai-badge">AI</span>';
+        el.innerHTML = '<p>' + TMSGen.escapeHtml(clean) + '</p>';
       }
 
       function renderEvaluationFailed() {
@@ -1557,7 +1555,7 @@
           return;
         }
         var items = lines.map(function (l) { return '<li>' + TMSGen.escapeHtml(l) + '</li>'; }).join('');
-        el.innerHTML = '<ul class="gen-bullets">' + items + '</ul> <span class="gen-ai-badge">AI</span>';
+        el.innerHTML = '<ul class="gen-bullets">' + items + '</ul>';
       }
 
       function renderAppendicesFailed() {
@@ -1581,7 +1579,7 @@
           return;
         }
         var items = clean.map(function (q) { return '<li>' + TMSGen.escapeHtml(q) + '</li>'; }).join('');
-        el.innerHTML = '<ol class="gen-bullets">' + items + '</ol> <span class="gen-ai-badge">AI</span>';
+        el.innerHTML = '<ol class="gen-bullets">' + items + '</ol>';
       }
 
       function renderQuestionsFailed() {
@@ -1612,8 +1610,7 @@
           '<ul class="gen-bullets">' +
           '<li><strong>What went well:</strong> ' + TMSGen.escapeHtml(wentWell || '\u2014') + '</li>' +
           '<li><strong>What to change next time:</strong> ' + TMSGen.escapeHtml(changeNext || '\u2014') + '</li>' +
-          '</ul>' +
-          '<span class="gen-ai-badge">AI</span>';
+          '</ul>';
       }
 
       function renderReflectionFailed() {

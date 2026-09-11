@@ -15,6 +15,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMix
 from django.contrib.auth.views import LoginView, LogoutView
 from django.core.exceptions import PermissionDenied
 from django.core.serializers.json import DjangoJSONEncoder
+from django.db.models import Q
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
@@ -38,6 +39,7 @@ from .models import (
     Logo, Sector, Trade, Level, TradeLevel, Trainer,
     Module, LearningOutcome, IndicativeContent, LessonPlan, AssessmentPlan,
     TrainerAccess, sync_trainer_login_account, TrainerLoginConflict,
+    GeneratedDocument, user_is_dos,
 )
 from .forms import (
     LogoForm, SectorForm, TradeForm, LevelForm, TradeLevelForm, TrainerForm,
@@ -372,6 +374,21 @@ class DashboardView(LoginRequiredMixin, TemplateView):
     """
     template_name = 'core/dashboard.html'
 
+    def get(self, request, *args, **kwargs):
+        # DoS logins have their own dedicated Dashboard (generated-documents
+        # oversight) rather than the admin curriculum-management Dashboard -
+        # send them straight there. Checked before super().get() so this is
+        # a redirect, not an extra render. A superuser stays on the regular
+        # admin Dashboard (user_is_dos() treats every superuser as DoS-
+        # eligible, but they shouldn't be forced off their own Dashboard).
+        if (
+            not request.user.is_superuser
+            and getattr(request.user, 'trainer_profile', None) is None
+            and user_is_dos(request.user)
+        ):
+            return redirect('dos-dashboard')
+        return super().get(request, *args, **kwargs)
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         trainer = getattr(self.request.user, 'trainer_profile', None)
@@ -431,6 +448,93 @@ class DashboardView(LoginRequiredMixin, TemplateView):
             'pending_access_trainers': [a.trainer for a in pending_access][:5],
         })
         return context
+
+
+# ---------------------------------------------------------------------------
+# Dean of Studies (DoS) Dashboard
+#
+# Read-only oversight screen: every document a trainer has generated from
+# the Scheme of Work / Lesson Plan / Assessment Plan tools, who generated
+# it, and when - with a one-click download of the exact file the trainer
+# downloaded. See GeneratedDocument / user_is_dos in models.py for how a
+# login is recognised as DoS (Django Group "Dean of Studies", or any
+# superuser).
+# ---------------------------------------------------------------------------
+class DoSRequiredMixin(LoginRequiredMixin):
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated and not user_is_dos(request.user):
+            raise PermissionDenied(
+                "This section is only available to the Dean of Studies."
+            )
+        return super().dispatch(request, *args, **kwargs)
+
+
+class DoSDashboardView(DoSRequiredMixin, ListView):
+    """
+    Lists generated documents newest-first, with lightweight filtering by
+    document type and trainer, plus a text search across title/trainer/
+    filename. Pagination keeps this fast even once trainers have generated
+    hundreds of documents.
+    """
+    model = GeneratedDocument
+    template_name = 'core/dos_dashboard.html'
+    context_object_name = 'documents'
+    paginate_by = 20
+
+    def get_queryset(self):
+        qs = GeneratedDocument.objects.select_related('trainer', 'generated_by')
+
+        doc_type = self.request.GET.get('doc_type', '').strip()
+        if doc_type in dict(GeneratedDocument.DOC_TYPE_CHOICES):
+            qs = qs.filter(doc_type=doc_type)
+
+        trainer_id = self.request.GET.get('trainer', '').strip()
+        if trainer_id.isdigit():
+            qs = qs.filter(trainer_id=int(trainer_id))
+
+        search = self.request.GET.get('q', '').strip()
+        if search:
+            qs = qs.filter(
+                Q(title__icontains=search)
+                | Q(filename__icontains=search)
+                | Q(trainer__fname__icontains=search)
+                | Q(trainer__lname__icontains=search)
+                | Q(generated_by__username__icontains=search)
+            )
+
+        return qs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        total = GeneratedDocument.objects.count()
+        context.update({
+            'title': 'Dean of Studies Dashboard',
+            'total_count': total,
+            'scheme_count': GeneratedDocument.objects.filter(
+                doc_type=GeneratedDocument.DOC_TYPE_SCHEME_OF_WORK).count(),
+            'lesson_count': GeneratedDocument.objects.filter(
+                doc_type=GeneratedDocument.DOC_TYPE_LESSON_PLAN).count(),
+            'assessment_count': GeneratedDocument.objects.filter(
+                doc_type=GeneratedDocument.DOC_TYPE_ASSESSMENT_PLAN).count(),
+            'trainer_count': Trainer.objects.filter(generated_documents__isnull=False).distinct().count(),
+            'doc_type_choices': GeneratedDocument.DOC_TYPE_CHOICES,
+            'trainers': Trainer.objects.filter(generated_documents__isnull=False).distinct().order_by('lname', 'fname'),
+            'selected_doc_type': self.request.GET.get('doc_type', ''),
+            'selected_trainer': self.request.GET.get('trainer', ''),
+            'search_query': self.request.GET.get('q', ''),
+        })
+        return context
+
+
+class GeneratedDocumentDownloadView(DoSRequiredMixin, View):
+    """Streams back the exact file a trainer generated/downloaded, for the
+    Dean of Studies to review."""
+
+    def get(self, request, pk, *args, **kwargs):
+        doc = get_object_or_404(GeneratedDocument, pk=pk)
+        response = HttpResponse(bytes(doc.file_data), content_type=doc.content_type)
+        response["Content-Disposition"] = _content_disposition(doc.filename)
+        return response
 
 
 # ---------------------------------------------------------------------------
@@ -1879,6 +1983,33 @@ def _docx_response(document, filename):
     return response
 
 
+def _save_generated_document(request, doc_type, payload, filename, content_type, content_bytes):
+    """
+    Best-effort copy of an export into GeneratedDocument, for the Dean of
+    Studies Dashboard. Deliberately swallows any error (bad payload shape,
+    DB hiccup, etc.) and just logs it - a trainer's download must never
+    fail because the DoS-visibility copy failed to save.
+    """
+    try:
+        trainer = getattr(request.user, 'trainer_profile', None)
+        meta = payload.get('meta') or []
+        if not isinstance(meta, list):
+            meta = []
+        GeneratedDocument.objects.create(
+            generated_by=request.user if request.user.is_authenticated else None,
+            trainer=trainer,
+            doc_type=doc_type,
+            title=(payload.get('title') or '').strip(),
+            meta_snapshot=meta,
+            filename=filename,
+            content_type=content_type,
+            file_data=content_bytes,
+            file_size=len(content_bytes),
+        )
+    except Exception:
+        logger.exception("Failed to save GeneratedDocument copy for DoS Dashboard (doc_type=%s)", doc_type)
+
+
 def _build_export_docx(payload):
     """
     Builds a branded Word document from a collectExportPayload() JSON
@@ -2117,7 +2248,12 @@ def export_scheme_of_work_docx(request):
         return error_response
     document = _build_export_docx(payload)
     filename = f"{_export_filename(payload.get('title'), 'Scheme of Work')}.docx"
-    return _docx_response(document, filename)
+    response = _docx_response(document, filename)
+    _save_generated_document(
+        request, GeneratedDocument.DOC_TYPE_SCHEME_OF_WORK, payload,
+        filename, response["Content-Type"], response.content,
+    )
+    return response
 
 
 @require_POST
@@ -2130,7 +2266,12 @@ def export_lesson_plan_docx(request):
         return error_response
     document = _build_export_docx(payload)
     filename = f"{_export_filename(payload.get('title'), 'Lesson Plan')}.docx"
-    return _docx_response(document, filename)
+    response = _docx_response(document, filename)
+    _save_generated_document(
+        request, GeneratedDocument.DOC_TYPE_LESSON_PLAN, payload,
+        filename, response["Content-Type"], response.content,
+    )
+    return response
 
 
 @require_POST
@@ -2206,11 +2347,16 @@ def export_assessment_plan_xlsx(request):
     buffer.seek(0)
 
     filename = f"{_export_filename(payload.get('title'), 'Assessment Plan')}.xlsx"
+    xlsx_bytes = buffer.getvalue()
     response = HttpResponse(
-        buffer.getvalue(),
+        xlsx_bytes,
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
     response["Content-Disposition"] = _content_disposition(filename)
+    _save_generated_document(
+        request, GeneratedDocument.DOC_TYPE_ASSESSMENT_PLAN, payload,
+        filename, response["Content-Type"], xlsx_bytes,
+    )
     return response
 
 

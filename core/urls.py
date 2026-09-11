@@ -12,6 +12,14 @@ urlpatterns = [
     # Dashboard
     path('dashboard/', views.DashboardView.as_view(), name='dashboard'),
 
+    # Dean of Studies Dashboard: oversight of every generated document
+    path('dos/dashboard/', views.DoSDashboardView.as_view(), name='dos-dashboard'),
+    path(
+        'dos/documents/<int:pk>/download/',
+        views.GeneratedDocumentDownloadView.as_view(),
+        name='dos-document-download'
+    ),
+
     # Sectors
     path('sectors/', views.SectorListView.as_view(), name='sector-list'),
     path('sectors/create/', views.SectorCreateView.as_view(), name='sector-create'),

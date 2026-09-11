@@ -459,3 +459,109 @@ def create_trainer_access(sender, instance, created, **kwargs):
     """
     if created:
         TrainerAccess.objects.get_or_create(trainer=instance)
+
+
+# ---------------------------------------------------------------------------
+# Dean of Studies (DoS) role
+# ---------------------------------------------------------------------------
+# There's no separate "role" table in this system - Admin vs Trainer is
+# already distinguished purely by whether a login has a linked Trainer
+# profile (see auth_backends.py / TrainerBackend). DoS follows the same
+# lightweight approach instead of introducing a new user model: a DoS
+# login is just a normal auth.User (created by an Admin, e.g. via the
+# Django admin "Users" screen) that belongs to the "Dean of Studies"
+# Django Group. Nothing else about the account is special - it doesn't
+# need is_staff/is_superuser, and it never gets a Trainer profile.
+#
+# An Admin (superuser) is always treated as DoS too, so a superuser can
+# open the DoS Dashboard without needing separate group membership.
+DOS_GROUP_NAME = "Dean of Studies"
+
+
+def user_is_dos(user):
+    """
+    True if `user` should see the Dean of Studies Dashboard: a superuser,
+    or any authenticated, non-trainer account in the "Dean of Studies"
+    group. Safe to call with an AnonymousUser (returns False).
+    """
+    if not getattr(user, 'is_authenticated', False):
+        return False
+    if user.is_superuser:
+        return True
+    if getattr(user, 'trainer_profile', None) is not None:
+        # A Trainer login is never also DoS, even if mistakenly added to
+        # the group - trainers only ever see the Trainer Dashboard.
+        return False
+    return user.groups.filter(name=DOS_GROUP_NAME).exists()
+
+
+class GeneratedDocument(models.Model):
+    """
+    A permanent record + stored copy of every document a trainer downloads
+    from the Scheme of Work / Lesson Plan / Assessment Plan generators, so
+    the Dean of Studies can review what's been produced and by whom.
+
+    The file bytes are kept in the database (file_data), NOT on local
+    disk: this project deploys on Vercel (see [[tms-deployment]]), whose
+    filesystem is read-only/ephemeral between invocations, so anything
+    written to MEDIA_ROOT would simply disappear. Storing the bytes in
+    the same Neon Postgres database as everything else is what makes
+    these documents durable across deploys and serverless cold starts.
+    """
+    DOC_TYPE_SCHEME_OF_WORK = 'scheme_of_work'
+    DOC_TYPE_LESSON_PLAN = 'lesson_plan'
+    DOC_TYPE_ASSESSMENT_PLAN = 'assessment_plan'
+    DOC_TYPE_CHOICES = [
+        (DOC_TYPE_SCHEME_OF_WORK, 'Scheme of Work'),
+        (DOC_TYPE_LESSON_PLAN, 'Lesson Plan'),
+        (DOC_TYPE_ASSESSMENT_PLAN, 'Assessment Plan'),
+    ]
+
+    # The actual login that generated the document (works whether or not
+    # it has a Trainer profile). `trainer` is additionally populated when
+    # available purely as a convenience for display/filtering.
+    generated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='generated_documents',
+    )
+    trainer = models.ForeignKey(
+        Trainer,
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='generated_documents',
+    )
+
+    doc_type = models.CharField(max_length=20, choices=DOC_TYPE_CHOICES)
+    title = models.CharField(max_length=255, blank=True)
+
+    # A snapshot of the document's own meta rows (Trade, Level, Module,
+    # Term, etc.) exactly as shown on the generated document itself, e.g.
+    # [["Module", "ELE101 - Basic Electronics"], ["Trainer", "J. Doe"]].
+    # Kept as free-form JSON (rather than FKs to Module/Trade/Level)
+    # because the generator pages let trainers type/adjust this text
+    # freely - this is what actually appears on the document.
+    meta_snapshot = models.JSONField(default=list, blank=True)
+
+    filename = models.CharField(max_length=255)
+    content_type = models.CharField(max_length=150)
+    file_data = models.BinaryField()
+    file_size = models.PositiveIntegerField(default=0)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "Generated document"
+
+    def __str__(self):
+        return f"{self.get_doc_type_display()} - {self.title or self.filename}"
+
+    @property
+    def generated_by_name(self):
+        if self.trainer_id:
+            return self.trainer.full_name
+        if self.generated_by_id:
+            return self.generated_by.get_username()
+        return "Unknown"

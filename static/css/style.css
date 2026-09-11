@@ -2103,6 +2103,87 @@ h1, h2, h3, h4, h5, .brand, .card-stat .value {
   a[href]::after { content: ''; }
 }
 
+/* ---------- Session Notes PDF export (Lesson Plan generator page) ----------
+   The "Export to PDF" button inside the Session Notes modal
+   (#exportNotesPdfBtn) calls printNotesModal(), which toggles
+   body.printing-notes-modal and then window.print() - see
+   templates/lesson_plan_user.html.
+
+   Bug this fixes: the notes modal (.gen-notes-modal) also carries the
+   .no-print class (so it never accidentally prints while merely open on
+   screen), and the main Session Plan document (.gen-doc) was NOT in the
+   print-hidden list above - so printing always rendered the Session Plan,
+   and never the notes, regardless of which "print" button was clicked.
+
+   These rules only apply when body.printing-notes-modal is present, so
+   they never affect the ordinary "Print / save as PDF" button on this
+   page, nor the Scheme of Work / Assessment Plan generator pages (which
+   never set this class) - their print output is unchanged. */
+@media print {
+  /* Bootstrap's modal backdrop overlay should never appear on paper,
+     whichever document is being printed. */
+  .modal-backdrop { display: none !important; }
+}
+
+@media print {
+  body.printing-notes-modal .gen-doc,
+  body.printing-notes-modal .gen-save-note {
+    display: none !important;
+  }
+
+  /* Override the .no-print rule above (higher specificity here wins)
+     so the notes modal is the thing that actually reaches the page. */
+  body.printing-notes-modal .gen-notes-modal {
+    display: block !important;
+    position: static !important;
+    height: auto !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    z-index: auto !important;
+  }
+
+  body.printing-notes-modal .gen-notes-modal .modal-dialog {
+    display: block !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* This modal uses modal-dialog-scrollable, which caps modal-content's
+     height and scrolls .modal-body internally - not useful on paper,
+     where we want every note to flow across as many pages as it needs. */
+  body.printing-notes-modal .gen-notes-modal .modal-content {
+    border: none !important;
+    box-shadow: none !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  body.printing-notes-modal .gen-notes-modal .modal-header,
+  body.printing-notes-modal .gen-notes-modal .modal-footer {
+    display: none !important;
+  }
+
+  body.printing-notes-modal .gen-notes-modal .modal-body {
+    padding: 0 !important;
+    overflow: visible !important;
+    max-height: none !important;
+  }
+
+  body.printing-notes-modal .gen-notes-doc-title { font-size: 16pt; margin: 0 0 0.2rem; }
+  body.printing-notes-modal .gen-notes-doc-subtitle { font-size: 9.5pt; color: #5c6b71; margin: 0 0 0.6rem; }
+  body.printing-notes-modal .gen-notes-step { page-break-inside: avoid; margin-bottom: 0.6rem; }
+  body.printing-notes-modal .gen-notes-step-heading { font-size: 11.5pt; margin: 0.5rem 0 0.3rem; page-break-after: avoid; }
+  body.printing-notes-modal .gen-notes-topic-heading { font-size: 10.5pt; margin: 0.3rem 0 0.15rem; }
+  body.printing-notes-modal .gen-notes-topic-explanation,
+  body.printing-notes-modal .gen-notes-key-points,
+  body.printing-notes-modal .gen-notes-key-terms,
+  body.printing-notes-modal .gen-notes-example { font-size: 9.5pt; }
+}
+
 /* ---------- Landing page ---------- */
 
 .landing-page {

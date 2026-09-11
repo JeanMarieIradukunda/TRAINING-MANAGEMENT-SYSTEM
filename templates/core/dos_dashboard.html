@@ -1,0 +1,638 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} · TMS{% endblock %}
+{% block content %}
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --dos-bg-surface: #ffffff;
+    --dos-bg-subtle: #f8fafc;
+    --dos-border: #e2e8f0;
+    --dos-border-hover: #cbd5e1;
+    --dos-text-main: #0f172a;
+    --dos-text-muted: #64748b;
+    
+    --dos-primary: #2563eb;
+    --dos-primary-light: #eff6ff;
+    --dos-primary-border: #bfdbfe;
+    
+    --dos-scheme: #0284c7;
+    --dos-scheme-bg: #f0f9ff;
+    --dos-lesson: #d97706;
+    --dos-lesson-bg: #fffbeb;
+    --dos-assessment: #7c3aed;
+    --dos-assessment-bg: #f5f3ff;
+    
+    --dos-radius-lg: 16px;
+    --dos-radius-md: 10px;
+    --dos-radius-sm: 6px;
+    
+    --dos-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --dos-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+  }
+
+  .db-page {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    color: var(--dos-text-main);
+    background-color: #f1f5f9;
+    min-height: 100vh;
+    padding: 2rem;
+  }
+
+  /* --- HEADER HERO --- */
+  .db-hero {
+    background: var(--dos-bg-surface);
+    border: 1px solid var(--dos-border);
+    border-radius: var(--dos-radius-lg);
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: var(--dos-shadow-sm);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .db-hero::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--dos-primary), var(--dos-scheme), var(--dos-assessment));
+  }
+  .db-hero-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--dos-primary);
+    background: var(--dos-primary-light);
+    padding: 0.35rem 0.75rem;
+    border-radius: 99px;
+    margin-bottom: 0.75rem;
+  }
+  .db-hero h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.85rem;
+    font-weight: 700;
+    margin: 0;
+    color: var(--dos-text-main);
+    letter-spacing: -0.02em;
+  }
+  .db-hero-sub {
+    margin-top: 0.5rem;
+    color: var(--dos-text-muted);
+    font-size: 0.925rem;
+    max-width: 60ch;
+    line-height: 1.6;
+  }
+
+  /* --- STATS / KPI GRID --- */
+  .db-kpi-rail {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.25rem;
+    margin-bottom: 2rem;
+  }
+  .db-kpi-card {
+    background: var(--dos-bg-surface);
+    border: 1px solid var(--dos-border);
+    border-radius: var(--dos-radius-lg);
+    padding: 1.25rem;
+    box-shadow: var(--dos-shadow-sm);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .db-kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--dos-shadow-md);
+  }
+  .db-kpi-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+  }
+  .db-kpi-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: var(--dos-radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    background: var(--dos-bg-subtle);
+    color: var(--dos-text-muted);
+  }
+  .db-kpi-card:nth-child(1) .db-kpi-icon { color: var(--dos-primary); background: var(--dos-primary-light); }
+  .db-kpi-card:nth-child(2) .db-kpi-icon { color: var(--dos-scheme); background: var(--dos-scheme-bg); }
+  .db-kpi-card:nth-child(3) .db-kpi-icon { color: var(--dos-lesson); background: var(--dos-lesson-bg); }
+  .db-kpi-card:nth-child(4) .db-kpi-icon { color: var(--dos-assessment); background: var(--dos-assessment-bg); }
+  .db-kpi-card:nth-child(5) .db-kpi-icon { color: #059669; background: #ecfdf5; }
+  
+  .db-kpi-value {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--dos-text-main);
+    letter-spacing: -0.02em;
+  }
+  .db-kpi-label {
+    font-size: 0.825rem;
+    font-weight: 600;
+    color: var(--dos-text-muted);
+    margin-top: 0.35rem;
+  }
+
+  /* --- FILTERS --- */
+  .dos-filter-card {
+    background: var(--dos-bg-surface);
+    border: 1px solid var(--dos-border);
+    border-radius: var(--dos-radius-lg);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 2rem;
+    box-shadow: var(--dos-shadow-sm);
+  }
+  .dos-filter-bar {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.25rem;
+    align-items: fill;
+  }
+  .dos-filter-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  .dos-filter-field label {
+    font-size: 0.775rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--dos-text-muted);
+    font-weight: 700;
+  }
+  .dos-input-group {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  .dos-input-group i {
+    position: absolute;
+    left: 0.85rem;
+    color: var(--dos-text-muted);
+    font-size: 0.875rem;
+    pointer-events: none;
+  }
+  .dos-filter-field select, 
+  .dos-filter-field input {
+    width: 100%;
+    border: 1px solid var(--dos-border);
+    border-radius: var(--dos-radius-md);
+    padding: 0.6rem 0.85rem 0.6rem 2.25rem;
+    font-size: 0.875rem;
+    font-family: inherit;
+    color: var(--dos-text-main);
+    background-color: var(--dos-bg-subtle);
+    transition: all 0.2s ease;
+    outline: none;
+  }
+  .dos-filter-field select:focus, 
+  .dos-filter-field input:focus {
+    background-color: #fff;
+    border-color: var(--dos-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  }
+  .dos-filter-actions {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.5rem;
+  }
+  .dos-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1.25rem;
+    border-radius: var(--dos-radius-md);
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+    height: 40px;
+  }
+  .dos-btn-primary {
+    background-color: var(--dos-primary);
+    color: #fff;
+  }
+  .dos-btn-primary:hover {
+    background-color: #1d4ed8;
+    color: #fff;
+  }
+  .dos-btn-secondary {
+    background-color: transparent;
+    border-color: var(--dos-border);
+    color: var(--dos-text-muted);
+  }
+  .dos-btn-secondary:hover {
+    background-color: var(--dos-bg-subtle);
+    color: var(--dos-text-main);
+  }
+
+  /* --- DATA TABLE PANEL --- */
+  .table-panel {
+    background: var(--dos-bg-surface);
+    border: 1px solid var(--dos-border);
+    border-radius: var(--dos-radius-lg);
+    box-shadow: var(--dos-shadow-sm);
+    overflow: hidden;
+  }
+  .table-responsive {
+    margin: 0;
+  }
+  .dos-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    margin: 0;
+  }
+  .dos-table th {
+    background: var(--dos-bg-subtle);
+    padding: 1rem 1.25rem;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 700;
+    color: var(--dos-text-muted);
+    border-bottom: 1px solid var(--dos-border);
+  }
+  .dos-table td {
+    padding: 1.1rem 1.25rem;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--dos-border);
+    font-size: 0.875rem;
+  }
+  .dos-table tbody tr:last-child td {
+    border-bottom: none;
+  }
+  .dos-table tbody tr {
+    transition: background-color 0.15s ease;
+  }
+  .dos-table tbody tr:hover {
+    background-color: rgba(241, 245, 249, 0.6);
+  }
+
+  /* --- CONTENT STYLES --- */
+  .db-doc-title {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--dos-text-main);
+    display: block;
+    margin-bottom: 0.2rem;
+  }
+  .db-doc-meta {
+    font-size: 0.775rem;
+    color: var(--dos-text-muted);
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .trainer-avatar-group {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+  .trainer-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--dos-primary-light);
+    color: var(--dos-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.75rem;
+  }
+
+  /* --- BADGES --- */
+  .db-doc-type-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.3rem 0.7rem;
+    border-radius: 99px;
+    white-space: nowrap;
+  }
+  .db-doc-type-badge::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+  }
+  .db-doc-type-scheme_of_work {
+    background: var(--dos-scheme-bg);
+    color: var(--dos-scheme);
+  }
+  .db-doc-type-scheme_of_work::before { background: var(--dos-scheme); }
+  
+  .db-doc-type-lesson_plan {
+    background: var(--dos-lesson-bg);
+    color: var(--dos-lesson);
+  }
+  .db-doc-type-lesson_plan::before { background: var(--dos-lesson); }
+
+  .db-doc-type-assessment_plan {
+    background: var(--dos-assessment-bg);
+    color: var(--dos-assessment);
+  }
+  .db-doc-type-assessment_plan::before { background: var(--dos-assessment); }
+
+  /* --- DOWNLOAD BUTTON --- */
+  .btn-download {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 0.85rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border-radius: var(--dos-radius-md);
+    background: var(--dos-bg-subtle);
+    color: var(--dos-text-main);
+    border: 1px solid var(--dos-border);
+    transition: all 0.2s ease;
+  }
+  .btn-download:hover {
+    background: var(--dos-primary);
+    color: #fff;
+    border-color: var(--dos-primary);
+    box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+  }
+
+  /* --- EMPTY STATE & PAGINATION --- */
+  .empty-state {
+    padding: 4rem 2rem;
+    text-align: center;
+    color: var(--dos-text-muted);
+  }
+  .empty-state i {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    opacity: 0.4;
+  }
+  .dos-pagination-wrapper {
+    padding: 1rem 1.25rem;
+    border-top: 1px solid var(--dos-border);
+    background: var(--dos-bg-surface);
+  }
+  .dos-pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+    list-style: none;
+    padding: 0;
+  }
+  .dos-pagination .page-link {
+    padding: 0.4rem 0.8rem;
+    border-radius: var(--dos-radius-sm);
+    font-size: 0.825rem;
+    font-weight: 600;
+    color: var(--dos-text-main);
+    background: var(--dos-bg-subtle);
+    border: 1px solid var(--dos-border);
+    text-decoration: none;
+  }
+  .dos-pagination .page-item.disabled .page-link {
+    background: transparent;
+    border-color: transparent;
+    color: var(--dos-text-muted);
+  }
+  .dos-pagination .page-link:hover:not(.disabled) {
+    background: var(--dos-primary);
+    color: #fff;
+    border-color: var(--dos-primary);
+  }
+
+  @media (max-width: 768px) {
+    .db-page { padding: 1rem; }
+    .dos-filter-bar { grid-template-columns: 1fr; }
+    .dos-filter-actions { margin-top: 0.5rem; }
+  }
+</style>
+
+<div class="db-page">
+
+  <!-- HEADER HERO -->
+  <div class="db-hero">
+    <div class="db-hero-intro">
+      <span class="db-hero-eyebrow">
+        <i class="fa-solid fa-graduation-cap"></i> Dean of Studies
+      </span>
+      <h1>Generated Documents</h1>
+      <p class="db-hero-sub">
+        Review, manage, and download Schemes of Work, Lesson Plans, and Assessment Plans generated by academic trainers across all departments.
+      </p>
+    </div>
+  </div>
+
+  <!-- KPI METRICS -->
+  <div class="db-kpi-rail">
+    <div class="db-kpi-card">
+      <div class="db-kpi-header">
+        <span class="db-kpi-label">Total Documents</span>
+        <div class="db-kpi-icon"><i class="fa-solid fa-folder-open"></i></div>
+      </div>
+      <div class="db-kpi-value">{{ total_count }}</div>
+    </div>
+    <div class="db-kpi-card">
+      <div class="db-kpi-header">
+        <span class="db-kpi-label">Schemes of Work</span>
+        <div class="db-kpi-icon"><i class="fa-solid fa-diagram-project"></i></div>
+      </div>
+      <div class="db-kpi-value">{{ scheme_count }}</div>
+    </div>
+    <div class="db-kpi-card">
+      <div class="db-kpi-header">
+        <span class="db-kpi-label">Lesson Plans</span>
+        <div class="db-kpi-icon"><i class="fa-solid fa-chalkboard"></i></div>
+      </div>
+      <div class="db-kpi-value">{{ lesson_count }}</div>
+    </div>
+    <div class="db-kpi-card">
+      <div class="db-kpi-header">
+        <span class="db-kpi-label">Assessment Plans</span>
+        <div class="db-kpi-icon"><i class="fa-solid fa-clipboard-check"></i></div>
+      </div>
+      <div class="db-kpi-value">{{ assessment_count }}</div>
+    </div>
+    <div class="db-kpi-card">
+      <div class="db-kpi-header">
+        <span class="db-kpi-label">Submitting Trainers</span>
+        <div class="db-kpi-icon"><i class="fa-solid fa-chalkboard-user"></i></div>
+      </div>
+      <div class="db-kpi-value">{{ trainer_count }}</div>
+    </div>
+  </div>
+
+  <!-- FILTER CONTROLS -->
+  <div class="dos-filter-card">
+    <form method="get" class="dos-filter-bar">
+      <div class="dos-filter-field">
+        <label for="dosSearch">Search Document</label>
+        <div class="dos-input-group">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="text" id="dosSearch" name="q" value="{{ search_query }}" placeholder="Title, trainer, filename...">
+        </div>
+      </div>
+      
+      <div class="dos-filter-field">
+        <label for="dosDocType">Document Type</label>
+        <div class="dos-input-group">
+          <i class="fa-solid fa-filter"></i>
+          <select id="dosDocType" name="doc_type">
+            <option value="">All Types</option>
+            {% for value, label in doc_type_choices %}
+              <option value="{{ value }}" {% if selected_doc_type == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="dos-filter-field">
+        <label for="dosTrainer">Filter Trainer</label>
+        <div class="dos-input-group">
+          <i class="fa-solid fa-user"></i>
+          <select id="dosTrainer" name="trainer">
+            <option value="">All Trainers</option>
+            {% for trainer in trainers %}
+              <option value="{{ trainer.pk }}" {% if selected_trainer == trainer.pk|stringformat:"s" %}selected{% endif %}>{{ trainer.full_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="dos-filter-actions">
+        <button type="submit" class="dos-btn dos-btn-primary">
+          <i class="fa-solid fa-sliders"></i> Filter
+        </button>
+        <a href="{% url 'dos-dashboard' %}" class="dos-btn dos-btn-secondary">Reset</a>
+      </div>
+    </form>
+  </div>
+
+  <!-- TABLE DISPLAY -->
+  <div class="table-panel">
+    {% if documents %}
+    <div class="table-responsive">
+      <table class="dos-table">
+        <thead>
+          <tr>
+            <th>Document Details</th>
+            <th>Type</th>
+            <th>Generated By</th>
+            <th>Generated On</th>
+            <th>File Size</th>
+            <th style="text-align: right;">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for doc in documents %}
+          <tr>
+            <td>
+              <span class="db-doc-title">{{ doc.title|default:doc.filename }}</span>
+              {% if doc.meta_snapshot %}
+              <div class="db-doc-meta">
+                <i class="fa-solid fa-circle-info"></i>
+                {% for row in doc.meta_snapshot|slice:":2" %}
+                  {{ row.0 }}: {{ row.1 }}{% if not forloop.last %} · {% endif %}
+                {% endfor %}
+              </div>
+              {% endif %}
+            </td>
+            <td>
+              <span class="db-doc-type-badge db-doc-type-{{ doc.doc_type }}">
+                {{ doc.get_doc_type_display }}
+              </span>
+            </td>
+            <td>
+              <div class="trainer-avatar-group">
+                <div class="trainer-avatar">
+                  {{ doc.generated_by_name|slice:":1"|upper }}
+                </div>
+                <div>
+                  <div style="font-weight: 600;">{{ doc.generated_by_name }}</div>
+                  {% if doc.trainer %}<div class="db-doc-meta">Trainer</div>{% endif %}
+                </div>
+              </div>
+            </td>
+            <td>
+              <div style="font-weight: 500;">{{ doc.created_at|date:"d M Y" }}</div>
+              <div class="db-doc-meta">{{ doc.created_at|date:"H:i" }}</div>
+            </td>
+            <td style="color: var(--dos-text-muted); font-weight: 500;">
+              {{ doc.file_size|filesizeformat }}
+            </td>
+            <td style="text-align: right;">
+              <a href="{% url 'dos-document-download' pk=doc.pk %}" class="btn-download" title="Download this document">
+                <i class="fa-solid fa-arrow-down-to-line"></i> Download
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if page_obj.paginator.num_pages > 1 %}
+    <div class="dos-pagination-wrapper">
+      <ul class="dos-pagination">
+        {% if page_obj.has_previous %}
+          <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}&doc_type={{ selected_doc_type }}&trainer={{ selected_trainer }}&q={{ search_query }}">
+              <i class="fa-solid fa-chevron-left"></i> Previous
+            </a>
+          </li>
+        {% endif %}
+        
+        <li class="page-item disabled">
+          <span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        </li>
+        
+        {% if page_obj.has_next %}
+          <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}&doc_type={{ selected_doc_type }}&trainer={{ selected_trainer }}&q={{ search_query }}">
+              Next <i class="fa-solid fa-chevron-right"></i>
+            </a>
+          </li>
+        {% endif %}
+      </ul>
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="empty-state">
+      <i class="fa-solid fa-folder-open"></i>
+      <div style="font-weight: 600; font-size: 1.1rem; color: var(--dos-text-main);">No documents found</div>
+      <p style="margin-top: 0.25rem;">No generated documents match your filters or current query.</p>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+
+{% endblock %}
