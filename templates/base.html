@@ -38,7 +38,7 @@
           <div class="avatar">{{ user.username|slice:':1'|upper }}</div>
           <div>
             <div class="name">{{ user.username }}</div>
-            <div class="role">{% if user.trainer_profile %}Trainer{% elif user|is_dos %}Dean of Studies{% else %}Administrator{% endif %}</div>
+            <div class="role">{% if user.trainer_profile %}Trainer{% else %}Administrator{% endif %}</div>
           </div>
         </div>
         <form method="post" action="{% url 'logout' %}" class="topnav-logout-form">
