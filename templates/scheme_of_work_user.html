@@ -1,4 +1,5 @@
 {% load static %}
+{% load core_extras %}
 <!DOCTYPE html>
 <html lang="en">
 
@@ -746,7 +747,7 @@
     <div class="gen-hero-heading">
       <div class="gen-eyebrow">
         <i class="fa-solid fa-user-check"></i>
-        Signed in as {{ request.user.username }}
+        Signed in as {{ request.user|display_name }}
         {% if is_trainer %}
         · {{ assigned_module_count }} module{{ assigned_module_count|pluralize }} assigned to you
         {% else %}

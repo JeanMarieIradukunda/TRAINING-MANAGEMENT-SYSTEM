@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load core_extras %}
 {% block title %}Dashboard · TMS{% endblock %}
 {% block content %}
 
@@ -144,7 +145,7 @@
   <div class="db-hero">
     <div class="db-hero-intro">
       <p class="db-hero-eyebrow">Dashboard</p>
-      <h1>Welcome back, {{ request.user.username|title }} 👋</h1>
+      <h1>Welcome back, {{ request.user|display_name }} 👋</h1>
       <p class="db-hero-sub">Learning outcomes and indicative contents for your assigned modules.</p>
     </div>
   </div>
@@ -216,6 +217,116 @@
     </div>
   </section>
 
+{% elif is_dos %}
+  <!-- ===================== DOS Dashboard ===================== -->
+  <!-- Restricted slice: the generated-document archive only. A DoS
+       account never creates Lesson Plans / Assessment Plans / Schemes
+       of Work itself, so those CRUD/generator links are intentionally
+       absent here - see DashboardView.get_context_data and
+       TrainerAccessMixin.dos_allowed for the actual access gate; this
+       is just the matching restricted view. Schemes of Work have no
+       CRUD model, so their count comes from the GeneratedDocument
+       archive (generated_* context keys), same as the other two types. -->
+  <div class="db-hero">
+    <div class="db-hero-intro">
+      <p class="db-hero-eyebrow">Dashboard</p>
+      <h1>Welcome back, {{ request.user|display_name }} 👋</h1>
+      <p class="db-hero-sub">Generated documents across the training programme.</p>
+    </div>
+  </div>
+
+  <div class="db-kpi-rail">
+    <div class="db-kpi-card">
+      <div class="db-kpi-top"><i class="fa-solid fa-calendar-days"></i></div>
+      <div class="db-kpi-value">{{ generated_scheme_count }}</div>
+      <div class="db-kpi-label">Schemes of Work</div>
+    </div>
+    <div class="db-kpi-card">
+      <div class="db-kpi-top"><i class="fa-solid fa-chalkboard"></i></div>
+      <div class="db-kpi-value">{{ generated_lesson_count }}</div>
+      <div class="db-kpi-label">Lesson Plans</div>
+    </div>
+    <div class="db-kpi-card">
+      <div class="db-kpi-top"><i class="fa-solid fa-clipboard-check"></i></div>
+      <div class="db-kpi-value">{{ generated_assessment_count }}</div>
+      <div class="db-kpi-label">Assessment Plans</div>
+    </div>
+    <div class="db-kpi-card">
+      <div class="db-kpi-top"><i class="fa-solid fa-folder-open"></i></div>
+      <div class="db-kpi-value">{{ generated_total_count }}</div>
+      <div class="db-kpi-label">Generated Documents</div>
+    </div>
+  </div>
+
+  <section class="db-section">
+    <div class="db-section-head">
+      <h2 class="db-section-title">Browse documents</h2>
+    </div>
+    <div class="db-nav-grid">
+      <a href="{% url 'dos-dashboard' %}?doc_type=scheme_of_work" class="db-nav-card">
+        <div class="db-nav-icon"><i class="fa-solid fa-calendar-days"></i></div>
+        <div>
+          <div class="db-nav-title">Schemes of Work</div>
+          <div class="db-nav-sub">{{ generated_scheme_count }} generated</div>
+        </div>
+        <i class="fa-solid fa-chevron-right db-nav-arrow"></i>
+      </a>
+      <a href="{% url 'dos-dashboard' %}?doc_type=lesson_plan" class="db-nav-card">
+        <div class="db-nav-icon"><i class="fa-solid fa-chalkboard"></i></div>
+        <div>
+          <div class="db-nav-title">Lesson Plans</div>
+          <div class="db-nav-sub">{{ generated_lesson_count }} generated</div>
+        </div>
+        <i class="fa-solid fa-chevron-right db-nav-arrow"></i>
+      </a>
+      <a href="{% url 'dos-dashboard' %}?doc_type=assessment_plan" class="db-nav-card">
+        <div class="db-nav-icon"><i class="fa-solid fa-clipboard-check"></i></div>
+        <div>
+          <div class="db-nav-title">Assessment Plans</div>
+          <div class="db-nav-sub">{{ generated_assessment_count }} generated</div>
+        </div>
+        <i class="fa-solid fa-chevron-right db-nav-arrow"></i>
+      </a>
+      <a href="{% url 'dos-dashboard' %}" class="db-nav-card">
+        <div class="db-nav-icon"><i class="fa-solid fa-folder-open"></i></div>
+        <div>
+          <div class="db-nav-title">All Generated Documents</div>
+          <div class="db-nav-sub">{{ generated_total_count }} file{{ generated_total_count|pluralize }} archived</div>
+        </div>
+        <i class="fa-solid fa-chevron-right db-nav-arrow"></i>
+      </a>
+    </div>
+  </section>
+
+  <section class="db-section">
+    <div class="db-section-head">
+      <h2 class="db-section-title">Recent activity</h2>
+    </div>
+    <div class="db-activity-grid">
+      <div class="db-activity-panel">
+        <div class="db-activity-panel-title">
+          <i class="fa-solid fa-folder-open"></i> Latest generated documents
+        </div>
+        {% if recent_generated_documents %}
+        <ul class="db-timeline">
+          {% for doc in recent_generated_documents %}
+          <li>
+            <a href="{% url 'dos-document-download' pk=doc.pk %}">
+              <div class="db-timeline-title">{{ doc.title|default:doc.filename }}</div>
+              <div class="db-timeline-sub">
+                {{ doc.get_doc_type_display }} · {{ doc.generated_by_name }} · {{ doc.created_at|date:"d M Y" }}
+              </div>
+            </a>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <div class="db-activity-empty">No documents generated yet.</div>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+
 {% else %}
   <!-- ===================== Admin Dashboard ===================== -->
 
@@ -223,7 +334,7 @@
   <div class="db-hero">
     <div class="db-hero-intro">
       <p class="db-hero-eyebrow">Dashboard</p>
-      <h1>Welcome back, {{ request.user.username|title }} 👋</h1>
+      <h1>Welcome back, {{ request.user|display_name }} 👋</h1>
       <p class="db-hero-sub">Here's what's happening across your training programme.</p>
     </div>
     <div class="db-hero-actions">

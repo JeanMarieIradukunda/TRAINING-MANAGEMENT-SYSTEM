@@ -14,6 +14,7 @@ from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.contrib.auth.views import LoginView, LogoutView
 from django.core.exceptions import PermissionDenied
+from django.core.paginator import Paginator
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db.models import Q
 from django.http import HttpResponse, JsonResponse
@@ -34,14 +35,14 @@ from groq import Groq, APIError, APIConnectionError, RateLimitError
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font
 from openpyxl.utils import get_column_letter
-from reportlab.lib import colors as pdf_colors
-from reportlab.lib.enums import TA_CENTER
+from reportlab.lib import colors as rl_colors
+from reportlab.lib.enums import TA_CENTER, TA_RIGHT
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.styles import ParagraphStyle
-from reportlab.lib.units import mm
+from reportlab.lib.units import mm as RL_MM
+from reportlab.lib.utils import ImageReader
 from reportlab.platypus import (
-    HRFlowable, Image as PdfImage, Paragraph, SimpleDocTemplate, Spacer,
-    Table as PdfTable, TableStyle,
+    Image as RLImage, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle,
 )
 
 from .models import (
@@ -383,21 +384,6 @@ class DashboardView(LoginRequiredMixin, TemplateView):
     """
     template_name = 'core/dashboard.html'
 
-    def get(self, request, *args, **kwargs):
-        # DoS logins have their own dedicated Dashboard (generated-documents
-        # oversight) rather than the admin curriculum-management Dashboard -
-        # send them straight there. Checked before super().get() so this is
-        # a redirect, not an extra render. A superuser stays on the regular
-        # admin Dashboard (user_is_dos() treats every superuser as DoS-
-        # eligible, but they shouldn't be forced off their own Dashboard).
-        if (
-            not request.user.is_superuser
-            and getattr(request.user, 'trainer_profile', None) is None
-            and user_is_dos(request.user)
-        ):
-            return redirect('dos-dashboard')
-        return super().get(request, *args, **kwargs)
-
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         trainer = getattr(self.request.user, 'trainer_profile', None)
@@ -408,10 +394,39 @@ class DashboardView(LoginRequiredMixin, TemplateView):
             content_qs = IndicativeContent.objects.filter(outcome__module__trainer=trainer)
             context.update({
                 'is_trainer': True,
+                'is_dos': False,
                 'module_count': Module.objects.filter(trainer=trainer).count(),
                 'outcome_count': outcome_qs.count(),
                 'content_count': content_qs.count(),
                 'recent_outcomes': outcome_qs.select_related('module').order_by('-id')[:5],
+            })
+            return context
+
+        if not self.request.user.is_superuser:
+            # DOS view: restricted slice of the Dashboard - the generated-
+            # document archive only. A DoS account never creates Lesson
+            # Plans, Assessment Plans or Schemes of Work itself (that CRUD/
+            # generator access is admin- and trainer-only - see
+            # TrainerAccessMixin.dos_allowed below, which is the actual
+            # access gate); it only reviews what trainers have produced.
+            # This context deliberately does not expose LessonPlan/
+            # AssessmentPlan CRUD counts for that reason - everything here
+            # comes from the GeneratedDocument archive, which is also the
+            # only place a Scheme of Work (no CRUD model at all) can be
+            # counted from.
+            generated = GeneratedDocument.objects.all()
+            context.update({
+                'is_trainer': False,
+                'is_dos': True,
+                'generated_total_count': generated.count(),
+                'generated_scheme_count': generated.filter(
+                    doc_type=GeneratedDocument.DOC_TYPE_SCHEME_OF_WORK).count(),
+                'generated_lesson_count': generated.filter(
+                    doc_type=GeneratedDocument.DOC_TYPE_LESSON_PLAN).count(),
+                'generated_assessment_count': generated.filter(
+                    doc_type=GeneratedDocument.DOC_TYPE_ASSESSMENT_PLAN).count(),
+                'recent_generated_documents': generated.select_related(
+                    'trainer', 'generated_by')[:5],
             })
             return context
 
@@ -431,6 +446,7 @@ class DashboardView(LoginRequiredMixin, TemplateView):
 
         context.update({
             'is_trainer': False,
+            'is_dos': False,
             'sector_count': Sector.objects.count(),
             'trade_count': Trade.objects.count(),
             'level_count': Level.objects.count(),
@@ -460,112 +476,129 @@ class DashboardView(LoginRequiredMixin, TemplateView):
 
 
 # ---------------------------------------------------------------------------
-# Dean of Studies (DoS) Dashboard
+# Dean of Studies: archive of every generated document
 #
-# Read-only oversight screen: every document a trainer has generated from
-# the Scheme of Work / Lesson Plan / Assessment Plan tools, who generated
-# it, and when - with a one-click download of the exact file the trainer
-# downloaded. See GeneratedDocument / user_is_dos in models.py for how a
-# login is recognised as DoS (Django Group "Dean of Studies", or any
-# superuser).
+# The three generator pages archive a copy of each document they export
+# (see _record_generated_document below). These views are the read side of
+# that archive: a filterable, paginated list plus download/delete, reachable
+# only by a DoS login or a superuser (see models.user_is_dos).
 # ---------------------------------------------------------------------------
 class DoSRequiredMixin(LoginRequiredMixin):
+    """Restricts a view to Dean of Studies accounts (and superusers)."""
+
     def dispatch(self, request, *args, **kwargs):
         if request.user.is_authenticated and not user_is_dos(request.user):
             raise PermissionDenied(
-                "This section is only available to the Dean of Studies."
+                "Only Dean of Studies accounts can access the document archive."
             )
         return super().dispatch(request, *args, **kwargs)
 
 
-class DoSDashboardView(DoSRequiredMixin, ListView):
+class DoSDashboardView(DoSRequiredMixin, TemplateView):
     """
-    Lists generated documents newest-first, with lightweight filtering by
-    document type and trainer, plus a text search across title/trainer/
-    filename. Pagination keeps this fast even once trainers have generated
-    hundreds of documents.
+    Oversight screen listing every archived document, with search (title /
+    trainer / filename), document-type and trainer filters, KPI counts and
+    pagination - matching core/dos_dashboard.html.
     """
-    model = GeneratedDocument
     template_name = 'core/dos_dashboard.html'
-    context_object_name = 'documents'
     paginate_by = 20
-
-    def get_queryset(self):
-        qs = GeneratedDocument.objects.select_related('trainer', 'generated_by')
-
-        doc_type = self.request.GET.get('doc_type', '').strip()
-        if doc_type in dict(GeneratedDocument.DOC_TYPE_CHOICES):
-            qs = qs.filter(doc_type=doc_type)
-
-        trainer_id = self.request.GET.get('trainer', '').strip()
-        if trainer_id.isdigit():
-            qs = qs.filter(trainer_id=int(trainer_id))
-
-        search = self.request.GET.get('q', '').strip()
-        if search:
-            qs = qs.filter(
-                Q(title__icontains=search)
-                | Q(filename__icontains=search)
-                | Q(trainer__fname__icontains=search)
-                | Q(trainer__lname__icontains=search)
-                | Q(generated_by__username__icontains=search)
-            )
-
-        return qs
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        total = GeneratedDocument.objects.count()
+
+        documents = GeneratedDocument.objects.select_related(
+            'trainer', 'generated_by'
+        ).all()
+
+        search_query = (self.request.GET.get('q') or '').strip()
+        if search_query:
+            documents = documents.filter(
+                Q(title__icontains=search_query)
+                | Q(filename__icontains=search_query)
+                | Q(trainer__fname__icontains=search_query)
+                | Q(trainer__lname__icontains=search_query)
+                | Q(trainer__username__icontains=search_query)
+                | Q(generated_by__username__icontains=search_query)
+            )
+
+        valid_types = {value for value, _ in GeneratedDocument.DOC_TYPE_CHOICES}
+        selected_doc_type = (self.request.GET.get('doc_type') or '').strip()
+        if selected_doc_type in valid_types:
+            documents = documents.filter(doc_type=selected_doc_type)
+        else:
+            selected_doc_type = ''
+
+        selected_trainer = (self.request.GET.get('trainer') or '').strip()
+        if selected_trainer.isdigit():
+            documents = documents.filter(trainer_id=int(selected_trainer))
+        else:
+            selected_trainer = ''
+
+        paginator = Paginator(documents, self.paginate_by)
+        page_obj = paginator.get_page(self.request.GET.get('page'))
+
+        # KPI counts are deliberately computed over the *whole* archive, not
+        # the filtered queryset, so the rail stays a stable overview while
+        # the table below it narrows.
+        all_documents = GeneratedDocument.objects.all()
         context.update({
-            'title': 'Dean of Studies Dashboard',
-            'total_count': total,
-            'scheme_count': GeneratedDocument.objects.filter(
+            'title': 'Generated Documents',
+            'is_dos': True,
+            'documents': page_obj.object_list,
+            'page_obj': page_obj,
+            'paginator': paginator,
+            'total_count': all_documents.count(),
+            'scheme_count': all_documents.filter(
                 doc_type=GeneratedDocument.DOC_TYPE_SCHEME_OF_WORK).count(),
-            'lesson_count': GeneratedDocument.objects.filter(
+            'lesson_count': all_documents.filter(
                 doc_type=GeneratedDocument.DOC_TYPE_LESSON_PLAN).count(),
-            'assessment_count': GeneratedDocument.objects.filter(
+            'assessment_count': all_documents.filter(
                 doc_type=GeneratedDocument.DOC_TYPE_ASSESSMENT_PLAN).count(),
-            'trainer_count': Trainer.objects.filter(generated_documents__isnull=False).distinct().count(),
+            'trainer_count': all_documents.exclude(trainer__isnull=True)
+                                          .values('trainer_id').distinct().count(),
             'doc_type_choices': GeneratedDocument.DOC_TYPE_CHOICES,
-            'trainers': Trainer.objects.filter(generated_documents__isnull=False).distinct().order_by('lname', 'fname'),
-            'selected_doc_type': self.request.GET.get('doc_type', ''),
-            'selected_trainer': self.request.GET.get('trainer', ''),
-            'search_query': self.request.GET.get('q', ''),
+            'selected_doc_type': selected_doc_type,
+            'selected_trainer': selected_trainer,
+            'search_query': search_query,
+            'trainers': Trainer.objects.order_by('lname', 'fname'),
         })
         return context
 
 
 class GeneratedDocumentDownloadView(DoSRequiredMixin, View):
-    """Streams back the exact file a trainer generated/downloaded, for the
-    Dean of Studies to review."""
+    """
+    Streams an archived document straight back out of the database.
 
-    def get(self, request, pk, *args, **kwargs):
-        doc = get_object_or_404(GeneratedDocument, pk=pk)
-        response = HttpResponse(bytes(doc.file_data), content_type=doc.content_type)
-        response["Content-Disposition"] = _content_disposition(doc.filename)
-        return response
+    The bytes live in GeneratedDocument.file_data rather than on disk
+    because this project runs on Vercel, whose filesystem is ephemeral -
+    see the GeneratedDocument docstring in models.py.
+    """
+
+    def get(self, request, pk):
+        document = get_object_or_404(GeneratedDocument, pk=pk)
+        data = bytes(document.file_data or b'')
+        content_type = document.content_type or 'application/octet-stream'
+        filename = document.filename or 'document'
+        return _binary_response(data, content_type, filename)
 
 
 class GeneratedDocumentDeleteView(DoSRequiredMixin, DeleteView):
-    """Lets the Dean of Studies remove a document (and its stored file
-    bytes) from the DoS Dashboard's oversight table. Reuses the same
-    confirm-then-POST template as every other delete flow in this app
-    (core/crud_delete.html) so this stays consistent with, e.g.,
-    SectorDeleteView/TradeDeleteView."""
+    """Confirm-then-delete for one archived document."""
     model = GeneratedDocument
     template_name = 'core/crud_delete.html'
-    title = 'Generated document'
-
-    def get_success_url(self):
-        return reverse_lazy('dos-dashboard')
+    success_url = reverse_lazy('dos-dashboard')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context.update({
-            'title': self.title,
+            'title': 'Generated Document',
             'list_url_name': 'dos-dashboard',
         })
         return context
+
+    def form_valid(self, form):
+        messages.success(self.request, "Generated document deleted.")
+        return super().form_valid(form)
 
 
 # ---------------------------------------------------------------------------
@@ -584,6 +617,7 @@ class GeneratedDocumentDeleteView(DoSRequiredMixin, DeleteView):
 # ---------------------------------------------------------------------------
 class TrainerAccessMixin:
     trainer_allowed = False
+    dos_allowed = False
 
     def dispatch(self, request, *args, **kwargs):
         # None for admins/staff (no linked Trainer row) - only set for a
@@ -591,6 +625,18 @@ class TrainerAccessMixin:
         self.trainer_profile = getattr(request.user, 'trainer_profile', None)
         if self.trainer_profile and not self.trainer_allowed:
             raise PermissionDenied("Trainers do not have access to this section.")
+
+        # DOS = logged in, not a trainer, not a superuser. Restricted to
+        # Lesson Plans / Assessment Plans by default - a view opts DOS in
+        # explicitly by setting dos_allowed = True (see LessonPlan*/
+        # AssessmentPlan* views below).
+        self.is_dos = (
+            request.user.is_authenticated
+            and not self.trainer_profile
+            and not request.user.is_superuser
+        )
+        if self.is_dos and not self.dos_allowed:
+            raise PermissionDenied("DOS accounts do not have access to this section.")
         return super().dispatch(request, *args, **kwargs)
 
 
@@ -1625,6 +1671,7 @@ class LessonPlanListView(BaseListView):
     edit_url_name = 'lessonplan-edit'
     delete_url_name = 'lessonplan-delete'
     empty_message = 'No lesson plans yet. Click "Add Lesson Plan" to create one.'
+    dos_allowed = True
 
     def get_queryset(self):
         return super().get_queryset().select_related('module', 'trainer')
@@ -1635,6 +1682,7 @@ class LessonPlanCreateView(BaseCreateView):
     form_class = LessonPlanForm
     title = 'Lesson Plan'
     list_url_name = 'lessonplan-list'
+    dos_allowed = True
 
 
 class LessonPlanUpdateView(BaseUpdateView):
@@ -1642,12 +1690,14 @@ class LessonPlanUpdateView(BaseUpdateView):
     form_class = LessonPlanForm
     title = 'Lesson Plan'
     list_url_name = 'lessonplan-list'
+    dos_allowed = True
 
 
 class LessonPlanDeleteView(BaseDeleteView):
     model = LessonPlan
     title = 'Lesson Plan'
     list_url_name = 'lessonplan-list'
+    dos_allowed = True
 
 
 # ---------------------------------------------------------------------------
@@ -1662,6 +1712,7 @@ class AssessmentPlanListView(BaseListView):
     edit_url_name = 'assessmentplan-edit'
     delete_url_name = 'assessmentplan-delete'
     empty_message = 'No assessment plans yet. Click "Add Assessment Plan" to create one.'
+    dos_allowed = True
 
     def get_queryset(self):
         return super().get_queryset().select_related('module', 'trainer')
@@ -1672,6 +1723,7 @@ class AssessmentPlanCreateView(BaseCreateView):
     form_class = AssessmentPlanForm
     title = 'Assessment Plan'
     list_url_name = 'assessmentplan-list'
+    dos_allowed = True
 
 
 class AssessmentPlanUpdateView(BaseUpdateView):
@@ -1679,12 +1731,14 @@ class AssessmentPlanUpdateView(BaseUpdateView):
     form_class = AssessmentPlanForm
     title = 'Assessment Plan'
     list_url_name = 'assessmentplan-list'
+    dos_allowed = True
 
 
 class AssessmentPlanDeleteView(BaseDeleteView):
     model = AssessmentPlan
     title = 'Assessment Plan'
     list_url_name = 'assessmentplan-list'
+    dos_allowed = True
 
 
 # ---------------------------------------------------------------------------
@@ -1842,19 +1896,6 @@ def _resolve_theme(payload):
 
 def _hex_to_rgbcolor(hex_color):
     return RGBColor(int(hex_color[0:2], 16), int(hex_color[2:4], 16), int(hex_color[4:6], 16))
-
-
-def _escape_pdf_text(text):
-    """reportlab's Paragraph markup is a small XML dialect, so any raw
-    &/</> in a captured cell's text (module names with an ampersand,
-    stray angle-bracket, etc.) needs to be escaped before it's handed
-    to Paragraph or the PDF export would throw / render wrong."""
-    return (
-        str(text if text is not None else "")
-        .replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-    )
 
 
 def _shade_cell(cell, hex_color):
@@ -2015,49 +2056,62 @@ def _content_disposition(filename):
     return f"attachment; filename=\"{ascii_fallback}\"; filename*=UTF-8''{encoded}"
 
 
-def _docx_response(document, filename):
+DOCX_CONTENT_TYPE = (
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+)
+XLSX_CONTENT_TYPE = (
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+)
+PDF_CONTENT_TYPE = "application/pdf"
+
+
+def _binary_response(data, content_type, filename):
+    """Single place that turns finished file bytes into a download."""
+    response = HttpResponse(data, content_type=content_type)
+    response["Content-Disposition"] = _content_disposition(filename)
+    return response
+
+
+def _docx_bytes(document):
     buffer = BytesIO()
     document.save(buffer)
     buffer.seek(0)
-    response = HttpResponse(
-        buffer.getvalue(),
-        content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    )
-    response["Content-Disposition"] = _content_disposition(filename)
-    return response
+    return buffer.getvalue()
 
 
-def _pdf_response(pdf_bytes, filename):
-    response = HttpResponse(pdf_bytes, content_type="application/pdf")
-    response["Content-Disposition"] = _content_disposition(filename)
-    return response
+def _docx_response(document, filename):
+    return _binary_response(_docx_bytes(document), DOCX_CONTENT_TYPE, filename)
 
 
-def _save_generated_document(request, doc_type, payload, filename, content_type, content_bytes):
+def _record_generated_document(request, payload, doc_type, filename, content_type, data):
     """
-    Best-effort copy of an export into GeneratedDocument, for the Dean of
-    Studies Dashboard. Deliberately swallows any error (bad payload shape,
-    DB hiccup, etc.) and just logs it - a trainer's download must never
-    fail because the DoS-visibility copy failed to save.
+    Archives a copy of a just-exported document so the Dean of Studies
+    dashboard can show what was produced, by whom and when.
+
+    Archiving must never cost a trainer their download, so any failure
+    here (database hiccup, oversized payload) is logged and swallowed -
+    the export response is returned either way.
     """
     try:
-        trainer = getattr(request.user, 'trainer_profile', None)
-        meta = payload.get('meta') or []
-        if not isinstance(meta, list):
-            meta = []
+        meta_snapshot = []
+        for row in (payload.get("meta") or []):
+            if isinstance(row, (list, tuple)) and len(row) >= 2:
+                meta_snapshot.append([str(row[0]), str(row[1])])
+
+        trainer = getattr(request.user, "trainer_profile", None)
         GeneratedDocument.objects.create(
             generated_by=request.user if request.user.is_authenticated else None,
             trainer=trainer,
             doc_type=doc_type,
-            title=(payload.get('title') or '').strip(),
-            meta_snapshot=meta,
-            filename=filename,
-            content_type=content_type,
-            file_data=content_bytes,
-            file_size=len(content_bytes),
+            title=(payload.get("title") or "").strip()[:255],
+            meta_snapshot=meta_snapshot,
+            filename=filename[:255],
+            content_type=content_type[:150],
+            file_data=data,
+            file_size=len(data),
         )
     except Exception:
-        logger.exception("Failed to save GeneratedDocument copy for DoS Dashboard (doc_type=%s)", doc_type)
+        logger.exception("Could not archive generated document for the DoS dashboard")
 
 
 def _build_export_docx(payload):
@@ -2288,219 +2342,286 @@ def _build_export_docx(payload):
     return document
 
 
-def _build_export_pdf(payload):
-    """
-    Builds a branded PDF from the same collectExportPayload() JSON
-    structure _build_export_docx() uses - same theme colours (read from
-    payload["theme"] via _resolve_theme), same A4 page size/orientation/
-    margins, institution logo(s), a navy title with a gold underline
-    rule, a shaded two-column meta panel, one table per captured HTML
-    table (merging colspan cells, shading header/"section" rows
-    navy-on-white, zebra-striping body rows), a sign-off row and the
-    footer text.
+# ---------------------------------------------------------------------------
+# PDF export
+#
+# Same collectExportPayload() JSON the Word/Excel exports consume, rendered
+# with ReportLab instead - so "Download as PDF" produces the branded A4
+# document server-side rather than depending on the browser's print dialog.
+# ---------------------------------------------------------------------------
+def _rl_color(hex_color):
+    return rl_colors.HexColor("#%s" % hex_color)
 
-    Unlike the generator pages' "Print / save as PDF" toolbar button
-    (a client-side window.print() the server never sees), this is
-    rendered server-side so - exactly like the Word/Excel exports - a
-    durable copy can be saved to GeneratedDocument for the Dean of
-    Studies Dashboard.
-    """
-    theme = _resolve_theme(payload)
-    navy = pdf_colors.HexColor(f"#{theme['navy']}")
-    gold = pdf_colors.HexColor(f"#{theme['gold']}")
-    muted = pdf_colors.HexColor(f"#{theme['muted']}")
-    row_alt = pdf_colors.HexColor(f"#{theme['rowAlt']}")
-    line = pdf_colors.HexColor(f"#{theme['line']}")
-    white = pdf_colors.white
 
-    is_landscape = (payload.get("orientation") or "").strip().lower() == "landscape"
-    page_size = landscape(A4) if is_landscape else A4
-    top_m, left_m, right_m, bottom_m = 15 * mm, 13 * mm, 13 * mm, 16 * mm
-    usable_width = page_size[0] - left_m - right_m
-
-    buffer = BytesIO()
-    doc = SimpleDocTemplate(
-        buffer,
-        pagesize=page_size,
-        topMargin=top_m, leftMargin=left_m, rightMargin=right_m, bottomMargin=bottom_m,
-        title=(payload.get("title") or "Document").strip(),
+def _pdf_text(value):
+    """Escapes payload text for ReportLab's mini-HTML Paragraph markup."""
+    return (
+        str(value if value is not None else "")
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
     )
-    story = []
 
-    # ---- Institution logo(s) -----------------------------------------------
-    logos = payload.get("logos") or []
-    logo_flowables = []
+
+def _pdf_logo_flowables(logos, max_height=34):
+    """Turns the payload's logo strip into scaled ReportLab Image flowables."""
+    images = []
     for logo in logos:
         image_bytes = _resolve_logo_bytes((logo or {}).get("src"))
         if not image_bytes:
             continue
         try:
-            img = PdfImage(BytesIO(image_bytes))
-            img.drawHeight = 14 * mm
-            img.drawWidth = img.drawHeight * (img.imageWidth / float(img.imageHeight))
-            logo_flowables.append(img)
+            reader = ImageReader(BytesIO(image_bytes))
+            width, height = reader.getSize()
+            if not width or not height:
+                continue
+            scaled_width = max_height * (float(width) / float(height))
+            images.append(RLImage(BytesIO(image_bytes), width=scaled_width, height=max_height))
         except Exception:
-            # Corrupt/unsupported image data - skip this logo rather than
-            # failing the whole export.
+            # One unreadable logo must never break the whole export.
             continue
-    if logo_flowables:
-        logo_row = PdfTable([logo_flowables])
-        logo_row.setStyle(TableStyle([
+    return images
+
+
+def _build_export_pdf(payload):
+    """
+    Builds the branded PDF: logo strip, navy title with the gold underline,
+    the two-column meta panel, one table per captured HTML table (honouring
+    colspans, header/section shading and zebra striping), the sign-off row
+    and the footer - mirroring _build_export_docx and the on-screen preview.
+    """
+    theme = _resolve_theme(payload)
+    navy = _rl_color(theme["navy"])
+    gold = _rl_color(theme["gold"])
+    muted = _rl_color(theme["muted"])
+    line = _rl_color(theme["line"])
+    row_alt = _rl_color(theme["rowAlt"])
+
+    landscape_mode = (payload.get("orientation") or "").strip().lower() == "landscape"
+    page_size = landscape(A4) if landscape_mode else A4
+
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=page_size,
+        topMargin=15 * RL_MM,
+        leftMargin=13 * RL_MM,
+        rightMargin=13 * RL_MM,
+        bottomMargin=16 * RL_MM,
+        title=(payload.get("title") or "Document").strip(),
+    )
+    usable_width = doc.width
+
+    title_style = ParagraphStyle(
+        "TMSTitle", fontName="Helvetica-Bold", fontSize=16, leading=20,
+        alignment=TA_CENTER, textColor=navy, spaceAfter=4,
+    )
+    subtitle_style = ParagraphStyle(
+        "TMSSubtitle", fontName="Helvetica-Oblique", fontSize=8.5, leading=11,
+        alignment=TA_CENTER, textColor=muted,
+    )
+    meta_label_style = ParagraphStyle(
+        "TMSMetaLabel", fontName="Helvetica-Bold", fontSize=9, leading=12, textColor=navy,
+    )
+    meta_value_style = ParagraphStyle(
+        "TMSMetaValue", fontName="Helvetica", fontSize=9, leading=12, alignment=TA_RIGHT,
+    )
+    header_cell_style = ParagraphStyle(
+        "TMSHeaderCell", fontName="Helvetica-Bold", fontSize=8, leading=10,
+        alignment=TA_CENTER, textColor=rl_colors.white,
+    )
+    section_cell_style = ParagraphStyle(
+        "TMSSectionCell", fontName="Helvetica-Bold", fontSize=8.5, leading=11,
+        textColor=rl_colors.white,
+    )
+    body_cell_style = ParagraphStyle(
+        "TMSBodyCell", fontName="Helvetica", fontSize=8, leading=10,
+    )
+    signoff_style = ParagraphStyle(
+        "TMSSignoff", fontName="Helvetica", fontSize=9, leading=12,
+    )
+    footer_style = ParagraphStyle(
+        "TMSFooter", fontName="Helvetica-Oblique", fontSize=8.5, leading=11,
+        alignment=TA_CENTER, textColor=muted,
+    )
+
+    story = []
+
+    # ---- Institution logo(s) ----------------------------------------------
+    logo_images = _pdf_logo_flowables(payload.get("logos") or [])
+    if logo_images:
+        logo_table = Table([logo_images], hAlign="CENTER")
+        logo_table.setStyle(TableStyle([
             ("ALIGN", (0, 0), (-1, -1), "CENTER"),
             ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
             ("LEFTPADDING", (0, 0), (-1, -1), 6),
             ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+            ("TOPPADDING", (0, 0), (-1, -1), 0),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
         ]))
-        story.append(logo_row)
-        story.append(Spacer(1, 6))
+        story.append(logo_table)
 
-    # ---- Title / subtitle ---------------------------------------------------
+    # ---- Title / subtitle --------------------------------------------------
     title = (payload.get("title") or "Document").strip()
-    title_style = ParagraphStyle(
-        "ExportTitle", fontName="Helvetica-Bold", fontSize=16,
-        textColor=navy, alignment=TA_CENTER, spaceAfter=2,
-    )
-    story.append(Paragraph(_escape_pdf_text(title.upper()), title_style))
-    story.append(HRFlowable(width="30%", thickness=1.5, color=gold, spaceBefore=2, spaceAfter=8, hAlign="CENTER"))
+    story.append(Paragraph(_pdf_text(title.upper()), title_style))
+
+    # The gold rule under the title (the ::after rule on .gen-doc-title).
+    rule = Table([[""]], colWidths=[usable_width], rowHeights=[2])
+    rule.setStyle(TableStyle([
+        ("LINEBELOW", (0, 0), (-1, -1), 1.6, gold),
+        ("TOPPADDING", (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+    ]))
+    story.append(rule)
+    story.append(Spacer(1, 6))
 
     subtitle = (payload.get("subtitle") or "").strip()
     if subtitle:
-        subtitle_style = ParagraphStyle(
-            "ExportSubtitle", fontName="Helvetica-Oblique", fontSize=8.5,
-            textColor=muted, alignment=TA_CENTER, spaceAfter=8,
-        )
-        story.append(Paragraph(_escape_pdf_text(subtitle), subtitle_style))
-    story.append(Spacer(1, 4))
+        story.append(Paragraph(_pdf_text(subtitle), subtitle_style))
+        story.append(Spacer(1, 6))
 
-    # ---- Meta info panel -----------------------------------------------------
-    meta = payload.get("meta") or []
+    # ---- Meta info panel ---------------------------------------------------
+    meta = [
+        row for row in (payload.get("meta") or [])
+        if isinstance(row, (list, tuple)) and len(row) >= 2
+    ]
     if meta:
-        meta_data = [[_escape_pdf_text(label), _escape_pdf_text(value)] for label, value in meta]
-        meta_table = PdfTable(meta_data, colWidths=[usable_width / 2.0, usable_width / 2.0])
+        meta_rows = [
+            [Paragraph(_pdf_text(label), meta_label_style),
+             Paragraph(_pdf_text(value), meta_value_style)]
+            for label, value in meta
+        ]
+        half = usable_width / 2.0
+        meta_table = Table(meta_rows, colWidths=[half, half], hAlign="LEFT")
         meta_style = [
             ("BACKGROUND", (0, 0), (-1, -1), row_alt),
-            ("TEXTCOLOR", (0, 0), (0, -1), navy),
-            ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
-            ("FONTNAME", (1, 0), (1, -1), "Helvetica"),
-            ("FONTSIZE", (0, 0), (-1, -1), 9),
-            ("ALIGN", (1, 0), (1, -1), "RIGHT"),
             ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-            ("TOPPADDING", (0, 0), (-1, -1), 4),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-            ("LEFTPADDING", (0, 0), (-1, -1), 8),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+            ("LEFTPADDING", (0, 0), (-1, -1), 6),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+            ("TOPPADDING", (0, 0), (-1, -1), 3),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
         ]
-        if len(meta_data) > 1:
-            meta_style.append(("LINEBELOW", (0, 0), (-1, -2), 0.5, line))
+        if len(meta_rows) > 1:
+            meta_style.append(("LINEBELOW", (0, 0), (-1, -2), 0.4, line))
         meta_table.setStyle(TableStyle(meta_style))
         story.append(meta_table)
         story.append(Spacer(1, 10))
 
-    # ---- Body table(s) --------------------------------------------------------
-    cell_style = ParagraphStyle("ExportCell", fontName="Helvetica", fontSize=8, leading=10)
-    header_cell_style = ParagraphStyle(
-        "ExportHeaderCell", fontName="Helvetica-Bold", fontSize=8.5,
-        leading=10, textColor=white, alignment=TA_CENTER,
-    )
-    section_cell_style = ParagraphStyle(
-        "ExportSectionCell", fontName="Helvetica-Bold", fontSize=8.5,
-        leading=10, textColor=white,
-    )
-
+    # ---- Body table(s) ------------------------------------------------------
     for table_rows in payload.get("tables") or []:
         if not table_rows:
             continue
-        n_cols = max((sum(c.get("colspan", 1) for c in r.get("cells", [])) for r in table_rows), default=1)
+
+        n_cols = max(
+            (sum(c.get("colspan", 1) for c in r.get("cells", [])) for r in table_rows),
+            default=1,
+        )
         n_cols = max(n_cols, 1)
 
         col_weights = payload.get("colWidths") or []
         if len(col_weights) != n_cols:
             col_weights = [1] * n_cols
-        total_weight = sum(col_weights) or n_cols
-        col_widths = [usable_width * (w / total_weight) for w in col_weights]
+        weight_total = sum(w for w in col_weights if w) or 1
+        col_widths = [usable_width * ((w or 0) / weight_total) for w in col_weights]
 
-        grid = []
-        span_cmds = []
-        style_cmds = [
-            ("GRID", (0, 0), (-1, -1), 0.5, line),
+        data = []
+        style_commands = [
+            ("GRID", (0, 0), (-1, -1), 0.4, line),
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ("TOPPADDING", (0, 0), (-1, -1), 4),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
             ("LEFTPADDING", (0, 0), (-1, -1), 4),
             ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+            ("TOPPADDING", (0, 0), (-1, -1), 3),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
         ]
-
         body_row_index = 0
-        for r_idx, row in enumerate(table_rows):
+        header_row_indexes = []
+
+        for row_index, row in enumerate(table_rows):
             cells = row.get("cells", [])
             is_section = bool(row.get("section"))
             is_header_row = bool(cells) and all(c.get("header") for c in cells)
+            if is_header_row:
+                header_row_indexes.append(row_index)
+
             if not is_section and not is_header_row:
                 body_row_index += 1
-            row_shade = row_alt if (not is_section and not is_header_row and body_row_index % 2 == 0) else None
+            shade_row = (
+                not is_section and not is_header_row and body_row_index % 2 == 0
+            )
+            if shade_row:
+                style_commands.append(
+                    ("BACKGROUND", (0, row_index), (-1, row_index), row_alt)
+                )
 
-            grid_row = [Paragraph("", cell_style) for _ in range(n_cols)]
+            data_row = [""] * n_cols
             col_index = 0
             for cell in cells:
                 if col_index >= n_cols:
                     break
                 colspan = max(int(cell.get("colspan", 1) or 1), 1)
                 end_index = min(col_index + colspan - 1, n_cols - 1)
-                text = _escape_pdf_text(cell.get("text", ""))
                 is_header_cell = bool(cell.get("header"))
 
                 if is_header_cell:
-                    para = Paragraph(text, header_cell_style)
+                    style = header_cell_style
                 elif is_section:
-                    para = Paragraph(text, section_cell_style)
+                    style = section_cell_style
                 else:
-                    para = Paragraph(text, cell_style)
-                grid_row[col_index] = para
+                    style = body_cell_style
+                data_row[col_index] = Paragraph(_pdf_text(cell.get("text", "")), style)
 
                 if end_index > col_index:
-                    span_cmds.append(("SPAN", (col_index, r_idx), (end_index, r_idx)))
+                    style_commands.append(
+                        ("SPAN", (col_index, row_index), (end_index, row_index))
+                    )
                 if is_header_cell or is_section:
-                    style_cmds.append(("BACKGROUND", (col_index, r_idx), (end_index, r_idx), navy))
-                elif row_shade:
-                    style_cmds.append(("BACKGROUND", (col_index, r_idx), (end_index, r_idx), row_shade))
-
+                    style_commands.append(
+                        ("BACKGROUND", (col_index, row_index), (end_index, row_index), navy)
+                    )
+                if is_section:
+                    # The gold left rail the .gen-term-separator rows carry.
+                    style_commands.append(
+                        ("LINEBEFORE", (col_index, row_index), (col_index, row_index), 3, gold)
+                    )
                 col_index = end_index + 1
-            grid.append(grid_row)
+            data.append(data_row)
 
-        body_table = PdfTable(grid, colWidths=col_widths, repeatRows=1 if grid else 0)
-        body_table.setStyle(TableStyle(style_cmds + span_cmds))
+        body_table = Table(
+            data,
+            colWidths=col_widths,
+            repeatRows=(max(header_row_indexes) + 1) if header_row_indexes and min(header_row_indexes) == 0 else 0,
+        )
+        body_table.setStyle(TableStyle(style_commands))
         story.append(body_table)
-        story.append(Spacer(1, 10))
+        story.append(Spacer(1, 12))
 
-    # ---- Sign-off --------------------------------------------------------------
-    signoff = payload.get("signoff") or []
+    # ---- Sign-off ------------------------------------------------------------
     active_lines = [
-        line for line in signoff
-        if (line.get("label") or "").strip() or (line.get("name") or "").strip()
+        line_item for line_item in (payload.get("signoff") or [])
+        if (line_item.get("label") or "").strip() or (line_item.get("name") or "").strip()
     ]
     if active_lines:
-        signoff_style = ParagraphStyle("ExportSignoff", fontName="Helvetica", fontSize=9)
+        share = usable_width / float(len(active_lines))
         signoff_cells = []
-        for signoff_line in active_lines:
-            label = _escape_pdf_text((signoff_line.get("label") or "").strip())
-            name = _escape_pdf_text((signoff_line.get("name") or "").strip())
-            signoff_cells.append(Paragraph(f"<b>{label}</b> {name}", signoff_style))
-        signoff_table = PdfTable([signoff_cells], colWidths=[usable_width / len(signoff_cells)] * len(signoff_cells))
+        for line_item in active_lines:
+            label = _pdf_text((line_item.get("label") or "").strip())
+            name = _pdf_text((line_item.get("name") or "").strip())
+            signoff_cells.append(Paragraph(
+                '<font color="#%s"><b>%s</b></font> %s' % (theme["navy"], label, name),
+                signoff_style,
+            ))
+        signoff_table = Table([signoff_cells], colWidths=[share] * len(active_lines))
         signoff_table.setStyle(TableStyle([
-            ("LINEABOVE", (0, 0), (-1, 0), 0.75, line),
-            ("TOPPADDING", (0, 0), (-1, -1), 6),
+            ("LINEABOVE", (0, 0), (-1, 0), 0.6, line),
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("TOPPADDING", (0, 0), (-1, -1), 6),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
         ]))
         story.append(signoff_table)
-        story.append(Spacer(1, 6))
 
     footer = (payload.get("footer") or "").strip()
     if footer:
-        footer_style = ParagraphStyle(
-            "ExportFooter", fontName="Helvetica-Oblique", fontSize=8,
-            textColor=muted, alignment=TA_CENTER,
-        )
-        story.append(Paragraph(_escape_pdf_text(footer), footer_style))
+        story.append(Paragraph(_pdf_text(footer), footer_style))
 
     doc.build(story)
     buffer.seek(0)
@@ -2517,12 +2638,12 @@ def export_scheme_of_work_docx(request):
         return error_response
     document = _build_export_docx(payload)
     filename = f"{_export_filename(payload.get('title'), 'Scheme of Work')}.docx"
-    response = _docx_response(document, filename)
-    _save_generated_document(
-        request, GeneratedDocument.DOC_TYPE_SCHEME_OF_WORK, payload,
-        filename, response["Content-Type"], response.content,
+    data = _docx_bytes(document)
+    _record_generated_document(
+        request, payload, GeneratedDocument.DOC_TYPE_SCHEME_OF_WORK,
+        filename, DOCX_CONTENT_TYPE, data,
     )
-    return response
+    return _binary_response(data, DOCX_CONTENT_TYPE, filename)
 
 
 @require_POST
@@ -2535,12 +2656,12 @@ def export_lesson_plan_docx(request):
         return error_response
     document = _build_export_docx(payload)
     filename = f"{_export_filename(payload.get('title'), 'Lesson Plan')}.docx"
-    response = _docx_response(document, filename)
-    _save_generated_document(
-        request, GeneratedDocument.DOC_TYPE_LESSON_PLAN, payload,
-        filename, response["Content-Type"], response.content,
+    data = _docx_bytes(document)
+    _record_generated_document(
+        request, payload, GeneratedDocument.DOC_TYPE_LESSON_PLAN,
+        filename, DOCX_CONTENT_TYPE, data,
     )
-    return response
+    return _binary_response(data, DOCX_CONTENT_TYPE, filename)
 
 
 @require_POST
@@ -2616,38 +2737,29 @@ def export_assessment_plan_xlsx(request):
     buffer.seek(0)
 
     filename = f"{_export_filename(payload.get('title'), 'Assessment Plan')}.xlsx"
-    xlsx_bytes = buffer.getvalue()
-    response = HttpResponse(
-        xlsx_bytes,
-        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    data = buffer.getvalue()
+    _record_generated_document(
+        request, payload, GeneratedDocument.DOC_TYPE_ASSESSMENT_PLAN,
+        filename, XLSX_CONTENT_TYPE, data,
     )
-    response["Content-Disposition"] = _content_disposition(filename)
-    _save_generated_document(
-        request, GeneratedDocument.DOC_TYPE_ASSESSMENT_PLAN, payload,
-        filename, response["Content-Type"], xlsx_bytes,
-    )
-    return response
+    return _binary_response(data, XLSX_CONTENT_TYPE, filename)
 
 
 @require_POST
 @csrf_protect
 @login_required_json
 def export_scheme_of_work_pdf(request):
-    """"Download as PDF" for the Scheme of Work generator page - rendered
-    server-side (see _build_export_pdf) so, unlike the toolbar's
-    "Print / save as PDF" button, a copy is also saved to
-    GeneratedDocument for the Dean of Studies Dashboard."""
+    """"Download as PDF" for the Scheme of Work generator page."""
     payload, error_response = _parse_export_payload(request)
     if error_response:
         return error_response
-    pdf_bytes = _build_export_pdf(payload)
     filename = f"{_export_filename(payload.get('title'), 'Scheme of Work')}.pdf"
-    response = _pdf_response(pdf_bytes, filename)
-    _save_generated_document(
-        request, GeneratedDocument.DOC_TYPE_SCHEME_OF_WORK, payload,
-        filename, response["Content-Type"], pdf_bytes,
+    data = _build_export_pdf(payload)
+    _record_generated_document(
+        request, payload, GeneratedDocument.DOC_TYPE_SCHEME_OF_WORK,
+        filename, PDF_CONTENT_TYPE, data,
     )
-    return response
+    return _binary_response(data, PDF_CONTENT_TYPE, filename)
 
 
 @require_POST
@@ -2658,14 +2770,13 @@ def export_lesson_plan_pdf(request):
     payload, error_response = _parse_export_payload(request)
     if error_response:
         return error_response
-    pdf_bytes = _build_export_pdf(payload)
     filename = f"{_export_filename(payload.get('title'), 'Lesson Plan')}.pdf"
-    response = _pdf_response(pdf_bytes, filename)
-    _save_generated_document(
-        request, GeneratedDocument.DOC_TYPE_LESSON_PLAN, payload,
-        filename, response["Content-Type"], pdf_bytes,
+    data = _build_export_pdf(payload)
+    _record_generated_document(
+        request, payload, GeneratedDocument.DOC_TYPE_LESSON_PLAN,
+        filename, PDF_CONTENT_TYPE, data,
     )
-    return response
+    return _binary_response(data, PDF_CONTENT_TYPE, filename)
 
 
 @require_POST
@@ -2676,14 +2787,13 @@ def export_assessment_plan_pdf(request):
     payload, error_response = _parse_export_payload(request)
     if error_response:
         return error_response
-    pdf_bytes = _build_export_pdf(payload)
     filename = f"{_export_filename(payload.get('title'), 'Assessment Plan')}.pdf"
-    response = _pdf_response(pdf_bytes, filename)
-    _save_generated_document(
-        request, GeneratedDocument.DOC_TYPE_ASSESSMENT_PLAN, payload,
-        filename, response["Content-Type"], pdf_bytes,
+    data = _build_export_pdf(payload)
+    _record_generated_document(
+        request, payload, GeneratedDocument.DOC_TYPE_ASSESSMENT_PLAN,
+        filename, PDF_CONTENT_TYPE, data,
     )
-    return response
+    return _binary_response(data, PDF_CONTENT_TYPE, filename)
 
 
 def _export_filename(title, fallback):
