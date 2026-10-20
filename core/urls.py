@@ -121,6 +121,11 @@ urlpatterns = [
         name='assessmentplan-ai-generate'
     ),
     path(
+        'api/lesson-plan/ai-regenerate-steps/',
+        views.regenerate_lesson_plan_steps,
+        name='lessonplan-ai-regenerate-steps'
+    ),
+    path(
         'api/lesson-plan/notes/generate/',
         views.generate_lesson_plan_notes,
         name='lessonplan-notes-generate'

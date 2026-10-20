@@ -237,6 +237,18 @@
             <tr>
               <td colspan="4"><strong>Facilitation technique(s):</strong> <span id="spTechniques" contenteditable="true"></span></td>
             </tr>
+            <tr class="no-print gen-sync-row d-none" id="techSyncRow">
+              <td colspan="4">
+                <div class="gen-sync-bar">
+                  <span id="techSyncStatus" class="gen-sync-status" role="status" aria-live="polite"></span>
+                  <label class="gen-sync-toggle" title="When on, editing the techniques above rewrites the Development / Body steps automatically">
+                    <input type="checkbox" id="autoSyncToggle" checked> Auto-update steps
+                  </label>
+                  <button type="button" class="gen-sync-btn" id="syncNowBtn"><i class="fa-solid fa-arrows-rotate"></i> Update steps now</button>
+                  <button type="button" class="gen-sync-btn gen-sync-btn--undo d-none" id="undoSyncBtn"><i class="fa-solid fa-rotate-left"></i> Undo</button>
+                </div>
+              </td>
+            </tr>
 
             <tr class="gen-sp-section-row"><td colspan="4">Introduction</td></tr>
             <tr class="gen-sp-subhead-row"><td colspan="2"></td><td>Resources</td><td>Duration</td></tr>
@@ -753,6 +765,320 @@
         window.print();
       }
 
+
+      // -------------------------------------------------------------
+      // Facilitation technique(s) <-> Development/Body sync.
+      // Editing the Facilitation technique(s) field re-drafts every
+      // Development/Body step so it is DELIVERED through the new
+      // technique(s) (see core/views.py: regenerate_lesson_plan_steps).
+      // Step labels, step count and the trainer's durations are left
+      // exactly as they are - only the trainer/learner activities and
+      // resources change - so Range, Objectives and Conclusion stay valid.
+      // -------------------------------------------------------------
+      var REGEN_STEPS_ENDPOINT = '/api/lesson-plan/ai-regenerate-steps/';
+      var TECH_SYNC_IDLE_MS = 2200;
+
+      var techniquesEl = document.getElementById('spTechniques');
+      var techSyncRow = document.getElementById('techSyncRow');
+      var techSyncStatus = document.getElementById('techSyncStatus');
+      var autoSyncToggle = document.getElementById('autoSyncToggle');
+      var syncNowBtn = document.getElementById('syncNowBtn');
+      var undoSyncBtn = document.getElementById('undoSyncBtn');
+
+      var lastAiContext = null;          // context sent with the first generation
+      var lastSyncedKey = '';            // techniques the steps currently match
+      var lastSyncedRaw = '';
+      var techSyncTimer = null;
+      var techSyncRequestId = 0;
+      var techSyncBusy = false;
+      var undoSnapshot = null;
+
+      function normalizeTechniques(text) {
+        var seen = {};
+        var out = [];
+        (text || '').split(/[,;\n]+/).forEach(function (part) {
+          var t = part.replace(/\s+/g, ' ').trim();
+          var key = t.toLowerCase();
+          if (!t || seen[key]) return;
+          seen[key] = true;
+          out.push(t);
+        });
+        return out;
+      }
+
+      function techniquesKey(list) {
+        return list.map(function (t) { return t.toLowerCase(); }).join('|');
+      }
+
+      // null = the field still shows a loading/error placeholder (nothing to sync)
+      function readTechniques() {
+        if (!techniquesEl) return null;
+        var clone = techniquesEl.cloneNode(true);
+        var hadPlaceholder = clone.querySelector('.gen-ai-loading-text, .gen-ai-error-text');
+        Array.prototype.forEach.call(
+          clone.querySelectorAll('.gen-ai-loading-text, .gen-ai-error-text'),
+          function (n) { n.remove(); }
+        );
+        var list = normalizeTechniques(clone.textContent);
+        if (hadPlaceholder && !list.length) return null;
+        return list;
+      }
+
+      function getStepRows() {
+        return Array.prototype.filter.call(docStepsBody.children, function (tr) {
+          return tr.querySelector && tr.querySelector('.gen-step-cell');
+        });
+      }
+
+      function stepTitleOf(cell) {
+        return cell.textContent.trim()
+          .replace(/^Step\s+\d+\s*[:\-\u2013\u2014.]?\s*/i, '').trim();
+      }
+
+      function readStepRow(tr) {
+        var cell = tr.querySelector('.gen-step-cell');
+        var blocks = tr.querySelectorAll('.gen-sp-editable-block');
+        return {
+          title: stepTitleOf(cell),
+          trainer_activity: listItemsOf(blocks[0]),
+          learner_activity: listItemsOf(blocks[1]),
+          resources: tr.children[1] ? tr.children[1].textContent.trim() : '',
+        };
+      }
+
+      function captureSnapshot(rows) {
+        return {
+          techniquesRaw: lastSyncedRaw,
+          rows: rows.map(function (tr) {
+            var blocks = tr.querySelectorAll('.gen-sp-editable-block');
+            return {
+              label: tr.querySelector('.gen-step-cell').innerHTML,
+              trainer: blocks[0] ? blocks[0].innerHTML : '',
+              learner: blocks[1] ? blocks[1].innerHTML : '',
+              resources: tr.children[1] ? tr.children[1].innerHTML : '',
+            };
+          }),
+        };
+      }
+
+      function restoreSnapshot(snap) {
+        var rows = getStepRows();
+        snap.rows.forEach(function (saved, i) {
+          var tr = rows[i];
+          if (!tr) return;
+          var blocks = tr.querySelectorAll('.gen-sp-editable-block');
+          tr.querySelector('.gen-step-cell').innerHTML = saved.label;
+          if (blocks[0]) blocks[0].innerHTML = saved.trainer;
+          if (blocks[1]) blocks[1].innerHTML = saved.learner;
+          if (tr.children[1]) tr.children[1].innerHTML = saved.resources;
+        });
+      }
+
+      function escList(items) {
+        return (items || []).map(function (x) { return TMSGen.escapeHtml((x || '').toString()); });
+      }
+
+      function applyStepResult(rows, steps) {
+        rows.forEach(function (tr, i) {
+          var s = steps[i];
+          if (!s) return;
+          var blocks = tr.querySelectorAll('.gen-sp-editable-block');
+          var trainer = escList(s.trainer_activity);
+          var learner = escList(s.learner_activity);
+          if (blocks[0]) blocks[0].innerHTML = buildActivityListHtml(trainer.length ? trainer : [''], 'trainer');
+          if (blocks[1]) blocks[1].innerHTML = buildActivityListHtml(learner.length ? learner : [''], 'learner');
+          if (tr.children[1]) tr.children[1].textContent = s.resources || '';
+          // Only fill a title the trainer left blank - existing titles are never renamed.
+          var cell = tr.querySelector('.gen-step-cell');
+          if (s.title && !stepTitleOf(cell)) cell.textContent = 'Step ' + (i + 1) + ': ' + s.title;
+        });
+      }
+
+      function setSyncStatus(kind, html) {
+        techSyncRow.classList.remove('d-none');
+        techSyncStatus.className = 'gen-sync-status gen-sync-status--' + kind;
+        var icon = { busy: 'fa-circle-notch fa-spin', ok: 'fa-circle-check', warn: 'fa-circle-info', error: 'fa-triangle-exclamation' }[kind] || 'fa-circle-info';
+        techSyncStatus.innerHTML = '<i class="fa-solid ' + icon + '"></i> ' + html;
+      }
+
+      function resetTechSync() {
+        clearTimeout(techSyncTimer);
+        techSyncRequestId++;
+        techSyncBusy = false;
+        lastSyncedKey = '';
+        lastSyncedRaw = '';
+        undoSnapshot = null;
+        docStepsBody.classList.remove('gen-steps-updating');
+        if (syncNowBtn) syncNowBtn.disabled = false;
+        if (undoSyncBtn) undoSyncBtn.classList.add('d-none');
+        if (techSyncRow) techSyncRow.classList.add('d-none');
+      }
+
+      // Called once a fresh AI plan has rendered: the steps now match the techniques shown.
+      function markTechniquesSynced() {
+        var list = readTechniques();
+        if (list && list.length) {
+          lastSyncedKey = techniquesKey(list);
+          lastSyncedRaw = list.join(', ');
+          setSyncStatus('ok', 'Development steps match: <strong>' + TMSGen.escapeHtml(list.join(', ')) +
+            '</strong>. Change the techniques above and the steps update automatically.');
+        } else {
+          lastSyncedKey = '';
+          setSyncStatus('warn', 'Type your facilitation technique(s) above and the Development / Body steps will be written to match.');
+        }
+      }
+
+      function syncStepsToTechniques(opts) {
+        opts = opts || {};
+        clearTimeout(techSyncTimer);
+        if (!lastAiContext) return;
+        var list = readTechniques();
+        if (list === null) return;
+        if (!list.length) {
+          setSyncStatus('warn', 'Add at least one facilitation technique so the steps can be matched to it.');
+          return;
+        }
+        var key = techniquesKey(list);
+        if (!opts.force && key === lastSyncedKey) return;
+        var rows = getStepRows();
+        if (!rows.length) return;
+
+        var myId = ++techSyncRequestId;
+        techSyncBusy = true;
+        undoSnapshot = captureSnapshot(rows);
+        docStepsBody.classList.add('gen-steps-updating');
+        syncNowBtn.disabled = true;
+        setSyncStatus('busy', 'Updating the Development / Body steps to match: <strong>' +
+          TMSGen.escapeHtml(list.join(', ')) + '</strong>…');
+
+        var payload = {
+          facilitation_techniques: list.join(', '),
+          outcome_text: lastAiContext.outcome_text,
+          indicative_content: lastAiContext.indicative_content,
+          sector: lastAiContext.sector,
+          trade: lastAiContext.trade,
+          level: lastAiContext.level,
+          module_code: lastAiContext.module_code,
+          module_name: lastAiContext.module_name,
+          total_minutes: lastAiContext.total_minutes,
+          topic: textOf('spTopic') || lastAiContext.topic,
+          range: textOf('spRange'),
+          objectives: listItemsOf(document.getElementById('spObjectives')),
+          steps: rows.map(readStepRow),
+        };
+
+        fetch(REGEN_STEPS_ENDPOINT, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken'),
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+          body: JSON.stringify(payload),
+        })
+          .then(function (response) {
+            if (!response.ok) {
+              return response.json().catch(function () { return {}; }).then(function (d) {
+                throw new Error(d.error || ('Request failed with status ' + response.status));
+              });
+            }
+            return response.json();
+          })
+          .then(function (data) {
+            if (myId !== techSyncRequestId) return;   // a newer edit superseded this one
+            var steps = data && Array.isArray(data.steps) ? data.steps : [];
+            if (!steps.length) throw new Error('The AI returned no steps.');
+            applyStepResult(getStepRows(), steps);
+
+            var previousRaw = undoSnapshot ? undoSnapshot.techniquesRaw : '';
+            lastSyncedKey = key;
+            lastSyncedRaw = list.join(', ');
+            if (undoSnapshot) undoSnapshot.techniquesRaw = previousRaw;
+            undoSyncBtn.classList.remove('d-none');
+            setSyncStatus('ok', 'Development steps rewritten to match: <strong>' +
+              TMSGen.escapeHtml(list.join(', ')) + '</strong>.' +
+              (data.source === 'fallback' && data.notice ? ' <em>' + TMSGen.escapeHtml(data.notice) + '</em>' : ''));
+            TMS.toast('Development steps updated to match the new facilitation technique(s).', 'success');
+          })
+          .catch(function (err) {
+            if (myId !== techSyncRequestId) return;
+            console.error(err);
+            undoSnapshot = null;
+            setSyncStatus('error', 'Couldn\'t update the steps (' +
+              TMSGen.escapeHtml((err && err.message) || 'unknown error') + '). Click “Update steps now” to try again.');
+            TMS.toast('Could not update the development steps.', 'danger');
+          })
+          .finally(function () {
+            if (myId !== techSyncRequestId) return;
+            techSyncBusy = false;
+            docStepsBody.classList.remove('gen-steps-updating');
+            syncNowBtn.disabled = false;
+          });
+      }
+
+      function onUndoSync() {
+        if (!undoSnapshot) return;
+        techSyncRequestId++;       // cancel anything still in flight
+        techSyncBusy = false;
+        docStepsBody.classList.remove('gen-steps-updating');
+        syncNowBtn.disabled = false;
+        restoreSnapshot(undoSnapshot);
+        if (undoSnapshot.techniquesRaw) {
+          techniquesEl.textContent = undoSnapshot.techniquesRaw;
+          lastSyncedRaw = undoSnapshot.techniquesRaw;
+          lastSyncedKey = techniquesKey(normalizeTechniques(lastSyncedRaw));
+        } else {
+          lastSyncedKey = '';
+        }
+        undoSnapshot = null;
+        undoSyncBtn.classList.add('d-none');
+        setSyncStatus('ok', 'Reverted to the previous steps' +
+          (lastSyncedRaw ? ' and techniques: <strong>' + TMSGen.escapeHtml(lastSyncedRaw) + '</strong>' : '') + '.');
+      }
+
+      function onTechniquesInput() {
+        if (techSyncBusy) { techSyncRequestId++; techSyncBusy = false; docStepsBody.classList.remove('gen-steps-updating'); syncNowBtn.disabled = false; }
+        clearTimeout(techSyncTimer);
+        var list = readTechniques();
+        if (list === null || !lastAiContext) return;
+        if (list.length && techniquesKey(list) === lastSyncedKey) {
+          setSyncStatus('ok', 'Development steps match: <strong>' + TMSGen.escapeHtml(list.join(', ')) + '</strong>.');
+          return;
+        }
+        if (autoSyncToggle.checked) {
+          setSyncStatus('warn', 'Techniques changed — the steps will update when you pause or leave the field.');
+          techSyncTimer = setTimeout(function () { syncStepsToTechniques(); }, TECH_SYNC_IDLE_MS);
+        } else {
+          setSyncStatus('warn', 'Techniques changed — click “Update steps now” to rewrite the Development / Body steps.');
+        }
+      }
+
+      function initTechniqueSync() {
+        if (!techniquesEl) return;
+        techniquesEl.addEventListener('input', onTechniquesInput);
+        techniquesEl.addEventListener('blur', function () {
+          if (autoSyncToggle.checked) syncStepsToTechniques();
+        });
+        techniquesEl.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') { e.preventDefault(); techniquesEl.blur(); }
+        });
+        techniquesEl.addEventListener('focus', function () {
+          // "Click to fill in manually" placeholder: clear it so typing starts clean.
+          if (techniquesEl.querySelector('.gen-ai-error-text')) techniquesEl.textContent = '';
+        });
+        techniquesEl.addEventListener('paste', function (e) {
+          e.preventDefault();
+          var text = ((e.clipboardData || window.clipboardData).getData('text/plain') || '')
+            .replace(/\s*\n+\s*/g, ', ');
+          document.execCommand('insertText', false, text);
+        });
+        syncNowBtn.addEventListener('click', function () { syncStepsToTechniques({ force: true }); });
+        undoSyncBtn.addEventListener('click', onUndoSync);
+        autoSyncToggle.addEventListener('change', function () {
+          if (autoSyncToggle.checked) syncStepsToTechniques();
+        });
+      }
+
       function init() {
         if (!data.modules || data.modules.length === 0) {
           noDataAlert.classList.remove('d-none');
@@ -793,6 +1119,7 @@
         periodsInput.addEventListener('input', updateTotalDurationDisplay);
         periodLengthSelect.addEventListener('change', updateTotalDurationDisplay);
         generateBtn.addEventListener('click', onGenerate);
+        initTechniqueSync();
         resetBtn.addEventListener('click', onReset);
         editSelectionBtn.addEventListener('click', function () {
           selectorFields.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1018,6 +1345,8 @@
         document.title = ORIGINAL_DOCUMENT_TITLE;
         docSection.classList.add('d-none');
         accessBlockedAlert.classList.add('d-none');
+        lastAiContext = null;
+        resetTechSync();
       }
 
       // Shows the payment-required message in place of the document area,
@@ -1127,6 +1456,8 @@
         setText('spRange', rangeInput.value.trim() || '\u2014');
         setText('spDuration', durationLabel);
 
+        lastAiContext = null;
+        resetTechSync();
         renderObjectivesLoading();
         renderTechniquesLoading();
         renderIntroduction(blocks.intro, topic);
@@ -1397,6 +1728,7 @@
       // back to editable blank fields (never leaves the page stuck
       // loading) if the request fails or the AI response comes back empty.
       function fetchAiSessionContent(payload, developmentMinutes, topic, isNewModule) {
+        lastAiContext = payload;
         fetch(AI_ENDPOINT, {
           method: 'POST',
           headers: {
@@ -1424,6 +1756,8 @@
               renderStepsFailed(developmentMinutes);
             }
 
+            markTechniquesSynced();
+
             renderReflection(data && data.reflection);
             renderAssessment(data && data.assessment);
             renderEvaluation(data && data.evaluation);
@@ -1444,6 +1778,7 @@
             renderTechniquesFailed();
             renderIntroductionFailed(topic, isNewModule);
             renderStepsFailed(developmentMinutes);
+            markTechniquesSynced();
             renderReflectionFailed();
             renderAssessmentFailed();
             renderEvaluationFailed();

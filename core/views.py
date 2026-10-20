@@ -3120,6 +3120,653 @@ MIN_LESSON_PLAN_STEPS = 3
 MAX_LESSON_PLAN_STEPS = 6
 
 
+# ---------------------------------------------------------------------------
+# Facilitation technique <-> Development/Body alignment
+#
+# The Development/Body steps of a session plan are only credible if they are
+# actually DELIVERED through the facilitation technique(s) named at the top of
+# the plan. Everything below keeps the two in step:
+#
+#   * TECHNIQUE_PROFILES - a small built-in library describing what the
+#     trainer and the learners do under each common technique. It is used to
+#     (a) brief the AI, (b) check the AI really used every technique, and
+#     (c) build technique-aligned steps offline if the AI is unreachable.
+#   * generate_lesson_plan_ai_content (below) runs the same check on the very
+#     first generation, so a fresh plan is already aligned.
+#   * regenerate_lesson_plan_steps (below) is called by the browser whenever
+#     the trainer edits the "Facilitation technique(s)" field - it rewrites
+#     the activities/resources of the Development/Body steps for the new
+#     techniques while keeping the step titles (= Range / objectives /
+#     conclusion summary), the step count and the trainer's own durations.
+# ---------------------------------------------------------------------------
+MAX_FACILITATION_TECHNIQUES = 6
+MAX_REGEN_STEPS = 12
+
+TECHNIQUE_PROFILES = [
+    {
+        "label": "Demonstration",
+        "pattern": r"demonstrat|\bmodell?ing\b|show and tell",
+        "means": "the trainer performs the task step by step while the learners watch, take notes and ask questions",
+        "trainer": [
+            "Demonstrates {topic} step by step, explaining each action",
+            "Points out safety rules and quality checks during the demonstration",
+        ],
+        "learner": [
+            "Observe the demonstration and note the key steps",
+            "Ask questions about what they have seen",
+        ],
+        "resources": "Demonstration tools and materials, projector",
+    },
+    {
+        "label": "Group discussion",
+        "pattern": r"discuss",
+        "means": "learners talk in small groups about a set question and report their ideas back to the class",
+        "trainer": [
+            "Forms small groups and sets a discussion question on {topic}",
+            "Moves between groups to guide the discussion, then leads the feedback",
+        ],
+        "learner": [
+            "Discuss {topic} in their groups and agree on the key points",
+            "Report the group's ideas to the class",
+        ],
+        "resources": "Flip charts, markers, discussion question sheet",
+    },
+    {
+        "label": "Brainstorming",
+        "pattern": r"brainstorm",
+        "means": "learners quickly share as many ideas as they can, which the trainer records and then sorts",
+        "trainer": [
+            "Poses an open question on {topic} and records every idea on the board",
+            "Groups the ideas and clarifies which are correct",
+        ],
+        "learner": [
+            "Share as many ideas on {topic} as they can",
+            "Help sort the ideas into groups",
+        ],
+        "resources": "Whiteboard, markers, sticky notes",
+    },
+    {
+        "label": "Practical exercise",
+        "pattern": r"practical|hands[- ]on|\bexercise|\bpractis?e\b|\bpractising\b|\blab\b",
+        "means": "learners carry out a real task with tools or materials while the trainer coaches them",
+        "trainer": [
+            "Gives a practical task on {topic} with clear instructions and safety rules",
+            "Moves around the workshop to coach learners and correct errors",
+        ],
+        "learner": [
+            "Carry out the practical task on {topic} individually or in pairs",
+            "Check their own work and ask for help where needed",
+        ],
+        "resources": "Tools, equipment and materials for the task, task sheet",
+    },
+    {
+        "label": "Role play",
+        "pattern": r"role[- ]?play",
+        "means": "learners act out a work situation in assigned roles, followed by a short debrief",
+        "trainer": [
+            "Sets up a role-play scenario linked to {topic} and assigns the roles",
+            "Observes the role play and leads a short debrief",
+        ],
+        "learner": [
+            "Act out their assigned roles in the scenario",
+            "Share what they learned from the role play",
+        ],
+        "resources": "Scenario cards, role cards",
+    },
+    {
+        "label": "Case study",
+        "pattern": r"case[- ]stud|\bcase\b",
+        "means": "learners study a short real-life case and work out the problem and a solution",
+        "trainer": [
+            "Presents a short real-life case on {topic}",
+            "Guides learners to analyse the case with key questions",
+        ],
+        "learner": [
+            "Read and analyse the case in groups",
+            "Report their findings and suggested solutions",
+        ],
+        "resources": "Case study handout, flip chart",
+    },
+    {
+        "label": "Question and answer",
+        "pattern": r"question|q ?& ?a|q and a",
+        "means": "the trainer asks short targeted questions, from easy to harder, and the learners answer and ask their own",
+        "trainer": [
+            "Asks short, targeted questions on {topic}, from easy to harder",
+            "Gives feedback on each answer",
+        ],
+        "learner": [
+            "Answer the trainer's questions on {topic}",
+            "Ask their own questions where something is unclear",
+        ],
+        "resources": "Prepared question list, whiteboard",
+    },
+    {
+        "label": "Lecture / presentation",
+        "pattern": r"lecture|presentation|\bexplanation|expository|\btalk\b|direct instruction",
+        "means": "the trainer explains the content clearly with examples while the learners listen and take notes",
+        "trainer": [
+            "Explains {topic} clearly using simple examples",
+            "Writes the key points and terms on the board or slides",
+        ],
+        "learner": [
+            "Listen and take notes on {topic}",
+            "Ask questions to clarify points",
+        ],
+        "resources": "Projector, whiteboard, handout notes",
+    },
+    {
+        "label": "Think-pair-share",
+        "pattern": r"think[- ]pair",
+        "means": "learners think alone, then discuss with a partner, then share with the class",
+        "trainer": [
+            "Poses a question on {topic} and gives quiet thinking time",
+            "Pairs learners to talk it over, then invites pairs to share",
+        ],
+        "learner": [
+            "Think about the question on their own first",
+            "Discuss with a partner and share with the class",
+        ],
+        "resources": "Question cards, whiteboard",
+    },
+    {
+        "label": "Group work",
+        "pattern": r"group ?work|cooperative|collaborative|\bteam",
+        "means": "learners work together in small groups on a shared task and present the result",
+        "trainer": [
+            "Forms small groups and gives each a task on {topic}",
+            "Monitors the groups and supports where needed",
+        ],
+        "learner": [
+            "Work together in their groups to complete the task on {topic}",
+            "Present the group's output to the class",
+        ],
+        "resources": "Task sheets, flip charts, markers",
+    },
+    {
+        "label": "Project work",
+        "pattern": r"\bprojects?\b|project[- ]based",
+        "means": "learners plan and complete a small project that applies the content, with the trainer as guide",
+        "trainer": [
+            "Introduces a small project that applies {topic}",
+            "Checks each group's plan and progress and gives feedback",
+        ],
+        "learner": [
+            "Plan and carry out their part of the project on {topic}",
+            "Show their work and explain what they did",
+        ],
+        "resources": "Project brief, tools and materials, flip chart",
+    },
+    {
+        "label": "Problem solving",
+        "pattern": r"problem",
+        "means": "learners are given a work problem and must find and test a solution",
+        "trainer": [
+            "Presents a work problem linked to {topic}",
+            "Asks guiding questions without giving the answer straight away",
+        ],
+        "learner": [
+            "Analyse the problem and suggest possible solutions",
+            "Test the best solution and explain why it works",
+        ],
+        "resources": "Problem sheet, tools or materials for testing",
+    },
+    {
+        "label": "Simulation",
+        "pattern": r"simulat",
+        "means": "learners practise in a safe, realistic copy of the work situation",
+        "trainer": [
+            "Sets up a realistic simulation of {topic} and explains the rules",
+            "Observes the simulation and leads a debrief",
+        ],
+        "learner": [
+            "Take part in the simulation as they would at work",
+            "Reflect on what went well and what to improve",
+        ],
+        "resources": "Simulation set-up or software, scenario sheet",
+    },
+    {
+        "label": "Field visit / observation",
+        "pattern": r"field|\bvisit|observation|excursion|\btour\b",
+        "means": "learners visit or watch a real workplace and record what they see",
+        "trainer": [
+            "Briefs learners on what to observe about {topic}",
+            "Leads the visit or observation and answers questions",
+        ],
+        "learner": [
+            "Observe and record what they see on {topic}",
+            "Share their observations back in class",
+        ],
+        "resources": "Observation checklist, notebooks, safety gear",
+    },
+    {
+        "label": "Peer teaching",
+        "pattern": r"peer|jigsaw",
+        "means": "learners become expert on one part and teach it to their classmates",
+        "trainer": [
+            "Gives each group one part of {topic} to master and teach",
+            "Checks the explanations and corrects mistakes",
+        ],
+        "learner": [
+            "Prepare to teach their part of {topic} to others",
+            "Teach their classmates and learn from the others",
+        ],
+        "resources": "Topic cards or handouts, flip charts",
+    },
+    {
+        "label": "Guided discovery",
+        "pattern": r"discovery|inquiry|enquiry",
+        "means": "learners find the answer themselves through guided questions and exploration",
+        "trainer": [
+            "Gives learners a guided task to explore {topic}",
+            "Asks prompting questions to lead them to the answer",
+        ],
+        "learner": [
+            "Explore {topic} and record what they find",
+            "Explain what they discovered to the class",
+        ],
+        "resources": "Exploration task sheet, tools or materials",
+    },
+    {
+        "label": "Gallery walk",
+        "pattern": r"gallery",
+        "means": "learners move around posters or stations, read the work of others and leave comments",
+        "trainer": [
+            "Displays posters or stations on {topic} around the room",
+            "Guides learners from station to station and collects feedback",
+        ],
+        "learner": [
+            "Walk around and study each poster or station",
+            "Leave comments and questions for each group",
+        ],
+        "resources": "Posters, markers, sticky notes",
+    },
+]
+
+
+def _parse_techniques(value, max_items=MAX_FACILITATION_TECHNIQUES):
+    """Turn whatever the trainer typed ("Demonstration, group discussion;
+    Practical exercise") into a clean, de-duplicated list of technique names."""
+    seen = set()
+    result = []
+    for item in _split_items(value):
+        name = re.sub(r"\s+", " ", item).strip().strip(".")
+        name = re.sub(r"^(?:and|&)\s+", "", name, flags=re.IGNORECASE)[:60].strip()
+        key = name.lower()
+        if not name or key in seen:
+            continue
+        seen.add(key)
+        result.append(name)
+        if len(result) >= max_items:
+            break
+    return result
+
+
+def _technique_profile(name):
+    """The built-in profile matching a technique name, or None if it is a
+    technique the library does not know (the AI is then trusted to know it)."""
+    lowered = (name or "").lower()
+    for profile in TECHNIQUE_PROFILES:
+        if re.search(profile["pattern"], lowered):
+            return profile
+    return None
+
+
+def _lower_first(text):
+    text = (text or "").strip()
+    if not text:
+        return "this topic"
+    if len(text) > 1 and text[1].isupper():  # keep acronyms such as "PLC wiring"
+        return text
+    return text[0].lower() + text[1:]
+
+
+def _technique_activities(name, step_title):
+    """(trainer bullets, learner bullets, resources) for one technique applied
+    to one step's sub-topic - used for fallback steps and for repairs."""
+    topic = _lower_first(step_title)
+    profile = _technique_profile(name)
+    if profile:
+        return (
+            [t.format(topic=topic) for t in profile["trainer"]],
+            [l.format(topic=topic) for l in profile["learner"]],
+            profile["resources"],
+        )
+    label = (name or "the chosen technique").strip().lower()
+    return (
+        [f"Leads {label} on {topic}", "Guides learners and gives feedback during the activity"],
+        [f"Take part in {label} on {topic}", "Share what they learned with the class"],
+        "Materials for the activity, whiteboard",
+    )
+
+
+def _technique_assignments(step_count, technique_count):
+    """Which technique(s) each step is delivered with. Techniques are spread
+    across the steps IN THE ORDER the trainer listed them: with more steps
+    than techniques a technique covers several neighbouring steps, with more
+    techniques than steps a step combines two. Every technique gets a step."""
+    result = [[] for _ in range(max(step_count, 0))]
+    if step_count <= 0 or technique_count <= 0:
+        return result
+    if technique_count >= step_count:
+        for j in range(technique_count):
+            result[j * step_count // technique_count].append(j)
+    else:
+        for i in range(step_count):
+            result[i].append(i * technique_count // step_count)
+    return result
+
+
+def _technique_guidance_text(techniques):
+    lines = []
+    for name in techniques:
+        profile = _technique_profile(name)
+        if profile:
+            lines.append(f'- "{name}": {profile["means"]}.')
+        else:
+            lines.append(f'- "{name}": use it the usual, well-known way for a TVET classroom or workshop.')
+    return "\n".join(lines)
+
+
+def _technique_reflected(name, steps):
+    """True if at least one step's trainer/learner bullets actually show this
+    technique in action (resources and any AI 'technique' label are NOT
+    counted - a label alone proves nothing)."""
+    text = " ".join(
+        " ".join(s.get("trainer_activity") or []) + " " + " ".join(s.get("learner_activity") or [])
+        for s in steps
+    ).lower()
+    profile = _technique_profile(name)
+    if profile:
+        return bool(re.search(profile["pattern"], text))
+    words = [w for w in _keywords(name) if len(w) > 3]
+    return (not words) or any(w in text for w in words)
+
+
+def _merge_csv(*parts, max_items=6):
+    seen = set()
+    merged = []
+    for part in parts:
+        for item in _split_items(part):
+            key = item.lower()
+            if key not in seen:
+                seen.add(key)
+                merged.append(item)
+    return ", ".join(merged[:max_items])
+
+
+def _build_technique_steps(existing_steps, techniques):
+    """Deterministic, offline rewrite of every step for the given techniques.
+    Keeps each step's title (and the topic-specific resources already listed)
+    and replaces the trainer/learner activities with ones that carry out the
+    technique(s) assigned to that step."""
+    assignments = _technique_assignments(len(existing_steps), len(techniques))
+    built = []
+    for i, step in enumerate(existing_steps):
+        title = str(step.get("title", "")).strip()
+        trainer, learner, resources = [], [], []
+        for k, j in enumerate(assignments[i]):
+            t_items, l_items, res = _technique_activities(techniques[j], title)
+            trainer.extend(t_items if k == 0 else t_items[:1])
+            learner.extend(l_items if k == 0 else l_items[:1])
+            resources.append(res)
+        built.append({
+            "title": title,
+            "trainer_activity": trainer[:4],
+            "learner_activity": learner[:3],
+            "resources": _merge_csv(step.get("resources", ""), *resources),
+        })
+    return built
+
+
+def _ensure_steps_reflect_techniques(steps, techniques):
+    """Best-effort guard: if a chosen technique shows up in NO step's
+    activities, add one technique-specific trainer bullet and learner bullet
+    to the step it is assigned to. Never removes anything beyond making room
+    for the new bullet, and never touches step titles."""
+    if not steps or not techniques:
+        return steps
+    assignments = _technique_assignments(len(steps), len(techniques))
+    step_for_technique = {}
+    for step_index, tech_indexes in enumerate(assignments):
+        for j in tech_indexes:
+            step_for_technique.setdefault(j, step_index)
+
+    for j, name in enumerate(techniques):
+        if _technique_reflected(name, steps):
+            continue
+        step = steps[step_for_technique.get(j, min(j, len(steps) - 1))]
+        t_items, l_items, res = _technique_activities(name, step.get("title", ""))
+        trainer = [t_items[0]] + [x for x in (step.get("trainer_activity") or []) if x != t_items[0]]
+        learner = [l_items[0]] + [x for x in (step.get("learner_activity") or []) if x != l_items[0]]
+        step["trainer_activity"] = trainer[:4]
+        step["learner_activity"] = learner[:3]
+        step["resources"] = _merge_csv(step.get("resources", ""), res)
+    return steps
+
+
+@require_POST
+@csrf_protect
+@login_required_json
+def regenerate_lesson_plan_steps(request):
+    """
+    Re-drafts the Development/Body steps of an already-generated session plan
+    so they are delivered through the (possibly just-edited) facilitation
+    technique(s). Called by the browser whenever the trainer changes the
+    "Facilitation technique(s)" field.
+
+    Request JSON:
+      facilitation_techniques  string, e.g. "Demonstration, Group discussion"
+      steps                    [{title, trainer_activity[], learner_activity[],
+                                 resources}] - the steps CURRENTLY on screen
+      outcome_text, indicative_content[], objectives[], range, topic, sector,
+      trade, level, module_code, module_name, total_minutes - context
+
+    Response JSON:
+      steps   same length/order/titles as the request: new trainer_activity,
+              learner_activity and resources per step
+      facilitation_techniques, source ("ai" | "fallback"), notice
+
+    Step titles, step count and durations are never changed here - those are
+    tied to the Range, Objectives and Conclusion summary - only HOW each step
+    is delivered changes. If the AI is unreachable the same rewrite is done
+    from the built-in technique library, so the plan still updates.
+    """
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JsonResponse({"error": "Invalid JSON payload"}, status=400)
+
+    techniques = _parse_techniques(payload.get("facilitation_techniques"))
+    if not techniques:
+        return JsonResponse({"error": "Add at least one facilitation technique first."}, status=400)
+
+    outcome_text = str(payload.get("outcome_text", ""))[:500]
+    indicative_content = [str(c)[:300] for c in (payload.get("indicative_content") or [])][:20]
+    objectives = [str(o)[:300] for o in (payload.get("objectives") or [])][:6]
+
+    current_steps = []
+    raw_steps = payload.get("steps")
+    if isinstance(raw_steps, list):
+        for s in raw_steps[:MAX_REGEN_STEPS]:
+            if not isinstance(s, dict):
+                continue
+            current_steps.append({
+                "title": str(s.get("title", "")).strip()[:120],
+                "trainer_activity": _split_items(s.get("trainer_activity")),
+                "learner_activity": _split_items(s.get("learner_activity")),
+                "resources": _coerce_to_csv_line(s.get("resources")),
+            })
+    if not current_steps:
+        current_steps = [
+            {"title": "", "trainer_activity": [], "learner_activity": [], "resources": ""}
+            for _ in range(MIN_LESSON_PLAN_STEPS)
+        ]
+
+    context_bits = []
+    if payload.get("sector"):
+        context_bits.append(f"Sector: {payload['sector']}")
+    if payload.get("trade"):
+        context_bits.append(f"Trade/Occupation: {payload['trade']}")
+    if payload.get("level"):
+        context_bits.append(f"Level: {payload['level']}")
+    if payload.get("module_code") or payload.get("module_name"):
+        context_bits.append(f"Module: {payload.get('module_code', '')} - {payload.get('module_name', '')}")
+    if payload.get("topic"):
+        context_bits.append(f"Session topic: {payload['topic']}")
+    if payload.get("range"):
+        context_bits.append(f"Range (scope for this session): {str(payload['range'])[:400]}")
+    if payload.get("total_minutes"):
+        context_bits.append(f"Total session duration: {payload['total_minutes']} minutes")
+    context_block = "\n".join(context_bits) or "No additional session context supplied."
+
+    numbered_titles = "\n".join(
+        f"{i + 1}. {s['title'] or '(no title yet - write a short sub-topic label)'}"
+        for i, s in enumerate(current_steps)
+    )
+
+    system_prompt = (
+        "You are an expert TVET (Technical and Vocational Education and Training) "
+        "curriculum designer who writes practical, workshop-ready session plans. "
+        "Write every field in simple, clear English with common, everyday words. "
+        "You always respond with a single valid JSON object and nothing else - no "
+        "markdown fences, no commentary, no explanations."
+    )
+
+    user_prompt = f"""The trainer has chosen (or just changed) the facilitation technique(s) for this
+session. REWRITE the Development/Body steps below so that every step is truly
+DELIVERED through those technique(s).
+
+SESSION CONTEXT:
+{context_block}
+
+LEARNING OUTCOME:
+{outcome_text or "(not supplied)"}
+
+INDICATIVE CONTENT:
+{json.dumps(indicative_content, indent=2)}
+
+OBJECTIVES (already fixed - do not change them, the steps must still lead to them):
+{json.dumps(objectives, indent=2)}
+
+CHOSEN FACILITATION TECHNIQUE(S), in the order the trainer listed them:
+{_technique_guidance_text(techniques)}
+
+CURRENT DEVELOPMENT/BODY STEPS (keep exactly these {len(current_steps)} sub-topics, in this order):
+{numbered_titles}
+
+Produce a JSON object with exactly one top-level field, "steps": an array of
+EXACTLY {len(current_steps)} objects, one per step above, in the same order.
+
+Each step object has these fields:
+- "title": the same sub-topic title as above, word for word. Only if the title
+  is shown as "(no title yet ...)" write a short sub-topic label (a few words,
+  not a full sentence, not prefixed with "Step" or a number).
+- "technique": the main technique from the chosen list that this step uses,
+  copied exactly as written in the list.
+- "trainer_activity": a JSON array of 2-4 SHORT, concrete, plain-text bullet
+  phrases in the imperative/present mood describing what the trainer does.
+- "learner_activity": a JSON array of 2-3 SHORT, concrete, plain-text bullet
+  phrases describing what the learners do.
+- "resources": the specific tools, equipment or materials this step needs - a
+  SINGLE comma-separated plain string, not an array.
+
+Rules:
+- Every step must use at least one of the chosen techniques, and EVERY chosen
+  technique must be clearly used in at least one step. Spread them across the
+  steps in the order listed; if there are more steps than techniques, one
+  technique may cover several neighbouring steps; if there are more
+  techniques than steps, a step may combine two.
+- The trainer and learner bullets of a step must MATCH each other and must
+  show the technique in action - e.g. for "Group discussion" the trainer sets
+  a discussion question and the learners discuss it in groups and report
+  back; for "Demonstration" the trainer demonstrates and the learners
+  observe, then try it. Do not just mention the technique's name.
+- Resources must fit the technique (e.g. flip charts for group work, tools
+  and materials for a practical exercise, a case handout for a case study).
+- Keep every step grounded in its own sub-topic and in the learning outcome
+  and indicative content - do not invent new topics, do not change the
+  number or order of steps, and do not add greetings, attendance or recall
+  activities (those belong to the Introduction).
+- Use concise, real workshop/training language in simple, everyday English.
+- Respond with STRICT JSON ONLY, matching exactly this shape:
+{{
+  "steps": [
+    {{
+      "title": "<same sub-topic title>",
+      "technique": "<one chosen technique>",
+      "trainer_activity": ["<bullet 1>", "<bullet 2>"],
+      "learner_activity": ["<bullet 1>", "<bullet 2>"],
+      "resources": "<comma-separated string>"
+    }}
+  ]
+}}
+""".strip()
+
+    # The offline rewrite is always computed: it is the fallback if the AI is
+    # unreachable, and the filler for any step the AI leaves out.
+    fallback_steps = _build_technique_steps(current_steps, techniques)
+
+    source = "ai"
+    notice = ""
+    ai_steps = None
+    model_name = getattr(settings, "GROQ_MODEL", "openai/gpt-oss-120b")
+    try:
+        client = get_client()
+        data, _raw = _groq_json_completion(
+            client, model_name, system_prompt, user_prompt,
+            max_completion_tokens=3500, temperature=0.4,
+        )
+        candidate = data.get("steps") if isinstance(data, dict) else None
+        if isinstance(candidate, list) and candidate:
+            ai_steps = candidate
+    except RateLimitError:
+        logger.warning("Groq rate limit hit while re-aligning steps to techniques")
+        notice = "The AI service is busy, so the built-in technique templates were used."
+    except (APIConnectionError, APIError, RuntimeError, ValueError) as e:
+        logger.warning("AI unavailable while re-aligning steps to techniques: %s", e)
+        notice = "The AI service could not be reached, so the built-in technique templates were used."
+    except Exception:
+        logger.exception("Unexpected error re-aligning steps to techniques")
+        notice = "The AI service had a problem, so the built-in technique templates were used."
+
+    if ai_steps is None:
+        source = "fallback"
+        steps = fallback_steps
+    else:
+        steps = []
+        for i, base in enumerate(current_steps):
+            fb = fallback_steps[i]
+            ai = ai_steps[i] if i < len(ai_steps) and isinstance(ai_steps[i], dict) else None
+            if ai is None:
+                steps.append(fb)
+                continue
+            steps.append({
+                # Titles are tied to the Range/objectives/summary - the model
+                # is never allowed to rename an existing one.
+                "title": base["title"] or str(ai.get("title", "")).strip()[:120],
+                "trainer_activity": _coerce_to_list(
+                    ai.get("trainer_activity"), min_items=2, max_items=4,
+                    fallback=fb["trainer_activity"],
+                ),
+                "learner_activity": _coerce_to_list(
+                    ai.get("learner_activity"), min_items=2, max_items=3,
+                    fallback=fb["learner_activity"],
+                ),
+                "resources": _coerce_to_csv_line(ai.get("resources")) or fb["resources"],
+            })
+
+    steps = _ensure_steps_reflect_techniques(steps, techniques)
+
+    return JsonResponse({
+        "steps": steps,
+        "facilitation_techniques": ", ".join(techniques),
+        "source": source,
+        "notice": notice,
+    })
+
+
+
 @require_POST
 @csrf_protect
 @login_required_json
@@ -3281,6 +3928,8 @@ Produce a JSON object with exactly three top-level fields:
   "Demonstration, Group discussion, Practical exercise"). A SINGLE plain
   string on one line, items separated by ", " - NOT a JSON array, NOT
   bullet points. Name ONLY the methodology/technique, not a description.
+  These are ALSO the techniques the Development/Body "steps" below are
+  delivered with - choose them together with the steps, not separately.
 
 - "introduction": a JSON object for the session's Introduction (before the
   Development/Body), with exactly three fields, specific to THIS topic and
@@ -3316,6 +3965,12 @@ Produce a JSON object with exactly three top-level fields:
     verification) so the step count still meets the minimum.
   - If there are more indicative content items than {MAX_LESSON_PLAN_STEPS}, group
     closely related items together into a single step.
+  - The steps MUST be delivered through the "facilitation_techniques" chosen
+    above: every technique is used in at least one step, every step uses at
+    least one of them, and a step's trainer_activity / learner_activity
+    bullets must show that technique in action (e.g. for "Group discussion"
+    the trainer sets a discussion question and the learners discuss it in
+    groups and report back) - not just name it.
   - Each step is an object with FOUR fields:
     - "title": a short sub-topic label (a few words, NOT a full sentence,
       NOT prefixed with "Step" or a number - the app numbers steps itself,
@@ -3648,6 +4303,12 @@ Rules:
     # than MAX_LESSON_PLAN_STEPS, regardless of what the model returned.
     steps = _ensure_min_steps(steps, outcome_text, min_count=MIN_LESSON_PLAN_STEPS)
     steps = steps[:MAX_LESSON_PLAN_STEPS]
+
+    # Guarantee the steps really are delivered through the chosen facilitation
+    # techniques (adds a technique-specific bullet to a step if one was missed).
+    steps = _ensure_steps_reflect_techniques(
+        steps, _parse_techniques(facilitation_techniques)
+    )
 
     raw_reflection = data.get("reflection")
     raw_reflection = raw_reflection if isinstance(raw_reflection, dict) else {}
