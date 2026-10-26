@@ -139,7 +139,7 @@
     }
     .gen-table-v2 col.col-no        { width: 1%; }
     .gen-table-v2 col.col-module    { width: 12%; }
-    .gen-table-v2 col.col-modtype   { width: 6%; }
+    .gen-table-v2 col.col-modtype   { width: 8%; }
     .gen-table-v2 col.col-lo        { width: 16%; }
     .gen-table-v2 col.col-asstype   { width: 8%; }
     .gen-table-v2 col.col-trainer   { width: 8%; }
@@ -355,8 +355,14 @@
     }
 
 @page {
-  size: auto;
-  margin: 15mm 13mm 16mm;
+  size: A4 landscape;
+  margin: 10mm 9mm 14mm;
+  @bottom-right {
+    content: "Page " counter(page) " of " counter(pages);
+    font-family: 'Inter', Arial, sans-serif;
+    font-size: 8pt;
+    color: #4b5563;
+  }
 }
 
 @media print {
@@ -450,6 +456,200 @@
   .gen-row-input { background: none !important; outline: none !important; border: none !important; }
   .gen-row-input.gen-auto-filled { background: none !important; }
 }
+
+    /* ============================================================
+       ASSESSMENT PLAN - READABILITY / PRINT LAYOUT UPGRADE
+       - 13 columns need width: the plan prints on A4 LANDSCAPE with a
+         fixed, hand-balanced column grid so every column keeps room
+         for its content and nothing is clipped.
+       - Header row is light-with-dark-text in print so it stays
+         visible even when the browser's "Background graphics" option
+         is switched off (white-on-navy would vanish).
+       ============================================================ */
+
+    /* ---- Screen: roomier, easier to read ---- */
+    .gen-table-v2 { min-width: 1400px; }
+    .gen-table-v2 th, .gen-table-v2 td {
+      font-size: 9.5pt;
+      padding: 0.4rem 0.45rem;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+    .gen-table-v2 thead th { font-size: 9pt; padding: 0.5rem 0.4rem; line-height: 1.25; }
+    .gen-table-v2 th:nth-child(1), .gen-table-v2 td:nth-child(1) { min-width: 2.2rem; }
+    .gen-row-input { font-size: 9.5pt; min-height: 1.6rem; }
+    .gen-meta-grid dd { overflow-wrap: anywhere; }
+    .gen-print-value { display: none; }
+    select.gen-row-input { text-overflow: clip; min-width: 7.2rem; }
+
+    @media print {
+      html, body, body.gen-body { font-size: 9pt !important; }
+
+      /* Title block: compact so the table gets the page */
+      .gen-doc-logos { gap: 1.2rem !important; margin-bottom: 0.3rem !important; }
+      .gen-doc-logos img { height: 42px !important; }
+      .gen-doc-title { padding-bottom: 0.4rem !important; margin-bottom: 0.5rem !important; border-bottom: 2.5px solid #0f1b3d !important; }
+      .gen-doc-title::after { display: none !important; }
+      .gen-doc-title h3 { font-size: 14.5pt !important; margin: 0 !important; color: #0f1b3d !important; }
+
+      /* Meta strip: one tidy bordered row */
+      .gen-meta-grid {
+        display: grid !important;
+        grid-template-columns: 1fr 1.2fr 0.8fr 2.2fr 1.3fr !important;
+        gap: 0 !important;
+        padding: 0 !important;
+        margin: 0 0 0.45rem !important;
+        background: none !important;
+        border: 1px solid #7b8499 !important;
+        border-radius: 0 !important;
+      }
+      .gen-meta-grid > div { padding: 0.22rem 0.45rem !important; border-right: 1px solid #b9bfce; }
+      .gen-meta-grid > div:last-child { border-right: none; }
+      .gen-meta-grid dt { font-size: 7pt !important; color: #4b5563 !important; margin: 0 !important; }
+      .gen-meta-grid dd { font-size: 9pt !important; color: #0f1b3d !important; font-weight: 700 !important; }
+
+      /* The table itself */
+      .gen-table-wrap {
+        display: block !important;
+        border: none !important;
+        margin: 0 0 0.6rem !important;
+        overflow: visible !important;
+      }
+      .gen-table-v2 {
+        min-width: 0 !important;
+        width: 100% !important;
+        table-layout: fixed !important;
+        border-collapse: collapse !important;
+        border: 1.2px solid #0f1b3d !important;
+      }
+      .gen-table-v2 col.col-no         { width: 2.8% !important; }
+      .gen-table-v2 col.col-module     { width: 8.5% !important; }
+      .gen-table-v2 col.col-modtype    { width: 9%   !important; }
+      .gen-table-v2 col.col-lo         { width: 12.5% !important; }
+      .gen-table-v2 col.col-asstype    { width: 7.5% !important; }
+      .gen-table-v2 col.col-trainer    { width: 8.8% !important; }
+      .gen-table-v2 col.col-candidates { width: 5.5% !important; }
+      .gen-table-v2 col.col-invig      { width: 7%   !important; }
+      .gen-table-v2 col.col-date       { width: 7%   !important; }
+      .gen-table-v2 col.col-resources  { width: 9.5% !important; }
+      .gen-table-v2 col.col-place      { width: 5.8% !important; }
+      .gen-table-v2 col.col-pubdate    { width: 7%   !important; }
+      .gen-table-v2 col.col-obs        { width: 9.1% !important; }
+
+      .gen-table-v2 thead th {
+        background: #e4e9f4 !important;
+        color: #0f1b3d !important;
+        font-size: 7.8pt !important;
+        font-weight: 800 !important;
+        line-height: 1.2 !important;
+        padding: 0.3rem 0.2rem !important;
+        border: 1px solid #0f1b3d !important;
+        border-bottom: 2px solid #0f1b3d !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        overflow-wrap: break-word !important;
+        word-break: normal !important;
+      }
+      .gen-table-v2 tbody td {
+        font-size: 8.8pt !important;
+        line-height: 1.35 !important;
+        color: #000 !important;
+        padding: 0.3rem 0.35rem !important;
+        border: 1px solid #7b8499 !important;
+        vertical-align: top !important;
+        overflow-wrap: break-word !important;
+        word-break: normal !important;
+        hyphens: auto;
+      }
+      .gen-table-v2 tbody tr:nth-child(even) td {
+        background: #f3f5fa !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+
+      /* Short, factual columns read best centred */
+      .gen-table-v2 td:nth-child(1),
+      .gen-table-v2 td:nth-child(3),
+      .gen-table-v2 td:nth-child(7),
+      .gen-table-v2 td:nth-child(8),
+      .gen-table-v2 td:nth-child(9),
+      .gen-table-v2 td:nth-child(12) { text-align: center !important; }
+
+      /* Inputs/selects -> their wrapped text twins (see syncPrintValues).
+         Controls are hidden on paper whenever a twin exists, so Type of
+         Module, dates, numbers and Place all print as plain wrapping text. */
+      #docTableBody .gen-row-input { display: none !important; }
+      #docTableBody .gen-print-value {
+        display: block !important;
+        font-size: 8.8pt;
+        line-height: 1.35;
+        color: #000;
+        white-space: normal;
+        overflow-wrap: break-word;
+        word-break: normal;
+        text-align: inherit;
+      }
+      /* Module type reads as a clear, bold label */
+      #docTableBody .gen-print-value--type {
+        font-size: 8.2pt;
+        font-weight: 700;
+        color: #0f1b3d;
+        text-align: center;
+      }
+      /* If a control somehow has no twin yet, at least drop native widgets */
+      .gen-row-input {
+        -webkit-appearance: none !important;
+        appearance: none !important;
+        width: 100% !important;
+        font-size: 8.8pt !important;
+        color: #000 !important;
+        padding: 0 !important;
+        white-space: normal !important;
+      }
+      .gen-row-input::-webkit-inner-spin-button,
+      .gen-row-input::-webkit-outer-spin-button,
+      .gen-row-input::-webkit-calendar-picker-indicator { display: none !important; -webkit-appearance: none; }
+
+      /* EVERY column wraps - nothing is clipped or runs past its border */
+      .gen-table-v2 td, .gen-table-v2 th {
+        white-space: normal !important;
+        overflow-wrap: break-word !important;
+        word-break: normal !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+      }
+      .gen-placeholder-text { display: none !important; }
+
+      /* Readability: bold row numbers, left-aligned long text, header repeats */
+      .gen-table-v2 tbody td:nth-child(1) { font-weight: 700; color: #0f1b3d; }
+      .gen-table-v2 tbody td:nth-child(2) { font-weight: 600; }
+      .gen-table-v2 tbody td:nth-child(4),
+      .gen-table-v2 tbody td:nth-child(5),
+      .gen-table-v2 tbody td:nth-child(6),
+      .gen-table-v2 tbody td:nth-child(10),
+      .gen-table-v2 tbody td:nth-child(13) { text-align: left !important; }
+      .gen-table-v2 thead { display: table-header-group !important; }
+      .gen-table-v2 tbody tr { break-inside: avoid !important; page-break-inside: avoid !important; }
+
+      /* Sign-off + footer: never split across pages */
+      .gen-signoff-grid {
+        gap: 1rem !important;
+        margin: 0.9rem 0 0.6rem !important;
+        padding-top: 0.6rem !important;
+        border-top: 1px solid #7b8499 !important;
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+      }
+      .gen-signoff-grid .gen-signoff-line { font-size: 9pt !important; color: #0f1b3d !important; }
+      .gen-signoff-line > div { overflow-wrap: anywhere; }
+      .gen-signoff-line .gen-signature-space { min-height: 1.6rem; border-bottom: 1px solid #333; }
+      .gen-doc-footer {
+        font-size: 8pt !important;
+        color: #333 !important;
+        border-top: 1px solid #7b8499 !important;
+        break-inside: avoid !important;
+      }
+    }
   </style>
 </head>
 <body class="gen-body">
@@ -555,12 +755,6 @@
           <button type="button" class="btn btn-gold btn-sm" id="printBtn">
             <i class="fa-solid fa-print me-1"></i> Print / save as PDF
           </button>
-          <button type="button" class="btn btn-outline-secondary btn-sm" id="exportXlsxBtn">
-            <i class="fa-solid fa-file-excel me-1"></i> Download as Excel
-          </button>
-          <button type="button" class="btn btn-outline-secondary btn-sm" id="exportPdfBtn">
-            <i class="fa-solid fa-file-pdf me-1"></i> Download as PDF
-          </button>
         </div>
       </div>
 
@@ -600,7 +794,7 @@
                 <th>Type of Assessment</th>
                 <th>Responsible Trainer</th>
                 <th>Number of Candidates</th>
-                <th>Number of Invigilators/Assessors</th>
+                <th>Number of Invigilators / Assessors</th>
                 <th>Date</th>
                 <th>Resources</th>
                 <th>Place</th>
@@ -807,8 +1001,6 @@
       var resetBtn = document.getElementById('resetBtn');
       var editSelectionBtn = document.getElementById('editSelectionBtn');
       var printBtn = document.getElementById('printBtn');
-      var exportXlsxBtn = document.getElementById('exportXlsxBtn');
-      var exportPdfBtn = document.getElementById('exportPdfBtn');
       var aiGenerateBtn = document.getElementById('aiGenerateBtn');
       var docSection = document.getElementById('docSection');
       var noDataAlert = document.getElementById('noDataAlert');
@@ -848,6 +1040,67 @@
           .trim();
       }
 
+
+      // ------------------------------------------------------------------
+      // Print accuracy: <input>/<select> controls cannot wrap or grow, so
+      // long values (dates, "Complementary", a place name) get clipped or
+      // show native spinners/arrows on paper. Just before printing, each
+      // control's value is copied into a plain text span that wraps like
+      // any other cell text; the controls are hidden for print only, and
+      // everything is removed again afterwards. Works for the toolbar
+      // button AND Ctrl+P because it hooks beforeprint/afterprint.
+      // ------------------------------------------------------------------
+      function formatPrintDate(iso) {
+        if (!iso) return '';
+        var d = new Date(iso + 'T00:00:00');
+        if (isNaN(d.getTime())) return iso;
+        return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+      }
+
+      function printTextFor(el) {
+        if (el.tagName === 'SELECT') {
+          var opt = el.options[el.selectedIndex];
+          return opt && opt.value ? opt.text : '';
+        }
+        if (el.type === 'date') return formatPrintDate(el.value);
+        return el.value || '';
+      }
+
+      // Every control gets ONE permanent text twin (hidden on screen,
+      // shown instead of the control on paper). Twins are created/updated
+      // when the table renders, whenever a control changes, and again right
+      // before printing - so the printout never depends on a single event.
+      function syncPrintValues() {
+        Array.prototype.forEach.call(document.querySelectorAll('#docTableBody .gen-row-input'), function (el) {
+          var twin = el.nextElementSibling;
+          if (!twin || !twin.classList.contains('gen-print-value')) {
+            twin = document.createElement('span');
+            twin.className = 'gen-print-value';
+            el.parentNode.insertBefore(twin, el.nextSibling);
+          }
+          twin.classList.toggle('gen-print-value--type', el.getAttribute('data-role') === 'module-type');
+          twin.textContent = printTextFor(el);
+        });
+      }
+
+      function preparePrintValues() {
+        syncPrintValues();
+        document.documentElement.classList.add('gen-print-ready');
+      }
+
+      function cleanupPrintValues() {
+        document.documentElement.classList.remove('gen-print-ready');
+      }
+
+      window.addEventListener('beforeprint', preparePrintValues);
+      window.addEventListener('afterprint', cleanupPrintValues);
+      document.addEventListener('change', function (e) {
+        if (e.target && e.target.classList && e.target.classList.contains('gen-row-input')) syncPrintValues();
+      });
+      document.addEventListener('input', function (e) {
+        if (e.target && e.target.classList && e.target.classList.contains('gen-row-input')) syncPrintValues();
+      });
+
       function printWithFilename() {
         var originalTitle = document.title;
         var suggested = currentContext
@@ -863,59 +1116,6 @@
         };
         window.addEventListener('afterprint', restore);
         setTimeout(restore, 5000);
-      }
-
-      /**
-       * "Download as Excel" — reads the currently-rendered assessment plan
-       * straight out of the DOM (via TMSGen.collectExportPayload, same
-       * data the trainer sees/has edited on screen) and POSTs it to the
-       * export endpoint, which streams back an .xlsx file.
-       */
-      function exportAssessmentPlanAsXlsx() {
-        if (!exportXlsxBtn) return;
-        var genDoc = document.getElementById('genDoc');
-        var payload = TMSGen.collectExportPayload(genDoc);
-        var filename = TMSGen.filenameSafe(payload.title, 'Assessment Plan') + '.xlsx';
-
-        var originalHtml = exportXlsxBtn.innerHTML;
-        exportXlsxBtn.disabled = true;
-        exportXlsxBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Preparing…';
-
-        TMSGen.exportDocument('{% url "assessmentplan-export-xlsx" %}', payload, filename)
-          .catch(function (err) {
-            TMS.toast(err && err.message ? err.message : 'Could not generate the Excel file.', 'danger');
-          })
-          .finally(function () {
-            exportXlsxBtn.disabled = false;
-            exportXlsxBtn.innerHTML = originalHtml;
-          });
-      }
-
-      /**
-       * "Download as PDF" — same captured payload as the Excel export, sent
-       * to a server-rendered PDF endpoint instead. Unlike the toolbar's
-       * "Print / save as PDF" button (a client-side window.print() the
-       * server never sees), this produces a real file the server can also
-       * save into GeneratedDocument for the Dean of Studies Dashboard.
-       */
-      function exportAssessmentPlanAsPdf() {
-        if (!exportPdfBtn) return;
-        var genDoc = document.getElementById('genDoc');
-        var payload = TMSGen.collectExportPayload(genDoc);
-        var filename = TMSGen.filenameSafe(payload.title, 'Assessment Plan') + '.pdf';
-
-        var originalHtml = exportPdfBtn.innerHTML;
-        exportPdfBtn.disabled = true;
-        exportPdfBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Preparing…';
-
-        TMSGen.exportDocument('{% url "assessmentplan-export-pdf" %}', payload, filename)
-          .catch(function (err) {
-            TMS.toast(err && err.message ? err.message : 'Could not generate the PDF document.', 'danger');
-          })
-          .finally(function () {
-            exportPdfBtn.disabled = false;
-            exportPdfBtn.innerHTML = originalHtml;
-          });
       }
 
       function init() {
@@ -939,8 +1139,6 @@
           selectorFields.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
         printBtn.addEventListener('click', printWithFilename);
-        if (exportXlsxBtn) exportXlsxBtn.addEventListener('click', exportAssessmentPlanAsXlsx);
-        if (exportPdfBtn) exportPdfBtn.addEventListener('click', exportAssessmentPlanAsPdf);
         aiGenerateBtn.addEventListener('click', onAiGenerate);
 
         // Attached once, on the persistent tbody node - renderTable() only
@@ -1186,6 +1384,7 @@
             if (placeholder) cell.textContent = '';
           });
         });
+        syncPrintValues();
       }
 
       function getCookie(name) {
