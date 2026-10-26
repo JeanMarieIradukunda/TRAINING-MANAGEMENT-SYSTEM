@@ -354,12 +354,12 @@
 
 @page {
   size: A4 landscape;
-  margin: 10mm 9mm 14mm;
-  @bottom-right {
+  margin: 15mm 12mm 17mm 12mm;
+  @bottom-center {
     content: "Page " counter(page) " of " counter(pages);
-    font-family: 'Inter', Arial, sans-serif;
+    font-family: 'Inter', Arial, Helvetica, sans-serif;
     font-size: 8pt;
-    color: #4b5563;
+    color: #000;
   }
 }
 
@@ -1030,6 +1030,138 @@
       .gen-module-stat { -webkit-text-fill-color: #0f1b3d !important; background: none !important; }
       .gen-module-card__label::before { display: none !important; }
     }
+
+    .gen-print-tip { margin-top: 0.4rem; font-size: 0.78rem; color: var(--ap-accent-deep, #0f766e); }
+    .gen-print-tip i { margin-right: 0.3rem; }
+
+    /* ============================================================
+       PRINT / SAVE-AS-PDF : FORMAL PAPER STANDARD
+       - A4 landscape, 15/12/17/12 mm margins, page "X of Y" footer
+       - Black text on white, black grid lines (no colour, no tints)
+       - 1pt cell borders, 1.5pt outer frame and header rule: clear
+         on any printer and any photocopy, never hairline-thin
+       - Header row repeats on every page; rows, the module card and
+         the signature block are never split across two pages
+       ============================================================ */
+    @media print {
+      html, body, body.gen-body {
+        background: #fff !important;
+        color: #000 !important;
+        font-family: 'Inter', Arial, Helvetica, sans-serif !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        orphans: 3;
+        widows: 3;
+      }
+      .gen-shell { padding: 0 !important; margin: 0 !important; max-width: none !important; }
+      .gen-doc, .gen-doc * { box-shadow: none !important; text-shadow: none !important; }
+      .gen-doc, .gen-doc *:not(.gen-ai-badge) { color: #000; }
+
+      /* ---- title block ---- */
+      .gen-doc-logos { margin: 0 0 2.5mm !important; gap: 10mm !important; }
+      .gen-doc-logos img { height: 15mm !important; }
+      .gen-doc-title {
+        border-bottom: 2pt solid #000 !important;
+        padding-bottom: 2.5mm !important;
+        margin-bottom: 4mm !important;
+      }
+      .gen-doc-title h3 {
+        color: #000 !important;
+        -webkit-text-fill-color: #000 !important;
+        background: none !important;
+        font-family: 'Inter', Arial, Helvetica, sans-serif !important;
+        font-size: 16pt !important;
+        font-weight: 800 !important;
+        letter-spacing: 0.1em !important;
+        text-transform: uppercase !important;
+      }
+
+      /* ---- Sector / Trade / Level / Generated-on strip ---- */
+      .gen-meta-grid {
+        border: 1pt solid #000 !important;
+        border-radius: 0 !important;
+        background: none !important;
+        margin: 0 0 2.5mm !important;
+      }
+      .gen-meta-grid > div { border-right: 1pt solid #000 !important; padding: 1.2mm 2.5mm !important; }
+      .gen-meta-grid > div:last-child { border-right: none !important; }
+      .gen-meta-grid dt { color: #333 !important; font-size: 6.8pt !important; font-weight: 700 !important; letter-spacing: 0.1em !important; }
+      .gen-meta-grid dd { color: #000 !important; font-size: 9.5pt !important; font-weight: 700 !important; }
+
+      /* ---- module card ---- */
+      .gen-module-card {
+        border: 1pt solid #000 !important;
+        border-left: 3.5pt solid #000 !important;
+        border-radius: 0 !important;
+        background: none !important;
+        margin: 0 0 3.5mm !important;
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+      }
+      .gen-module-card__type, .gen-module-card__stat { border-left: 1pt solid #000 !important; }
+      .gen-module-card__label { color: #333 !important; font-size: 6.8pt !important; font-weight: 700 !important; }
+      .gen-module-code {
+        background: none !important; color: #000 !important;
+        border: 1pt solid #000 !important; border-radius: 0 !important;
+        font-size: 10pt !important; font-weight: 800 !important;
+      }
+      .gen-module-name { color: #000 !important; -webkit-text-fill-color: #000 !important; font-family: 'Inter', Arial, sans-serif !important; font-size: 11.5pt !important; font-weight: 800 !important; }
+      .gen-module-stat { color: #000 !important; -webkit-text-fill-color: #000 !important; background: none !important; font-family: 'Inter', Arial, sans-serif !important; font-size: 13pt !important; }
+      .gen-type-chip.is-active {
+        background: none !important; color: #000 !important;
+        border: 1pt solid #000 !important; border-radius: 0 !important;
+        font-weight: 800 !important;
+      }
+
+      /* ---- the table: black grid, neutral header, no tints ---- */
+      .gen-table-wrap { border: none !important; border-radius: 0 !important; margin: 0 0 4mm !important; }
+      .gen-table-v2 {
+        border-collapse: collapse !important;
+        border: 1.5pt solid #000 !important;
+      }
+      .gen-table-v2 thead th {
+        background: #e8e8e8 !important;
+        color: #000 !important;
+        border: 1pt solid #000 !important;
+        border-bottom: 1.5pt solid #000 !important;
+        font-size: 8.2pt !important;
+        font-weight: 800 !important;
+        padding: 1.6mm 1.2mm !important;
+      }
+      .gen-table-v2 tbody td {
+        background: none !important;
+        color: #000 !important;
+        border: 1pt solid #000 !important;
+        font-size: 9pt !important;
+        line-height: 1.35 !important;
+        padding: 1.5mm 1.6mm !important;
+      }
+      .gen-table-v2 tbody tr:nth-child(even) td { background: none !important; }
+      .gen-table-v2 tbody tr, .gen-table-v2 tbody tr:nth-child(even), .gen-table-v2 tbody tr:nth-child(odd) { background: none !important; }
+      .gen-table-v2 tbody tr, .gen-table-v2 thead tr { break-inside: avoid !important; page-break-inside: avoid !important; }
+      .gen-table-v2 tbody td:nth-child(1), .gen-rownum { color: #000 !important; font-weight: 800 !important; }
+      #docTableBody .gen-print-value, #docTableBody .gen-print-value--type { color: #000 !important; font-size: 9pt !important; }
+      #docTableBody .gen-print-value--type { font-size: 8.5pt !important; font-weight: 800 !important; }
+
+      /* ---- sign-off + footer ---- */
+      .gen-signoff-grid {
+        border-top: 1pt solid #000 !important;
+        margin: 6mm 0 3mm !important;
+        padding-top: 3mm !important;
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+      }
+      .gen-signoff-grid .gen-signoff-line { color: #000 !important; font-size: 9.5pt !important; font-weight: 700 !important; }
+      .gen-signoff-line .gen-signature-space { border-bottom: 1pt solid #000 !important; border-radius: 0 !important; min-height: 13mm !important; background: none !important; }
+      .gen-doc-footer {
+        border-top: 1pt solid #000 !important;
+        color: #000 !important;
+        font-size: 8pt !important;
+        padding-top: 2mm !important;
+        break-inside: avoid !important;
+      }
+      .gen-doc-footer span:first-child { color: #000 !important; }
+    }
   </style>
 </head>
 <body class="gen-body">
@@ -1124,6 +1256,11 @@
           Every cell in this table is editable — click any cell to fill it in or adjust the
           AI draft before printing. Number of Invigilators/Assessors and Place fill in
           automatically as you type, but you can always overwrite them by hand.
+          <div class="gen-print-tip">
+            <i class="fa-solid fa-print"></i>
+            For the best printout choose: Paper <strong>A4</strong> · Layout <strong>Landscape</strong> ·
+            Margins <strong>Default</strong> · Scale <strong>100%</strong> · untick <strong>Headers and footers</strong>.
+          </div>
         </div>
         <div class="d-flex gap-2 flex-wrap">
           <button type="button" class="btn btn-outline-secondary btn-sm" id="editSelectionBtn">
