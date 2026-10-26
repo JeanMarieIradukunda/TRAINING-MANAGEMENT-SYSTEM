@@ -138,9 +138,7 @@
       font-size: 9pt;
     }
     .gen-table-v2 col.col-no        { width: 1%; }
-    .gen-table-v2 col.col-module    { width: 12%; }
-    .gen-table-v2 col.col-modtype   { width: 8%; }
-    .gen-table-v2 col.col-lo        { width: 16%; }
+    .gen-table-v2 col.col-lo        { width: 20%; }
     .gen-table-v2 col.col-asstype   { width: 8%; }
     .gen-table-v2 col.col-trainer   { width: 8%; }
     .gen-table-v2 col.col-candidates { width: 6%; }
@@ -468,12 +466,25 @@
        ============================================================ */
 
     /* ---- Screen: roomier, easier to read ---- */
-    .gen-table-v2 { min-width: 1400px; }
+    .gen-table-v2 { min-width: 1100px; }
+    @media screen {
+      .gen-table-v2 th:nth-child(1)  { min-width: 2.4rem; }
+      .gen-table-v2 th:nth-child(2)  { min-width: 10rem; }
+      .gen-table-v2 th:nth-child(3)  { min-width: 6.2rem; }
+      .gen-table-v2 th:nth-child(4)  { min-width: 7.8rem; }
+      .gen-table-v2 th:nth-child(5)  { min-width: 5.8rem; }
+      .gen-table-v2 th:nth-child(6)  { min-width: 7rem; }
+      .gen-table-v2 th:nth-child(7)  { min-width: 7.6rem; }
+      .gen-table-v2 th:nth-child(8)  { min-width: 8rem; }
+      .gen-table-v2 th:nth-child(9)  { min-width: 7rem; }
+      .gen-table-v2 th:nth-child(10) { min-width: 7.6rem; }
+      .gen-table-v2 th:nth-child(11) { min-width: 10rem; }
+    }
     .gen-table-v2 th, .gen-table-v2 td {
       font-size: 9.5pt;
       padding: 0.4rem 0.45rem;
       line-height: 1.35;
-      overflow-wrap: anywhere;
+      overflow-wrap: break-word;
     }
     .gen-table-v2 thead th { font-size: 9pt; padding: 0.5rem 0.4rem; line-height: 1.25; }
     .gen-table-v2 th:nth-child(1), .gen-table-v2 td:nth-child(1) { min-width: 2.2rem; }
@@ -495,7 +506,7 @@
       /* Meta strip: one tidy bordered row */
       .gen-meta-grid {
         display: grid !important;
-        grid-template-columns: 1fr 1.2fr 0.8fr 2.2fr 1.3fr !important;
+        grid-template-columns: 1.2fr 1.7fr 0.8fr 1.1fr !important;
         gap: 0 !important;
         padding: 0 !important;
         margin: 0 0 0.45rem !important;
@@ -522,19 +533,17 @@
         border-collapse: collapse !important;
         border: 1.2px solid #0f1b3d !important;
       }
-      .gen-table-v2 col.col-no         { width: 2.8% !important; }
-      .gen-table-v2 col.col-module     { width: 8.5% !important; }
-      .gen-table-v2 col.col-modtype    { width: 9%   !important; }
-      .gen-table-v2 col.col-lo         { width: 12.5% !important; }
-      .gen-table-v2 col.col-asstype    { width: 7.5% !important; }
-      .gen-table-v2 col.col-trainer    { width: 8.8% !important; }
-      .gen-table-v2 col.col-candidates { width: 5.5% !important; }
-      .gen-table-v2 col.col-invig      { width: 7%   !important; }
-      .gen-table-v2 col.col-date       { width: 7%   !important; }
-      .gen-table-v2 col.col-resources  { width: 9.5% !important; }
-      .gen-table-v2 col.col-place      { width: 5.8% !important; }
-      .gen-table-v2 col.col-pubdate    { width: 7%   !important; }
-      .gen-table-v2 col.col-obs        { width: 9.1% !important; }
+      .gen-table-v2 col.col-no         { width: 3.2%  !important; }
+      .gen-table-v2 col.col-lo         { width: 15%   !important; }
+      .gen-table-v2 col.col-asstype    { width: 8.5%  !important; }
+      .gen-table-v2 col.col-trainer    { width: 9.5%  !important; }
+      .gen-table-v2 col.col-candidates { width: 6.5%  !important; }
+      .gen-table-v2 col.col-invig      { width: 8%    !important; }
+      .gen-table-v2 col.col-date       { width: 7.5%  !important; }
+      .gen-table-v2 col.col-resources  { width: 11.5% !important; }
+      .gen-table-v2 col.col-place      { width: 6.5%  !important; }
+      .gen-table-v2 col.col-pubdate    { width: 7.5%  !important; }
+      .gen-table-v2 col.col-obs        { width: 16.3% !important; }
 
       .gen-table-v2 thead th {
         background: #e4e9f4 !important;
@@ -569,11 +578,10 @@
 
       /* Short, factual columns read best centred */
       .gen-table-v2 td:nth-child(1),
-      .gen-table-v2 td:nth-child(3),
+      .gen-table-v2 td:nth-child(5),
+      .gen-table-v2 td:nth-child(6),
       .gen-table-v2 td:nth-child(7),
-      .gen-table-v2 td:nth-child(8),
-      .gen-table-v2 td:nth-child(9),
-      .gen-table-v2 td:nth-child(12) { text-align: center !important; }
+      .gen-table-v2 td:nth-child(10) { text-align: center !important; }
 
       /* Inputs/selects -> their wrapped text twins (see syncPrintValues).
          Controls are hidden on paper whenever a twin exists, so Type of
@@ -622,12 +630,11 @@
 
       /* Readability: bold row numbers, left-aligned long text, header repeats */
       .gen-table-v2 tbody td:nth-child(1) { font-weight: 700; color: #0f1b3d; }
-      .gen-table-v2 tbody td:nth-child(2) { font-weight: 600; }
+      .gen-table-v2 tbody td:nth-child(2),
+      .gen-table-v2 tbody td:nth-child(3),
       .gen-table-v2 tbody td:nth-child(4),
-      .gen-table-v2 tbody td:nth-child(5),
-      .gen-table-v2 tbody td:nth-child(6),
-      .gen-table-v2 tbody td:nth-child(10),
-      .gen-table-v2 tbody td:nth-child(13) { text-align: left !important; }
+      .gen-table-v2 tbody td:nth-child(8),
+      .gen-table-v2 tbody td:nth-child(11) { text-align: left !important; }
       .gen-table-v2 thead { display: table-header-group !important; }
       .gen-table-v2 tbody tr { break-inside: avoid !important; page-break-inside: avoid !important; }
 
@@ -649,6 +656,152 @@
         border-top: 1px solid #7b8499 !important;
         break-inside: avoid !important;
       }
+    }
+
+    /* ============================================================
+       MODULE INFORMATION CARD  (replaces the Module + Type columns)
+       ============================================================ */
+    .gen-module-card {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: stretch;
+      gap: 0;
+      margin: 0 0 1rem;
+      background: linear-gradient(135deg, #ffffff 0%, #f4f7fd 100%);
+      border: 1px solid var(--ap-line);
+      border-left: 5px solid var(--ap-gold);
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(15, 27, 61, 0.07);
+      overflow: hidden;
+      transition: box-shadow 0.2s ease;
+    }
+    .gen-module-card:hover { box-shadow: 0 4px 16px rgba(15, 27, 61, 0.12); }
+    .gen-module-card > div { padding: 0.75rem 1.1rem; }
+    .gen-module-card__main { flex: 1 1 340px; min-width: 0; }
+    .gen-module-card__type { flex: 0 1 auto; border-left: 1px solid var(--ap-line); }
+    .gen-module-card__stat { flex: 0 0 auto; border-left: 1px solid var(--ap-line); text-align: center; min-width: 8.5rem; }
+    .gen-module-card__label {
+      font-family: 'Inter', sans-serif;
+      font-size: 7.5pt;
+      font-weight: 700;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: var(--ap-muted);
+      margin-bottom: 0.35rem;
+    }
+    .gen-module-card__title { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; }
+    .gen-module-code {
+      font-family: 'Inter', sans-serif;
+      font-size: 10.5pt;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      color: #ffffff;
+      background: var(--ap-navy);
+      border-radius: 6px;
+      padding: 0.2rem 0.6rem;
+      white-space: nowrap;
+    }
+    .gen-module-name {
+      font-family: 'Inter', sans-serif;
+      font-size: 13pt;
+      font-weight: 800;
+      color: var(--ap-navy);
+      line-height: 1.25;
+      overflow-wrap: anywhere;
+    }
+    .gen-module-hint {
+      margin-left: 0.4rem;
+      font-size: 7pt;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      text-transform: none;
+      color: #0f766e;
+      background: rgba(45, 212, 191, 0.14);
+      border-radius: 999px;
+      padding: 0.05rem 0.5rem;
+    }
+    .gen-type-group { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+    .gen-type-chip {
+      font-family: 'Inter', sans-serif;
+      font-size: 9pt;
+      font-weight: 600;
+      color: var(--ap-navy);
+      background: #ffffff;
+      border: 1.5px solid #c7cfe3;
+      border-radius: 999px;
+      padding: 0.28rem 0.85rem;
+      cursor: pointer;
+      transition: transform 0.12s ease, background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .gen-type-chip:hover { transform: translateY(-1px); border-color: var(--ap-navy); box-shadow: 0 2px 6px rgba(15, 27, 61, 0.14); }
+    .gen-type-chip:focus-visible { outline: 2px solid var(--ap-teal, #2dd4bf); outline-offset: 2px; }
+    .gen-type-chip.is-active {
+      color: #ffffff;
+      background: var(--ap-navy);
+      border-color: var(--ap-navy);
+      box-shadow: 0 2px 8px rgba(15, 27, 61, 0.28);
+    }
+    .gen-type-chip.is-active::before { content: "\2713\00a0"; }
+    .gen-module-stat {
+      font-family: 'Inter', sans-serif;
+      font-size: 20pt;
+      font-weight: 800;
+      line-height: 1;
+      color: var(--ap-navy);
+    }
+
+    /* Interactive table rows (screen only) */
+    @media screen {
+      .gen-table-v2 tbody tr { transition: background 0.12s ease; }
+      .gen-table-v2 tbody tr:hover td { background: #eaf1ff !important; }
+      .gen-table-v2 tbody tr:focus-within td { background: #f1f6ff !important; }
+    }
+
+    @media (max-width: 720px) {
+      .gen-module-card__type, .gen-module-card__stat { border-left: none; border-top: 1px solid var(--ap-line); flex: 1 1 100%; text-align: left; }
+    }
+
+    @media print {
+      .gen-module-card {
+        display: grid !important;
+        grid-template-columns: 1fr auto auto !important;
+        background: none !important;
+        box-shadow: none !important;
+        border: 1px solid #7b8499 !important;
+        border-left: 5px solid #0f1b3d !important;
+        border-radius: 0 !important;
+        margin: 0 0 0.55rem !important;
+        break-inside: avoid !important;
+      }
+      .gen-module-card > div { padding: 0.3rem 0.7rem !important; }
+      .gen-module-card__type, .gen-module-card__stat { border-left: 1px solid #b9bfce !important; }
+      .gen-module-card__stat { min-width: 0 !important; }
+      .gen-module-card__label { font-size: 6.8pt !important; color: #4b5563 !important; margin-bottom: 0.15rem !important; }
+      .gen-module-code {
+        background: none !important;
+        color: #0f1b3d !important;
+        border: 1.5px solid #0f1b3d !important;
+        border-radius: 4px !important;
+        font-size: 10pt !important;
+        padding: 0.05rem 0.45rem !important;
+      }
+      .gen-module-name { font-size: 11.5pt !important; color: #0f1b3d !important; }
+      .gen-module-stat { font-size: 13pt !important; }
+      /* Print only the chosen type, as a clear bold badge */
+      .gen-type-chip { display: none !important; }
+      .gen-type-chip.is-active {
+        display: inline-block !important;
+        background: none !important;
+        color: #0f1b3d !important;
+        border: 1.5px solid #0f1b3d !important;
+        border-radius: 4px !important;
+        box-shadow: none !important;
+        font-size: 10pt !important;
+        font-weight: 800 !important;
+        padding: 0.05rem 0.55rem !important;
+      }
+      .gen-type-chip.is-active::before { content: "" !important; }
+      .gen-type-group.is-unset::after { content: "\2014"; font-weight: 700; }
     }
   </style>
 </head>
@@ -768,12 +921,31 @@
 
         <dl class="gen-meta-grid" id="docMeta"></dl>
 
+        <section class="gen-module-card" id="docModuleCard" aria-label="Module information">
+          <div class="gen-module-card__main">
+            <div class="gen-module-card__label">Module</div>
+            <div class="gen-module-card__title">
+              <span class="gen-module-code" id="docModuleCode"></span>
+              <span class="gen-module-name" id="docModuleName"></span>
+            </div>
+          </div>
+          <div class="gen-module-card__type">
+            <div class="gen-module-card__label">
+              Type of Module
+              <span class="gen-module-hint no-print" id="docModuleTypeHint"></span>
+            </div>
+            <div class="gen-type-group" id="docModuleTypeGroup" role="radiogroup" aria-label="Type of module"></div>
+          </div>
+          <div class="gen-module-card__stat">
+            <div class="gen-module-card__label">Learning Outcomes</div>
+            <div class="gen-module-stat" id="docModuleLoCount">0</div>
+          </div>
+        </section>
+
         <div class="gen-table-wrap">
           <table class="gen-table gen-table-v2">
             <colgroup>
               <col class="col-no">
-              <col class="col-module">
-              <col class="col-modtype">
               <col class="col-lo">
               <col class="col-asstype">
               <col class="col-trainer">
@@ -788,8 +960,6 @@
             <thead>
               <tr>
                 <th>No.</th>
-                <th>Module (Code &amp; Name)</th>
-                <th>Type of Module</th>
                 <th>LO</th>
                 <th>Type of Assessment</th>
                 <th>Responsible Trainer</th>
@@ -1281,6 +1451,7 @@
           level: level ? level.class_level : '\u2014',
           mod: mod,
         });
+        renderModuleCard(mod, outcomes);
         renderTable(mod, outcomes);
 
         document.getElementById('docPreparedBy').textContent = mod.trainer_name || '';
@@ -1309,7 +1480,6 @@
           ['Sector', ctx.sector],
           ['Trade', ctx.trade],
           ['Level', ctx.level],
-          ['Module', mod.mod_code + ' — ' + mod.mod_name],
           ['Generated on', TMSGen.todayLong()],
         ];
         var el = document.getElementById('docMeta');
@@ -1319,15 +1489,49 @@
         document.getElementById('docGeneratedOn').textContent = '';
       }
 
-      function moduleTypeSelectHtml(rowIndex, selectedValue) {
-        var opts = MODULE_TYPE_OPTIONS.map(function (o) {
-          var isSelected = selectedValue && o.value === selectedValue ? ' selected' : '';
-          return '<option value="' + o.value + '"' + isSelected + '>' + o.label + '</option>';
+      // ------------------------------------------------------------------
+      // Module information card. Module (code + name) and Type of Module
+      // are the same for every row of the plan, so they live ONCE above
+      // the table instead of being repeated in two table columns. The
+      // type is auto-detected from the module code and can be changed by
+      // clicking one of the three chips.
+      // ------------------------------------------------------------------
+      var detectedModuleType = '';
+      var currentModuleType = '';
+
+      function renderModuleTypeChips() {
+        var group = document.getElementById('docModuleTypeGroup');
+        group.classList.toggle('is-unset', !currentModuleType);
+        group.innerHTML = MODULE_TYPE_OPTIONS.filter(function (o) { return o.value; }).map(function (o) {
+          var active = o.value === currentModuleType;
+          return '<button type="button" class="gen-type-chip' + (active ? ' is-active' : '') + '" role="radio"' +
+            ' aria-checked="' + (active ? 'true' : 'false') + '" data-value="' + o.value + '">' +
+            TMSGen.escapeHtml(o.label) + '</button>';
         }).join('');
-        var autoClass = selectedValue ? ' gen-auto-filled' : '';
-        return '<select class="gen-row-input' + autoClass + '" data-role="module-type" data-row="' + rowIndex +
-          '" title="Auto-detected from the module code — change if needed">' + opts + '</select>';
+
+        var hint = document.getElementById('docModuleTypeHint');
+        if (!currentModuleType) hint.textContent = 'click one to choose';
+        else if (currentModuleType === detectedModuleType) hint.textContent = 'auto-detected';
+        else hint.textContent = 'changed manually';
       }
+
+      function renderModuleCard(mod, outcomes) {
+        document.getElementById('docModuleCode').textContent = mod.mod_code || '';
+        document.getElementById('docModuleName').textContent = mod.mod_name || '';
+        document.getElementById('docModuleLoCount').textContent = String((outcomes || []).length);
+        detectedModuleType = detectModuleType(mod.mod_code) || '';
+        currentModuleType = detectedModuleType;
+        renderModuleTypeChips();
+      }
+
+      document.getElementById('docModuleTypeGroup').addEventListener('click', function (e) {
+        var chip = e.target.closest ? e.target.closest('.gen-type-chip') : null;
+        if (!chip) return;
+        currentModuleType = chip.getAttribute('data-value');
+        renderModuleTypeChips();
+        var again = document.querySelector('#docModuleTypeGroup .is-active');
+        if (again) again.focus();
+      });
 
       function emptyInputHtml(type, role, rowIndex, extraAttrs) {
         return '<input type="' + type + '" class="gen-row-input" data-role="' + role +
@@ -1337,24 +1541,17 @@
       function renderTable(mod, outcomes) {
         var tbody = document.getElementById('docTableBody');
         if (!outcomes.length) {
-          tbody.innerHTML = '<tr><td colspan="13" class="text-center text-muted py-3">' +
+          tbody.innerHTML = '<tr><td colspan="11" class="text-center text-muted py-3">' +
             'This module has no learning outcomes recorded yet.</td></tr>';
           return;
         }
 
-        var moduleLabel = TMSGen.escapeHtml(mod.mod_code + ' — ' + mod.mod_name);
         var trainerName = TMSGen.escapeHtml(mod.trainer_name || '');
-        // Same module for every row in this table, so the auto-detected
-        // Module Type only needs computing once.
-        var autoModuleType = detectModuleType(mod.mod_code);
-
         var html = outcomes.map(function (outcome, idx) {
           var rowIndex = idx + 1;
           return '' +
             '<tr data-outcome-id="' + outcome.id + '" data-row="' + rowIndex + '">' +
               '<td>' + rowIndex + '</td>' +
-              '<td>' + moduleLabel + '</td>' +
-              '<td>' + moduleTypeSelectHtml(rowIndex, autoModuleType) + '</td>' +
               '<td>' + TMSGen.escapeHtml(outcome.outcome_text) + '</td>' +
               '<td class="gen-editable-cell" contenteditable="true" data-field="assessment_type">' +
                 '<span class="gen-placeholder-text">Click "Generate with AI" or type here</span>' +
