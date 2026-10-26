@@ -803,6 +803,233 @@
       .gen-type-chip.is-active::before { content: "" !important; }
       .gen-type-group.is-unset::after { content: "\2014"; font-weight: 700; }
     }
+
+    /* ============================================================
+       VISUAL UPGRADE  (screen only - print layout is untouched)
+       Palette : midnight navy + vivid teal + institutional gold
+       Type    : Sora (display) / Inter (UI + data), tabular numbers
+       Feel    : soft depth, smooth hover/focus feedback, live progress
+       ============================================================ */
+    :root {
+      --ap-accent:      #14b8a6;
+      --ap-accent-deep: #0f766e;
+      --ap-indigo:      #2b3f86;
+      --ap-ai:          #6d28d9;
+      --ap-edge:        #d5dcf0;
+    }
+
+    @keyframes genRise {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: none; }
+    }
+    @keyframes genFlash {
+      0%   { background-color: rgba(45, 212, 191, 0.5); }
+      100% { background-color: rgba(124, 58, 237, 0.06); }
+    }
+
+    @media screen {
+      body.gen-body {
+        background:
+          radial-gradient(1100px 480px at 8% -8%, rgba(20, 184, 166, 0.13), transparent 60%),
+          radial-gradient(900px 420px at 100% 0%, rgba(201, 162, 39, 0.13), transparent 60%),
+          #eff3fa !important;
+      }
+
+      /* ---- selector card ---- */
+      .gen-card { border-radius: 16px; border: 1px solid var(--ap-edge); }
+      .gen-card h2 { font-family: 'Sora', 'Inter', sans-serif; font-size: 1.1rem; letter-spacing: 0.01em; }
+      .gen-card h2::before {
+        content: ""; display: inline-block; width: 5px; height: 1.1em; margin-right: 0.6rem;
+        border-radius: 3px; vertical-align: -0.17em;
+        background: linear-gradient(180deg, var(--ap-accent), var(--ap-gold));
+      }
+      .gen-card .form-select {
+        border-radius: 10px; border: 1.5px solid var(--ap-edge);
+        transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+      }
+      .gen-card .form-select:hover:not(:disabled) { border-color: #9fb0dd; }
+      .gen-card .form-select:focus { border-color: var(--ap-accent); box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.18); }
+
+      /* ---- toolbar ---- */
+      .gen-toolbar {
+        background: #ffffff;
+        border: 1px solid var(--ap-edge);
+        border-left: 5px solid var(--ap-accent);
+        border-radius: 14px;
+        padding: 0.9rem 1.2rem;
+        box-shadow: 0 6px 20px rgba(15, 27, 61, 0.07);
+      }
+      .gen-toolbar .gen-toolbar-note { color: #4b5563; font-size: 0.84rem; line-height: 1.5; max-width: 62ch; }
+      .gen-toolbar .gen-toolbar-note i { color: var(--ap-accent-deep); }
+      .gen-toolbar .btn {
+        border-radius: 10px; font-weight: 600; letter-spacing: 0.01em;
+        transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+      }
+      .gen-toolbar .btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 18px rgba(15, 27, 61, 0.18); }
+      .gen-toolbar .btn:active:not(:disabled) { transform: translateY(0); }
+      .gen-toolbar .gen-ai-toolbar-btn {
+        color: #fff; border: none;
+        background: linear-gradient(135deg, var(--ap-ai) 0%, #2563eb 55%, var(--ap-accent) 100%);
+        background-size: 160% 100%; background-position: 0% 0%;
+        transition: background-position 0.4s ease, transform 0.15s ease, box-shadow 0.15s ease;
+      }
+      .gen-toolbar .gen-ai-toolbar-btn:hover:not(:disabled) { background-position: 100% 0%; color: #fff; }
+      .gen-toolbar .gen-ai-toolbar-btn:hover:not(:disabled) .fa-robot { animation: genWiggle 0.5s ease; }
+      @keyframes genWiggle { 25% { transform: rotate(-14deg); } 75% { transform: rotate(14deg); } }
+
+      /* ---- completion tracker ---- */
+      .gen-progress {
+        background: #ffffff; border: 1px solid var(--ap-edge); border-radius: 14px;
+        padding: 0.8rem 1.2rem 0.85rem; margin-bottom: 1.1rem;
+        box-shadow: 0 6px 20px rgba(15, 27, 61, 0.06);
+        --pg-from: #f59e0b; --pg-to: #fbbf24;
+      }
+      .gen-progress.is-mid  { --pg-from: #0ea5a4; --pg-to: #2dd4bf; }
+      .gen-progress.is-done { --pg-from: #15803d; --pg-to: #4ade80; border-color: #86d8a4; }
+      .gen-progress__head { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; margin-bottom: 0.45rem; }
+      .gen-progress__title { font-family: 'Sora', 'Inter', sans-serif; font-weight: 700; font-size: 0.9rem; color: var(--ap-navy); }
+      .gen-progress__title i { color: var(--ap-accent-deep); margin-right: 0.35rem; }
+      .gen-progress__count { font-weight: 700; font-size: 0.84rem; color: var(--ap-navy-soft); font-variant-numeric: tabular-nums; }
+      .gen-progress__track { height: 10px; border-radius: 999px; background: #e6ebf7; overflow: hidden; }
+      .gen-progress__fill {
+        height: 100%; width: 0; border-radius: 999px;
+        background: linear-gradient(90deg, var(--pg-from), var(--pg-to));
+        transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1), background 0.3s ease;
+      }
+      .gen-progress__foot { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.5rem 1rem; margin-top: 0.55rem; }
+      .gen-progress__hint { font-size: 0.8rem; color: #4b5563; }
+      .gen-progress.is-done .gen-progress__hint { color: #15803d; font-weight: 600; }
+      .gen-progress__next {
+        font-family: 'Inter', sans-serif; font-size: 0.78rem; font-weight: 600; cursor: pointer;
+        color: var(--ap-accent-deep); background: rgba(20, 184, 166, 0.1);
+        border: 1.5px solid rgba(20, 184, 166, 0.4); border-radius: 999px; padding: 0.22rem 0.8rem;
+        transition: background 0.15s ease, transform 0.15s ease;
+      }
+      .gen-progress__next:hover { background: rgba(20, 184, 166, 0.2); transform: translateY(-1px); }
+
+      /* ---- the document sheet ---- */
+      .gen-doc {
+        position: relative; overflow: hidden;
+        border-radius: 18px; border: 1px solid var(--ap-edge);
+        box-shadow: 0 2px 6px rgba(15, 27, 61, 0.05), 0 26px 60px rgba(15, 27, 61, 0.11);
+        padding-top: 2.4rem;
+        animation: genRise 0.5s ease both;
+      }
+      .gen-doc::before {
+        content: ""; position: absolute; inset: 0 0 auto 0; height: 6px;
+        background: linear-gradient(90deg, var(--ap-navy) 0%, var(--ap-accent) 55%, var(--ap-gold) 100%);
+      }
+      .gen-doc-title h3 {
+        font-family: 'Sora', 'Inter', sans-serif; font-size: 21pt; letter-spacing: 0.05em;
+        background: linear-gradient(90deg, var(--ap-navy) 0%, var(--ap-indigo) 100%);
+        -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+      }
+
+      /* ---- info strip ---- */
+      .gen-meta-grid {
+        background: linear-gradient(135deg, #f7faff 0%, #eef3fd 100%);
+        border: 1px solid var(--ap-edge); border-radius: 14px; padding: 0.75rem 1rem;
+      }
+      .gen-meta-grid dt { color: var(--ap-accent-deep); font-weight: 700; letter-spacing: 0.1em; }
+      .gen-meta-grid dd { font-size: 11pt; font-weight: 700; color: var(--ap-navy); }
+
+      /* ---- module card ---- */
+      .gen-module-card { border-radius: 14px; border-color: var(--ap-edge); border-left-color: var(--ap-gold); }
+      .gen-module-card:hover { transform: translateY(-1px); }
+      .gen-module-card__label::before {
+        font-family: "Font Awesome 6 Free"; font-weight: 900; margin-right: 0.45rem; color: var(--ap-accent-deep);
+      }
+      .gen-module-card__main .gen-module-card__label::before { content: "\f02d"; }
+      .gen-module-card__type .gen-module-card__label::before { content: "\f5fd"; }
+      .gen-module-card__stat .gen-module-card__label::before { content: "\f140"; }
+      .gen-module-code { background: linear-gradient(135deg, var(--ap-navy) 0%, var(--ap-indigo) 100%); box-shadow: 0 3px 10px rgba(15, 27, 61, 0.25); }
+      .gen-module-name { font-family: 'Sora', 'Inter', sans-serif; font-size: 13.5pt; }
+      .gen-type-chip.is-active { background: linear-gradient(135deg, var(--ap-navy), var(--ap-indigo)); }
+      .gen-module-stat {
+        font-family: 'Sora', 'Inter', sans-serif; font-size: 24pt;
+        background: linear-gradient(135deg, var(--ap-accent-deep), var(--ap-navy));
+        -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+      }
+
+      /* ---- table ---- */
+      .gen-table-wrap {
+        border-radius: 14px; border: 1px solid var(--ap-edge);
+        box-shadow: 0 8px 26px rgba(15, 27, 61, 0.08);
+        scrollbar-width: thin; scrollbar-color: var(--ap-accent) #e6ebf7;
+      }
+      .gen-table-wrap::-webkit-scrollbar { height: 10px; }
+      .gen-table-wrap::-webkit-scrollbar-track { background: #e6ebf7; }
+      .gen-table-wrap::-webkit-scrollbar-thumb { background: linear-gradient(90deg, var(--ap-accent), var(--ap-indigo)); border-radius: 999px; }
+
+      .gen-table-v2 { font-variant-numeric: tabular-nums; }
+      .gen-table-v2 thead th {
+        background: linear-gradient(135deg, #0a1330 0%, #17275a 100%);
+        border-bottom: 3px solid var(--ap-gold);
+        font-size: 9.5pt; font-weight: 700; letter-spacing: 0.015em; padding: 0.75rem 0.5rem;
+      }
+      .gen-table-v2 tbody td { font-size: 10pt; padding: 0.55rem 0.6rem; border-bottom: 1px solid var(--ap-line-soft); vertical-align: middle; }
+      .gen-table-v2 tbody tr:nth-child(even) td { background: #f7f9fe; }
+      .gen-table-v2 tbody tr:hover td { background: #e9f6f5 !important; }
+      .gen-table-v2 tbody tr:hover td:first-child { box-shadow: inset 4px 0 0 var(--ap-accent); }
+      .gen-table-v2 tbody tr:focus-within td { background: #eef9f8 !important; }
+
+      .gen-rownum {
+        display: inline-grid; place-items: center; width: 1.85rem; height: 1.85rem; border-radius: 50%;
+        font-weight: 800; font-size: 9.5pt; color: #fff;
+        background: linear-gradient(135deg, var(--ap-navy), var(--ap-indigo));
+        box-shadow: 0 2px 6px rgba(15, 27, 61, 0.25); transition: transform 0.15s ease;
+      }
+      .gen-table-v2 tbody tr:hover .gen-rownum { transform: scale(1.12); background: linear-gradient(135deg, var(--ap-accent-deep), var(--ap-accent)); }
+
+      /* editable cells + inputs: obvious, friendly, responsive */
+      .gen-editable-cell { cursor: text; transition: box-shadow 0.15s ease, background 0.15s ease; }
+      .gen-editable-cell:hover { box-shadow: inset 0 0 0 1.5px rgba(20, 184, 166, 0.45); }
+      .gen-editable-cell:focus {
+        outline: none; background: #ffffff !important; border-radius: 6px; position: relative; z-index: 2;
+        box-shadow: inset 0 0 0 2px var(--ap-accent), 0 6px 18px rgba(20, 184, 166, 0.28);
+      }
+      .gen-placeholder-text { color: #9aa5bd; font-style: italic; }
+      .gen-editable-cell.gen-ai-filled { animation: genFlash 1.3s ease; }
+
+      .gen-row-input {
+        font-size: 10pt; border: 1.5px solid transparent; border-radius: 8px; padding: 0.3rem 0.45rem;
+        background: rgba(255, 255, 255, 0.75);
+        transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+      }
+      .gen-row-input:hover:not([readonly]) { border-color: #b7c3e6; }
+      .gen-row-input:focus {
+        outline: none; background: #ffffff; border-color: var(--ap-accent);
+        box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.2);
+      }
+      .gen-row-input[readonly] { border: 1.5px dashed #e3c978; background: rgba(201, 162, 39, 0.1); }
+      .gen-row-input.gen-auto-filled { background: rgba(201, 162, 39, 0.1); }
+
+      .gen-ai-badge { background: linear-gradient(135deg, var(--ap-ai), #2563eb); color: #fff; font-weight: 700; padding: 0 6px; box-shadow: 0 1px 4px rgba(109, 40, 217, 0.35); }
+
+      /* ---- sign-off + footer ---- */
+      .gen-signature-space { border-bottom: 1.5px dashed #aab4d4; min-height: 2.3rem; border-radius: 4px; transition: border-color 0.15s ease, background 0.15s ease; }
+      .gen-signature-space:hover { background: rgba(20, 184, 166, 0.06); }
+      .gen-signature-space:focus { outline: none; border-bottom: 2px solid var(--ap-accent); background: rgba(20, 184, 166, 0.09); }
+      .gen-doc-footer { font-family: 'Inter', sans-serif; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { animation: none !important; transition: none !important; }
+    }
+
+    /* The row-number badge is plain text on paper */
+    @media print {
+      .gen-rownum {
+        display: inline !important; width: auto !important; height: auto !important;
+        background: none !important; box-shadow: none !important; color: #0f1b3d !important;
+        font-size: inherit !important; border-radius: 0 !important;
+      }
+      .gen-doc::before { display: none !important; }
+      .gen-doc { animation: none !important; overflow: visible !important; }
+      .gen-doc-title h3 { -webkit-text-fill-color: #0f1b3d !important; background: none !important; }
+      .gen-module-stat { -webkit-text-fill-color: #0f1b3d !important; background: none !important; }
+      .gen-module-card__label::before { display: none !important; }
+    }
   </style>
 </head>
 <body class="gen-body">
@@ -907,6 +1134,22 @@
           </button>
           <button type="button" class="btn btn-gold btn-sm" id="printBtn">
             <i class="fa-solid fa-print me-1"></i> Print / save as PDF
+          </button>
+        </div>
+      </div>
+
+      <div class="gen-progress no-print is-low" id="planProgress" aria-live="polite">
+        <div class="gen-progress__head">
+          <span class="gen-progress__title"><i class="fa-solid fa-list-check"></i> Plan completion</span>
+          <span class="gen-progress__count" id="planProgressCount">0%</span>
+        </div>
+        <div class="gen-progress__track" id="planProgressTrack" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <div class="gen-progress__fill" id="planProgressFill"></div>
+        </div>
+        <div class="gen-progress__foot">
+          <span class="gen-progress__hint" id="planProgressHint"></span>
+          <button type="button" class="gen-progress__next" id="planProgressNext">
+            <i class="fa-solid fa-crosshairs"></i> Next empty field
           </button>
         </div>
       </div>
@@ -1271,6 +1514,101 @@
         if (e.target && e.target.classList && e.target.classList.contains('gen-row-input')) syncPrintValues();
       });
 
+      // ------------------------------------------------------------------
+      // Plan completion tracker (screen only). Counts how many of the 8
+      // trainer-facing fields per learning outcome are filled, shows the
+      // percentage, lists what is still missing, and the "Next empty
+      // field" button scrolls to and focuses the next blank one.
+      // ------------------------------------------------------------------
+      var PROGRESS_FIELDS = [
+        { key: 'assessment_type', label: 'Type of Assessment', kind: 'cell' },
+        { key: 'trainer', label: 'Responsible Trainer', kind: 'cell' },
+        { key: 'num_candidates', label: 'Candidates', kind: 'input' },
+        { key: 'assessment_date', label: 'Date', kind: 'input' },
+        { key: 'resources', label: 'Resources', kind: 'cell' },
+        { key: 'place', label: 'Place', kind: 'input' },
+        { key: 'publication_date', label: 'Publication time', kind: 'input' },
+        { key: 'observation', label: 'Observation', kind: 'cell' },
+      ];
+      var progressEmpty = [];
+      var progressCursor = 0;
+      var progressTimer = null;
+
+      function cellHasRealText(cell) {
+        if (!cell) return false;
+        if (cell.querySelector('.gen-placeholder-text, .gen-ai-loading-text, .gen-ai-error-text')) return false;
+        var clone = cell.cloneNode(true);
+        Array.prototype.forEach.call(clone.querySelectorAll('.gen-ai-badge'), function (n) { n.remove(); });
+        return clone.textContent.trim().length > 0;
+      }
+
+      function updatePlanProgress() {
+        var box = document.getElementById('planProgress');
+        if (!box) return;
+        var rows = document.querySelectorAll('#docTableBody tr[data-outcome-id]');
+        if (!rows.length) { box.classList.add('d-none'); return; }
+        box.classList.remove('d-none');
+
+        var total = 0, filled = 0, missing = {};
+        progressEmpty = [];
+        Array.prototype.forEach.call(rows, function (row) {
+          PROGRESS_FIELDS.forEach(function (f) {
+            var el = f.kind === 'cell'
+              ? row.querySelector('[data-field="' + f.key + '"]')
+              : row.querySelector('[data-role="' + f.key + '"]');
+            if (!el) return;
+            total++;
+            var ok = f.kind === 'cell' ? cellHasRealText(el) : String(el.value || '').trim().length > 0;
+            if (ok) { filled++; }
+            else { missing[f.label] = (missing[f.label] || 0) + 1; progressEmpty.push(el); }
+          });
+        });
+
+        var pct = total ? Math.round(filled * 100 / total) : 0;
+        box.classList.toggle('is-low', pct < 40);
+        box.classList.toggle('is-mid', pct >= 40 && pct < 100);
+        box.classList.toggle('is-done', pct >= 100);
+        document.getElementById('planProgressFill').style.width = pct + '%';
+        document.getElementById('planProgressTrack').setAttribute('aria-valuenow', String(pct));
+        document.getElementById('planProgressCount').textContent = pct + '%  ·  ' + filled + ' of ' + total + ' fields';
+
+        var hint = document.getElementById('planProgressHint');
+        var nextBtn = document.getElementById('planProgressNext');
+        if (pct >= 100) {
+          hint.innerHTML = '<i class="fa-solid fa-circle-check"></i> Every field is filled — the plan is ready to print.';
+          nextBtn.classList.add('d-none');
+        } else {
+          var parts = Object.keys(missing)
+            .sort(function (a, b) { return missing[b] - missing[a]; })
+            .slice(0, 4)
+            .map(function (k) { return TMSGen.escapeHtml(k) + ' \u00d7' + missing[k]; });
+          hint.innerHTML = 'Still to fill: ' + parts.join(' · ');
+          nextBtn.classList.remove('d-none');
+        }
+      }
+
+      function scheduleProgressUpdate() {
+        clearTimeout(progressTimer);
+        progressTimer = setTimeout(updatePlanProgress, 120);
+      }
+
+      (function initPlanProgress() {
+        var tbody = document.getElementById('docTableBody');
+        if (!tbody) return;
+        new MutationObserver(scheduleProgressUpdate)
+          .observe(tbody, { childList: true, subtree: true, characterData: true });
+        ['input', 'change', 'focusout'].forEach(function (evt) {
+          tbody.addEventListener(evt, scheduleProgressUpdate);
+        });
+        document.getElementById('planProgressNext').addEventListener('click', function () {
+          if (!progressEmpty.length) return;
+          var el = progressEmpty[progressCursor % progressEmpty.length];
+          progressCursor++;
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          setTimeout(function () { el.focus(); }, 260);
+        });
+      })();
+
       function printWithFilename() {
         var originalTitle = document.title;
         var suggested = currentContext
@@ -1551,7 +1889,7 @@
           var rowIndex = idx + 1;
           return '' +
             '<tr data-outcome-id="' + outcome.id + '" data-row="' + rowIndex + '">' +
-              '<td>' + rowIndex + '</td>' +
+              '<td><span class="gen-rownum">' + rowIndex + '</span></td>' +
               '<td>' + TMSGen.escapeHtml(outcome.outcome_text) + '</td>' +
               '<td class="gen-editable-cell" contenteditable="true" data-field="assessment_type">' +
                 '<span class="gen-placeholder-text">Click "Generate with AI" or type here</span>' +
