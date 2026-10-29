@@ -354,11 +354,11 @@
 
 @page {
   size: A4 landscape;
-  margin: 15mm 12mm 17mm 12mm;
+  margin: 11mm 10mm 14mm 10mm;
   @bottom-center {
     content: "Page " counter(page) " of " counter(pages);
     font-family: 'Inter', Arial, Helvetica, sans-serif;
-    font-size: 8pt;
+    font-size: 7.5pt;
     color: #000;
   }
 }
@@ -493,171 +493,7 @@
     .gen-print-value { display: none; }
     select.gen-row-input { text-overflow: clip; min-width: 7.2rem; }
 
-    @media print {
-      html, body, body.gen-body { font-size: 9pt !important; }
-
-      /* Title block: compact so the table gets the page */
-      .gen-doc-logos { gap: 1.2rem !important; margin-bottom: 0.3rem !important; }
-      .gen-doc-logos img { height: 42px !important; }
-      .gen-doc-title { padding-bottom: 0.4rem !important; margin-bottom: 0.5rem !important; border-bottom: 2.5px solid #0f1b3d !important; }
-      .gen-doc-title::after { display: none !important; }
-      .gen-doc-title h3 { font-size: 14.5pt !important; margin: 0 !important; color: #0f1b3d !important; }
-
-      /* Meta strip: one tidy bordered row */
-      .gen-meta-grid {
-        display: grid !important;
-        grid-template-columns: 1.2fr 1.7fr 0.8fr 1.1fr !important;
-        gap: 0 !important;
-        padding: 0 !important;
-        margin: 0 0 0.45rem !important;
-        background: none !important;
-        border: 1px solid #7b8499 !important;
-        border-radius: 0 !important;
-      }
-      .gen-meta-grid > div { padding: 0.22rem 0.45rem !important; border-right: 1px solid #b9bfce; }
-      .gen-meta-grid > div:last-child { border-right: none; }
-      .gen-meta-grid dt { font-size: 7pt !important; color: #4b5563 !important; margin: 0 !important; }
-      .gen-meta-grid dd { font-size: 9pt !important; color: #0f1b3d !important; font-weight: 700 !important; }
-
-      /* The table itself */
-      .gen-table-wrap {
-        display: block !important;
-        border: none !important;
-        margin: 0 0 0.6rem !important;
-        overflow: visible !important;
-      }
-      .gen-table-v2 {
-        min-width: 0 !important;
-        width: 100% !important;
-        table-layout: fixed !important;
-        border-collapse: collapse !important;
-        border: 1.2px solid #0f1b3d !important;
-      }
-      .gen-table-v2 col.col-no         { width: 3.2%  !important; }
-      .gen-table-v2 col.col-lo         { width: 15%   !important; }
-      .gen-table-v2 col.col-asstype    { width: 8.5%  !important; }
-      .gen-table-v2 col.col-trainer    { width: 9.5%  !important; }
-      .gen-table-v2 col.col-candidates { width: 6.5%  !important; }
-      .gen-table-v2 col.col-invig      { width: 8%    !important; }
-      .gen-table-v2 col.col-date       { width: 7.5%  !important; }
-      .gen-table-v2 col.col-resources  { width: 11.5% !important; }
-      .gen-table-v2 col.col-place      { width: 6.5%  !important; }
-      .gen-table-v2 col.col-pubdate    { width: 7.5%  !important; }
-      .gen-table-v2 col.col-obs        { width: 16.3% !important; }
-
-      .gen-table-v2 thead th {
-        background: #e4e9f4 !important;
-        color: #0f1b3d !important;
-        font-size: 7.8pt !important;
-        font-weight: 800 !important;
-        line-height: 1.2 !important;
-        padding: 0.3rem 0.2rem !important;
-        border: 1px solid #0f1b3d !important;
-        border-bottom: 2px solid #0f1b3d !important;
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-        overflow-wrap: break-word !important;
-        word-break: normal !important;
-      }
-      .gen-table-v2 tbody td {
-        font-size: 8.8pt !important;
-        line-height: 1.35 !important;
-        color: #000 !important;
-        padding: 0.3rem 0.35rem !important;
-        border: 1px solid #7b8499 !important;
-        vertical-align: top !important;
-        overflow-wrap: break-word !important;
-        word-break: normal !important;
-        hyphens: auto;
-      }
-      .gen-table-v2 tbody tr:nth-child(even) td {
-        background: #f3f5fa !important;
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-      }
-
-      /* Short, factual columns read best centred */
-      .gen-table-v2 td:nth-child(1),
-      .gen-table-v2 td:nth-child(5),
-      .gen-table-v2 td:nth-child(6),
-      .gen-table-v2 td:nth-child(7),
-      .gen-table-v2 td:nth-child(10) { text-align: center !important; }
-
-      /* Inputs/selects -> their wrapped text twins (see syncPrintValues).
-         Controls are hidden on paper whenever a twin exists, so Type of
-         Module, dates, numbers and Place all print as plain wrapping text. */
-      #docTableBody .gen-row-input { display: none !important; }
-      #docTableBody .gen-print-value {
-        display: block !important;
-        font-size: 8.8pt;
-        line-height: 1.35;
-        color: #000;
-        white-space: normal;
-        overflow-wrap: break-word;
-        word-break: normal;
-        text-align: inherit;
-      }
-      /* Module type reads as a clear, bold label */
-      #docTableBody .gen-print-value--type {
-        font-size: 8.2pt;
-        font-weight: 700;
-        color: #0f1b3d;
-        text-align: center;
-      }
-      /* If a control somehow has no twin yet, at least drop native widgets */
-      .gen-row-input {
-        -webkit-appearance: none !important;
-        appearance: none !important;
-        width: 100% !important;
-        font-size: 8.8pt !important;
-        color: #000 !important;
-        padding: 0 !important;
-        white-space: normal !important;
-      }
-      .gen-row-input::-webkit-inner-spin-button,
-      .gen-row-input::-webkit-outer-spin-button,
-      .gen-row-input::-webkit-calendar-picker-indicator { display: none !important; -webkit-appearance: none; }
-
-      /* EVERY column wraps - nothing is clipped or runs past its border */
-      .gen-table-v2 td, .gen-table-v2 th {
-        white-space: normal !important;
-        overflow-wrap: break-word !important;
-        word-break: normal !important;
-        overflow: visible !important;
-        text-overflow: clip !important;
-      }
-      .gen-placeholder-text { display: none !important; }
-
-      /* Readability: bold row numbers, left-aligned long text, header repeats */
-      .gen-table-v2 tbody td:nth-child(1) { font-weight: 700; color: #0f1b3d; }
-      .gen-table-v2 tbody td:nth-child(2),
-      .gen-table-v2 tbody td:nth-child(3),
-      .gen-table-v2 tbody td:nth-child(4),
-      .gen-table-v2 tbody td:nth-child(8),
-      .gen-table-v2 tbody td:nth-child(11) { text-align: left !important; }
-      .gen-table-v2 thead { display: table-header-group !important; }
-      .gen-table-v2 tbody tr { break-inside: avoid !important; page-break-inside: avoid !important; }
-
-      /* Sign-off + footer: never split across pages */
-      .gen-signoff-grid {
-        gap: 1rem !important;
-        margin: 0.9rem 0 0.6rem !important;
-        padding-top: 0.6rem !important;
-        border-top: 1px solid #7b8499 !important;
-        break-inside: avoid !important;
-        page-break-inside: avoid !important;
-      }
-      .gen-signoff-grid .gen-signoff-line { font-size: 9pt !important; color: #0f1b3d !important; }
-      .gen-signoff-line > div { overflow-wrap: anywhere; }
-      .gen-signoff-line .gen-signature-space { min-height: 1.6rem; border-bottom: 1px solid #333; }
-      .gen-doc-footer {
-        font-size: 8pt !important;
-        color: #333 !important;
-        border-top: 1px solid #7b8499 !important;
-        break-inside: avoid !important;
-      }
-    }
-
+    
     /* ============================================================
        MODULE INFORMATION CARD  (replaces the Module + Type columns)
        ============================================================ */
@@ -761,49 +597,7 @@
       .gen-module-card__type, .gen-module-card__stat { border-left: none; border-top: 1px solid var(--ap-line); flex: 1 1 100%; text-align: left; }
     }
 
-    @media print {
-      .gen-module-card {
-        display: grid !important;
-        grid-template-columns: 1fr auto auto !important;
-        background: none !important;
-        box-shadow: none !important;
-        border: 1px solid #7b8499 !important;
-        border-left: 5px solid #0f1b3d !important;
-        border-radius: 0 !important;
-        margin: 0 0 0.55rem !important;
-        break-inside: avoid !important;
-      }
-      .gen-module-card > div { padding: 0.3rem 0.7rem !important; }
-      .gen-module-card__type, .gen-module-card__stat { border-left: 1px solid #b9bfce !important; }
-      .gen-module-card__stat { min-width: 0 !important; }
-      .gen-module-card__label { font-size: 6.8pt !important; color: #4b5563 !important; margin-bottom: 0.15rem !important; }
-      .gen-module-code {
-        background: none !important;
-        color: #0f1b3d !important;
-        border: 1.5px solid #0f1b3d !important;
-        border-radius: 4px !important;
-        font-size: 10pt !important;
-        padding: 0.05rem 0.45rem !important;
-      }
-      .gen-module-name { font-size: 11.5pt !important; color: #0f1b3d !important; }
-      .gen-module-stat { font-size: 13pt !important; }
-      /* Print only the chosen type, as a clear bold badge */
-      .gen-type-chip { display: none !important; }
-      .gen-type-chip.is-active {
-        display: inline-block !important;
-        background: none !important;
-        color: #0f1b3d !important;
-        border: 1.5px solid #0f1b3d !important;
-        border-radius: 4px !important;
-        box-shadow: none !important;
-        font-size: 10pt !important;
-        font-weight: 800 !important;
-        padding: 0.05rem 0.55rem !important;
-      }
-      .gen-type-chip.is-active::before { content: "" !important; }
-      .gen-type-group.is-unset::after { content: "\2014"; font-weight: 700; }
-    }
-
+    
     /* ============================================================
        VISUAL UPGRADE  (screen only - print layout is untouched)
        Palette : midnight navy + vivid teal + institutional gold
@@ -1018,19 +812,7 @@
     }
 
     /* The row-number badge is plain text on paper */
-    @media print {
-      .gen-rownum {
-        display: inline !important; width: auto !important; height: auto !important;
-        background: none !important; box-shadow: none !important; color: #0f1b3d !important;
-        font-size: inherit !important; border-radius: 0 !important;
-      }
-      .gen-doc::before { display: none !important; }
-      .gen-doc { animation: none !important; overflow: visible !important; }
-      .gen-doc-title h3 { -webkit-text-fill-color: #0f1b3d !important; background: none !important; }
-      .gen-module-stat { -webkit-text-fill-color: #0f1b3d !important; background: none !important; }
-      .gen-module-card__label::before { display: none !important; }
-    }
-
+    
     .gen-print-tip { margin-top: 0.4rem; font-size: 0.78rem; color: var(--ap-accent-deep, #0f766e); }
     .gen-print-tip i { margin-right: 0.3rem; }
 
@@ -1043,122 +825,224 @@
        - Header row repeats on every page; rows, the module card and
          the signature block are never split across two pages
        ============================================================ */
+    
+    /* ============================================================
+       SCREEN : calm, restrained palette  (navy + neutral greys only)
+       ============================================================ */
+    @media screen {
+      body.gen-body { background: #f2f4f8 !important; }
+      .gen-card { border-radius: 12px; }
+      .gen-card h2 { font-size: 1.02rem; }
+      .gen-card h2::before { background: var(--ap-navy); width: 4px; }
+      .gen-toolbar { border-left: 4px solid var(--ap-navy); border-radius: 12px; padding: 0.7rem 1rem; box-shadow: 0 2px 10px rgba(15, 27, 61, 0.06); }
+      .gen-toolbar .gen-toolbar-note { font-size: 0.8rem; }
+      .gen-toolbar .gen-toolbar-note i, .gen-print-tip, .gen-print-tip i { color: #4b5563; }
+      .gen-toolbar .gen-ai-toolbar-btn { background: var(--ap-navy); background-size: auto; }
+      .gen-toolbar .gen-ai-toolbar-btn:hover:not(:disabled) { background: var(--ap-navy-soft, #1e2f6b); }
+
+      .gen-progress { --pg-from: var(--ap-navy); --pg-to: var(--ap-navy-soft, #2b3f86); padding: 0.6rem 1rem 0.65rem; border-radius: 12px; box-shadow: 0 2px 10px rgba(15, 27, 61, 0.05); }
+      .gen-progress.is-mid, .gen-progress.is-done { --pg-from: var(--ap-navy); --pg-to: var(--ap-navy-soft, #2b3f86); border-color: var(--ap-edge); }
+      .gen-progress__track { height: 7px; }
+      .gen-progress__title i, .gen-progress.is-done .gen-progress__hint, .gen-progress.is-done .gen-progress__hint i { color: var(--ap-navy); }
+      .gen-progress__next { color: var(--ap-navy); background: #fff; border-color: #aab4cf; }
+      .gen-progress__next:hover { background: #eef1f8; }
+
+      .gen-doc { border-radius: 14px; padding-top: 2rem; box-shadow: 0 2px 6px rgba(15, 27, 61, 0.05), 0 14px 36px rgba(15, 27, 61, 0.08); }
+      .gen-doc::before { height: 4px; background: var(--ap-navy); }
+      .gen-doc-title h3 { font-size: 17pt; letter-spacing: 0.08em; background: none; -webkit-text-fill-color: var(--ap-navy); color: var(--ap-navy); }
+
+      .gen-doc-title::after { background: var(--ap-navy) !important; }
+      .gen-toolbar #printBtn { background: var(--ap-navy); border-color: var(--ap-navy); color: #fff; box-shadow: none; }
+      .gen-toolbar #printBtn:hover:not(:disabled) { background: var(--ap-navy-soft, #1e2f6b); }
+      .gen-meta-grid { background: #f6f7fa; border-radius: 10px; padding: 0.55rem 0.9rem; }
+      .gen-meta-grid dt { color: #5b6477; font-size: 7.5pt; }
+      .gen-meta-grid dd { font-size: 10pt; }
+
+      .gen-module-card { border-radius: 10px; border-left-color: var(--ap-navy); box-shadow: none; }
+      .gen-module-card:hover { transform: none; box-shadow: 0 2px 8px rgba(15, 27, 61, 0.08); }
+      .gen-module-card > div { padding: 0.55rem 0.9rem; }
+      .gen-module-card__label::before { color: #5b6477; }
+      .gen-module-code { background: var(--ap-navy); box-shadow: none; font-size: 9.5pt; }
+      .gen-module-name { font-size: 12pt; }
+      .gen-type-chip { font-size: 8.5pt; padding: 0.2rem 0.7rem; }
+      .gen-type-chip:hover { border-color: var(--ap-navy); }
+      .gen-type-chip.is-active { background: var(--ap-navy); box-shadow: none; }
+      .gen-module-hint { color: #4b5563; background: #eceff5; }
+      .gen-module-stat { font-size: 18pt; background: none; -webkit-text-fill-color: var(--ap-navy); color: var(--ap-navy); }
+
+      .gen-table-wrap { border-radius: 10px; box-shadow: none; scrollbar-color: #aab4cf #e9edf5; }
+      .gen-table-wrap::-webkit-scrollbar-thumb { background: #aab4cf; }
+      .gen-table-v2 thead th { background: var(--ap-navy); border-bottom: 2px solid var(--ap-navy); font-size: 9pt; padding: 0.55rem 0.4rem; }
+      .gen-table-v2 tbody td { font-size: 9.5pt; padding: 0.4rem 0.5rem; }
+      .gen-table-v2 tbody tr:nth-child(even) td { background: #f8f9fc; }
+      .gen-table-v2 tbody tr:hover td { background: #eef1f8 !important; }
+      .gen-table-v2 tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--ap-navy); }
+      .gen-table-v2 tbody tr:focus-within td { background: #f2f5fb !important; }
+      .gen-rownum { width: 1.5rem; height: 1.5rem; font-size: 8.5pt; background: var(--ap-navy); box-shadow: none; }
+      .gen-table-v2 tbody tr:hover .gen-rownum { background: var(--ap-navy); transform: none; }
+
+      .gen-editable-cell:hover { box-shadow: inset 0 0 0 1.5px rgba(27, 42, 78, 0.28); }
+      .gen-editable-cell:focus { box-shadow: inset 0 0 0 2px var(--ap-navy), 0 4px 12px rgba(15, 27, 61, 0.14); }
+      .gen-row-input { font-size: 9.5pt; }
+      .gen-row-input:hover:not([readonly]) { border-color: #aab4cf; }
+      .gen-row-input:focus { border-color: var(--ap-navy); box-shadow: 0 0 0 3px rgba(27, 42, 78, 0.14); }
+      .gen-row-input[readonly], .gen-row-input.gen-auto-filled { border: 1.5px dashed #c3cadb; background: #f3f5f9; }
+      .gen-ai-badge { background: #5b6477; box-shadow: none; }
+      .gen-editable-cell.gen-ai-filled { animation: none; }
+
+      .gen-signature-space:hover { background: #f3f5f9; }
+      .gen-signature-space:focus { border-bottom: 2px solid var(--ap-navy); background: #f3f5f9; }
+    }
+
+    /* ============================================================
+       PRINT / SAVE-AS-PDF : COMPACT, FORMAL, BLACK-AND-WHITE
+       One consolidated stylesheet (replaces the earlier stacked ones).
+       - A4 landscape, 11/10/14/10 mm margins, "Page X of Y" footer
+       - Black text on white; black 1pt grid, 1.5pt outer frame;
+         header row light grey (stays readable without backgrounds)
+       - Small type (8pt body) and tight cell padding so a typical plan
+         fits on ONE page; header row repeats if it runs longer
+       - Rows, module card and signatures never split across pages
+       ============================================================ */
     @media print {
       html, body, body.gen-body {
-        background: #fff !important;
-        color: #000 !important;
+        background: #fff !important; color: #000 !important;
         font-family: 'Inter', Arial, Helvetica, sans-serif !important;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-        orphans: 3;
-        widows: 3;
+        font-size: 8pt !important;
+        -webkit-print-color-adjust: exact; print-color-adjust: exact;
+        orphans: 3; widows: 3;
       }
       .gen-shell { padding: 0 !important; margin: 0 !important; max-width: none !important; }
-      .gen-doc, .gen-doc * { box-shadow: none !important; text-shadow: none !important; }
-      .gen-doc, .gen-doc *:not(.gen-ai-badge) { color: #000; }
+      .gen-doc, .gen-doc * { box-shadow: none !important; text-shadow: none !important; animation: none !important; }
+      .gen-doc { overflow: visible !important; }
+      .gen-doc::before { display: none !important; }
+      .gen-doc, .gen-doc * { color: #000; }
+      .gen-ai-badge, .gen-placeholder-text { display: none !important; }
 
-      /* ---- title block ---- */
-      .gen-doc-logos { margin: 0 0 2.5mm !important; gap: 10mm !important; }
-      .gen-doc-logos img { height: 15mm !important; }
-      .gen-doc-title {
-        border-bottom: 2pt solid #000 !important;
-        padding-bottom: 2.5mm !important;
-        margin-bottom: 4mm !important;
-      }
+      /* ---- title ---- */
+      .gen-doc-logos { margin: 0 0 1.5mm !important; gap: 8mm !important; }
+      .gen-doc-logos img { height: 11mm !important; }
+      .gen-doc-title { border-bottom: 1.5pt solid #000 !important; padding-bottom: 1.5mm !important; margin-bottom: 2.5mm !important; }
+      .gen-doc-title::after { display: none !important; }
       .gen-doc-title h3 {
-        color: #000 !important;
-        -webkit-text-fill-color: #000 !important;
-        background: none !important;
+        color: #000 !important; -webkit-text-fill-color: #000 !important; background: none !important;
         font-family: 'Inter', Arial, Helvetica, sans-serif !important;
-        font-size: 16pt !important;
-        font-weight: 800 !important;
-        letter-spacing: 0.1em !important;
-        text-transform: uppercase !important;
+        font-size: 13pt !important; font-weight: 800 !important; letter-spacing: 0.12em !important;
+        text-transform: uppercase !important; margin: 0 !important;
       }
 
-      /* ---- Sector / Trade / Level / Generated-on strip ---- */
+      /* ---- info strip ---- */
       .gen-meta-grid {
-        border: 1pt solid #000 !important;
-        border-radius: 0 !important;
-        background: none !important;
-        margin: 0 0 2.5mm !important;
+        display: grid !important; grid-template-columns: 1.2fr 1.7fr 0.8fr 1.1fr !important;
+        gap: 0 !important; padding: 0 !important; margin: 0 0 1.5mm !important;
+        background: none !important; border: 1pt solid #000 !important; border-radius: 0 !important;
       }
-      .gen-meta-grid > div { border-right: 1pt solid #000 !important; padding: 1.2mm 2.5mm !important; }
+      .gen-meta-grid > div { padding: 0.8mm 2mm !important; border-right: 1pt solid #000 !important; }
       .gen-meta-grid > div:last-child { border-right: none !important; }
-      .gen-meta-grid dt { color: #333 !important; font-size: 6.8pt !important; font-weight: 700 !important; letter-spacing: 0.1em !important; }
-      .gen-meta-grid dd { color: #000 !important; font-size: 9.5pt !important; font-weight: 700 !important; }
+      .gen-meta-grid dt { color: #333 !important; font-size: 6.3pt !important; font-weight: 700 !important; letter-spacing: 0.1em !important; margin: 0 !important; }
+      .gen-meta-grid dd { color: #000 !important; font-size: 8.8pt !important; font-weight: 700 !important; margin: 0 !important; }
 
       /* ---- module card ---- */
       .gen-module-card {
-        border: 1pt solid #000 !important;
-        border-left: 3.5pt solid #000 !important;
-        border-radius: 0 !important;
-        background: none !important;
-        margin: 0 0 3.5mm !important;
-        break-inside: avoid !important;
-        page-break-inside: avoid !important;
+        display: grid !important; grid-template-columns: 1fr auto auto !important;
+        background: none !important; border: 1pt solid #000 !important; border-left: 3pt solid #000 !important;
+        border-radius: 0 !important; margin: 0 0 2.5mm !important;
+        break-inside: avoid !important; page-break-inside: avoid !important;
       }
-      .gen-module-card__type, .gen-module-card__stat { border-left: 1pt solid #000 !important; }
-      .gen-module-card__label { color: #333 !important; font-size: 6.8pt !important; font-weight: 700 !important; }
+      .gen-module-card > div { padding: 0.8mm 2.2mm !important; }
+      .gen-module-card__type, .gen-module-card__stat { border-left: 1pt solid #000 !important; min-width: 0 !important; }
+      .gen-module-card__label { color: #333 !important; font-size: 6.3pt !important; font-weight: 700 !important; letter-spacing: 0.1em !important; margin: 0 0 0.4mm !important; }
+      .gen-module-card__label::before { display: none !important; }
+      .gen-module-card__title { gap: 2mm !important; }
       .gen-module-code {
-        background: none !important; color: #000 !important;
-        border: 1pt solid #000 !important; border-radius: 0 !important;
-        font-size: 10pt !important; font-weight: 800 !important;
+        background: none !important; color: #000 !important; border: 1pt solid #000 !important; border-radius: 0 !important;
+        font-size: 8.8pt !important; font-weight: 800 !important; padding: 0 1.5mm !important; box-shadow: none !important;
       }
-      .gen-module-name { color: #000 !important; -webkit-text-fill-color: #000 !important; font-family: 'Inter', Arial, sans-serif !important; font-size: 11.5pt !important; font-weight: 800 !important; }
-      .gen-module-stat { color: #000 !important; -webkit-text-fill-color: #000 !important; background: none !important; font-family: 'Inter', Arial, sans-serif !important; font-size: 13pt !important; }
+      .gen-module-name { color: #000 !important; -webkit-text-fill-color: #000 !important; font-family: 'Inter', Arial, sans-serif !important; font-size: 10pt !important; font-weight: 800 !important; }
+      .gen-module-stat { color: #000 !important; -webkit-text-fill-color: #000 !important; background: none !important; font-family: 'Inter', Arial, sans-serif !important; font-size: 11pt !important; }
+      .gen-type-chip { display: none !important; }
       .gen-type-chip.is-active {
-        background: none !important; color: #000 !important;
-        border: 1pt solid #000 !important; border-radius: 0 !important;
-        font-weight: 800 !important;
+        display: inline-block !important; background: none !important; color: #000 !important;
+        border: 1pt solid #000 !important; border-radius: 0 !important; box-shadow: none !important;
+        font-size: 8.8pt !important; font-weight: 800 !important; padding: 0 1.8mm !important;
       }
+      .gen-type-chip.is-active::before { content: "" !important; }
+      .gen-type-group.is-unset::after { content: "\2014"; font-weight: 700; }
 
-      /* ---- the table: black grid, neutral header, no tints ---- */
-      .gen-table-wrap { border: none !important; border-radius: 0 !important; margin: 0 0 4mm !important; }
+      /* ---- table ---- */
+      .gen-table-wrap { display: block !important; border: none !important; border-radius: 0 !important; margin: 0 0 3mm !important; overflow: visible !important; }
       .gen-table-v2 {
-        border-collapse: collapse !important;
-        border: 1.5pt solid #000 !important;
+        min-width: 0 !important; width: 100% !important; table-layout: fixed !important;
+        border-collapse: collapse !important; border: 1.5pt solid #000 !important;
       }
+      .gen-table-v2 col.col-no         { width: 2.8%  !important; }
+      .gen-table-v2 col.col-lo         { width: 17.5% !important; }
+      .gen-table-v2 col.col-asstype    { width: 7.5%  !important; }
+      .gen-table-v2 col.col-trainer    { width: 11%   !important; }
+      .gen-table-v2 col.col-candidates { width: 6%    !important; }
+      .gen-table-v2 col.col-invig      { width: 7.5%  !important; }
+      .gen-table-v2 col.col-date       { width: 7%    !important; }
+      .gen-table-v2 col.col-resources  { width: 11%   !important; }
+      .gen-table-v2 col.col-place      { width: 6.5%  !important; }
+      .gen-table-v2 col.col-pubdate    { width: 7%    !important; }
+      .gen-table-v2 col.col-obs        { width: 16.7% !important; }
+
+      .gen-table-v2 thead { display: table-header-group !important; }
       .gen-table-v2 thead th {
-        background: #e8e8e8 !important;
-        color: #000 !important;
-        border: 1pt solid #000 !important;
-        border-bottom: 1.5pt solid #000 !important;
-        font-size: 8.2pt !important;
-        font-weight: 800 !important;
-        padding: 1.6mm 1.2mm !important;
+        background: #ececec !important; color: #000 !important;
+        border: 1pt solid #000 !important; border-bottom: 1.5pt solid #000 !important;
+        font-size: 7.2pt !important; font-weight: 800 !important; line-height: 1.15 !important;
+        padding: 0.9mm 0.8mm !important; text-align: center !important;
+        overflow-wrap: break-word !important; word-break: normal !important;
       }
+      .gen-table-v2 tbody tr, .gen-table-v2 thead tr { background: none !important; break-inside: avoid !important; page-break-inside: avoid !important; }
+      .gen-table-v2 tbody tr:nth-child(even) td, .gen-table-v2 tbody tr:nth-child(odd) td, .gen-table-v2 tbody tr:nth-child(even), .gen-table-v2 tbody tr:nth-child(odd) { background: none !important; }
       .gen-table-v2 tbody td {
-        background: none !important;
-        color: #000 !important;
+        background: none !important; color: #000 !important;
         border: 1pt solid #000 !important;
-        font-size: 9pt !important;
-        line-height: 1.35 !important;
-        padding: 1.5mm 1.6mm !important;
+        font-size: 8pt !important; line-height: 1.22 !important;
+        padding: 0.8mm 1.1mm !important; vertical-align: top !important;
+        overflow: visible !important; text-overflow: clip !important; white-space: normal !important;
+        overflow-wrap: break-word !important; word-break: normal !important; hyphens: auto;
       }
-      .gen-table-v2 tbody tr:nth-child(even) td { background: none !important; }
-      .gen-table-v2 tbody tr, .gen-table-v2 tbody tr:nth-child(even), .gen-table-v2 tbody tr:nth-child(odd) { background: none !important; }
-      .gen-table-v2 tbody tr, .gen-table-v2 thead tr { break-inside: avoid !important; page-break-inside: avoid !important; }
-      .gen-table-v2 tbody td:nth-child(1), .gen-rownum { color: #000 !important; font-weight: 800 !important; }
-      #docTableBody .gen-print-value, #docTableBody .gen-print-value--type { color: #000 !important; font-size: 9pt !important; }
-      #docTableBody .gen-print-value--type { font-size: 8.5pt !important; font-weight: 800 !important; }
+      .gen-table-v2 tbody td:nth-child(1),
+      .gen-table-v2 tbody td:nth-child(5),
+      .gen-table-v2 tbody td:nth-child(6),
+      .gen-table-v2 tbody td:nth-child(7),
+      .gen-table-v2 tbody td:nth-child(10) { text-align: center !important; }
+      .gen-table-v2 tbody td:nth-child(2),
+      .gen-table-v2 tbody td:nth-child(3),
+      .gen-table-v2 tbody td:nth-child(4),
+      .gen-table-v2 tbody td:nth-child(8),
+      .gen-table-v2 tbody td:nth-child(11) { text-align: left !important; }
+      .gen-table-v2 tbody td:nth-child(1) { font-weight: 800 !important; }
+      .gen-rownum {
+        display: inline !important; width: auto !important; height: auto !important;
+        background: none !important; color: #000 !important; border-radius: 0 !important; font-size: inherit !important;
+      }
+      .gen-editable-cell { background: none !important; outline: none !important; border: 1pt solid #000 !important; }
+
+      /* inputs/selects print as wrapped text (see syncPrintValues) */
+      #docTableBody .gen-row-input { display: none !important; }
+      #docTableBody .gen-print-value {
+        display: block !important; font-size: 8pt !important; line-height: 1.22 !important; color: #000 !important;
+        white-space: normal; overflow-wrap: break-word; text-align: inherit;
+      }
+      .gen-row-input { -webkit-appearance: none !important; appearance: none !important; width: 100% !important; padding: 0 !important; font-size: 8pt !important; color: #000 !important; }
+      .gen-row-input::-webkit-inner-spin-button, .gen-row-input::-webkit-outer-spin-button, .gen-row-input::-webkit-calendar-picker-indicator { display: none !important; -webkit-appearance: none; }
 
       /* ---- sign-off + footer ---- */
       .gen-signoff-grid {
-        border-top: 1pt solid #000 !important;
-        margin: 6mm 0 3mm !important;
-        padding-top: 3mm !important;
-        break-inside: avoid !important;
-        page-break-inside: avoid !important;
+        display: grid !important; border-top: 1pt solid #000 !important; gap: 8mm !important;
+        margin: 3mm 0 2mm !important; padding-top: 2mm !important;
+        break-inside: avoid !important; page-break-inside: avoid !important;
       }
-      .gen-signoff-grid .gen-signoff-line { color: #000 !important; font-size: 9.5pt !important; font-weight: 700 !important; }
-      .gen-signoff-line .gen-signature-space { border-bottom: 1pt solid #000 !important; border-radius: 0 !important; min-height: 13mm !important; background: none !important; }
+      .gen-signoff-grid .gen-signoff-line { color: #000 !important; font-size: 8pt !important; font-weight: 700 !important; }
+      .gen-signoff-line .gen-signature-space { border-bottom: 1pt solid #000 !important; border-radius: 0 !important; min-height: 9mm !important; background: none !important; }
       .gen-doc-footer {
-        border-top: 1pt solid #000 !important;
-        color: #000 !important;
-        font-size: 8pt !important;
-        padding-top: 2mm !important;
-        break-inside: avoid !important;
+        display: flex !important; justify-content: space-between !important;
+        border-top: 1pt solid #000 !important; color: #000 !important; font-size: 7pt !important;
+        padding-top: 1.2mm !important; break-inside: avoid !important;
       }
       .gen-doc-footer span:first-child { color: #000 !important; }
     }
