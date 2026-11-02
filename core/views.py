@@ -19,7 +19,7 @@ from django.core.serializers.json import DjangoJSONEncoder
 from django.db.models import Q
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse_lazy
+from django.urls import reverse, reverse_lazy
 from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
@@ -692,6 +692,30 @@ class BaseListView(TrainerAccessMixin, LoginRequiredMixin, ListView):
     # repeating the trainer's name on every one. Used by ModuleListView.
     compact_grid = False
 
+    # DATA-TABLE MODE. When datatable = True the list renders as ONE
+    # searchable, sortable, filterable table of ALL records on a single page
+    # (core/crud_datatable.html) instead of collapsed trainer/module
+    # accordions, and pagination is switched off - so finding a record never
+    # needs a page change or an expand/collapse click. Trainer and Module are
+    # shown as ordinary columns (and filter dropdowns) rather than groups.
+    #   - datatable_template  : template to use in this mode
+    #   - filter_headers      : column headers that get a filter dropdown
+    #                           (Trainer / Module are added automatically)
+    datatable = False
+    datatable_template = 'core/crud_datatable.html'
+    filter_headers = []
+
+    # SPLIT-VIEW MODE (master/detail). When splitview = True the page shows a
+    # searchable list of modules on the left and, for the module selected,
+    # its details / learning outcomes / indicative contents on the right
+    # (core/crud_splitview.html). All data is sent once and searched in the
+    # browser, so browsing never needs a page change. The same screen serves
+    # Modules, Learning Outcomes and Indicative Contents - only the tab that
+    # opens first differs (sv_default_tab).
+    splitview = False
+    splitview_template = 'core/crud_splitview.html'
+    sv_default_tab = 'details'       # 'details' | 'outcomes' | 'contents'
+
     # Optional secondary "Add multiple" button in the topbar, for models
     # that support the bulk-create workflow (Learning Outcomes / Indicative
     # Contents) alongside the regular single-record "Add" button.
@@ -708,6 +732,70 @@ class BaseListView(TrainerAccessMixin, LoginRequiredMixin, ListView):
     quick_add_url_name = ''
     quick_add_label = ''
     quick_add_param = ''
+
+    def get_paginate_by(self, queryset):
+        # Data-table / split-view modes show every record on one page; the
+        # page itself does the searching/sorting/filtering in the browser.
+        if self.datatable or self.splitview:
+            return None
+        return super().get_paginate_by(queryset)
+
+    def get_template_names(self):
+        if self.splitview:
+            return [self.splitview_template]
+        if self.datatable:
+            return [self.datatable_template]
+        return super().get_template_names()
+
+    def build_splitview_data(self):
+        """Modules -> outcomes -> indicative contents as plain dicts, scoped to
+        the viewer (a trainer only ever receives their own modules)."""
+        modules_qs = Module.objects.select_related('trade', 'level', 'trainer').order_by('mod_code', 'id')
+        if self.trainer_profile:
+            modules_qs = modules_qs.filter(trainer=self.trainer_profile)
+        modules = list(modules_qs)
+        module_ids = [m.pk for m in modules]
+
+        outcomes_by_module = {}
+        outcome_rows = {}
+        for o in LearningOutcome.objects.filter(module_id__in=module_ids).order_by('module_id', 'id'):
+            row = {'id': o.pk, 'text': o.outcome_text, 'hours': o.learning_hours, 'contents': []}
+            outcome_rows[o.pk] = row
+            outcomes_by_module.setdefault(o.module_id, []).append(row)
+        for c in IndicativeContent.objects.filter(outcome_id__in=list(outcome_rows)).order_by('outcome_id', 'id'):
+            outcome_rows[c.outcome_id]['contents'].append({'id': c.pk, 'name': c.indic_name})
+
+        return {
+            'modules': [{
+                'id': m.pk,
+                'code': m.mod_code,
+                'name': m.mod_name,
+                'trade': m.trade.trade_name if m.trade_id else '',
+                'level': m.level.class_level if m.level_id else '',
+                'hours': m.learning_hours,
+                'term': m.term,
+                'trainerId': m.trainer_id,
+                'trainer': str(m.trainer) if m.trainer_id else '',
+                'active': m.is_active,
+                'outcomes': outcomes_by_module.get(m.pk, []),
+            } for m in modules],
+        }
+
+    def build_splitview_urls(self):
+        """Action URLs; '{id}' is swapped for the record id in the browser."""
+        marker = 999999999
+        def u(name):
+            return reverse(name, kwargs={'pk': marker}).replace(str(marker), '{id}')
+        return {
+            'moduleEdit': u('module-edit'), 'moduleDelete': u('module-delete'),
+            'moduleToggle': u('module-toggle-active'),
+            'outcomeEdit': u('outcome-edit'), 'outcomeDelete': u('outcome-delete'),
+            'contentEdit': u('content-edit'), 'contentDelete': u('content-delete'),
+            'outcomeBulk': reverse('outcome-bulk-create'),
+            'contentBulk': reverse('content-bulk-create'),
+            'outcomeCreate': reverse('outcome-create'),
+            'contentCreate': reverse('content-create'),
+        }
 
     def get_column_value(self, obj, col):
         value = obj
@@ -825,9 +913,20 @@ class BaseListView(TrainerAccessMixin, LoginRequiredMixin, ListView):
             # trainer can't actually use, sending them into a 403. The
             # template hides those links whenever this is True.
             'viewer_is_trainer': bool(self.trainer_profile),
+            'datatable': self.datatable,
+            'filter_headers': self.filter_headers,
         })
 
-        if self.group_by_trainer:
+        if self.splitview:
+            context.update({
+                'sv_data': self.build_splitview_data(),
+                'sv_urls': self.build_splitview_urls(),
+                'sv_default_tab': self.sv_default_tab,
+                'can_toggle_module': self.request.user.has_perm('core.toggle_module_status'),
+            })
+
+        # The accordion structure is only needed by the grouped template.
+        if self.group_by_trainer and not (self.datatable or self.splitview):
             context['trainer_groups'] = self.build_trainer_groups(rows)
 
         return context
@@ -1285,11 +1384,11 @@ class ModuleListView(BaseListView):
 
     group_by_trainer = True
     trainer_accessor = 'trainer'
-    # Render each trainer's modules as a dense wrapping grid of compact
-    # chip-cards instead of a full-width table, so many more modules fit
-    # on screen at once (see crud_list.html + .module-chip-grid in
-    # style.css).
+    # One searchable data table of every module (see crud_datatable.html).
+    # Kept for the legacy grouped template: compact_grid.
     compact_grid = True
+    splitview = True
+    sv_default_tab = 'details'
 
     # Jump straight from a module row to bulk-adding its Learning Outcomes.
     quick_add_url_name = 'outcome-bulk-create'
@@ -1395,6 +1494,8 @@ class LearningOutcomeListView(BaseListView):
     trainer_accessor = 'module.trainer'
     group_by_module = True
     module_accessor = 'module'
+    splitview = True
+    sv_default_tab = 'outcomes'
 
     # Topbar shortcut into the bulk-create screen…
     bulk_create_url_name = 'outcome-bulk-create'
@@ -1452,6 +1553,8 @@ class IndicativeContentListView(BaseListView):
     trainer_accessor = 'outcome.module.trainer'
     group_by_module = True
     module_accessor = 'outcome.module'
+    splitview = True
+    sv_default_tab = 'contents'
 
     bulk_create_url_name = 'content-bulk-create'
     bulk_create_label = 'Add multiple'
