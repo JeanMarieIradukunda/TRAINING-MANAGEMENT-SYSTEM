@@ -1,0 +1,1332 @@
+{% load static %}
+{% load core_extras %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Exam Builder · Training Management System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style id="xbPageStyle">@page { size: letter; margin: 1in 0.75in; }</style>
+  <style>
+    /* ============================================================
+       EXAM BUILDER
+       Left : builder form (module, header, instructions, sections)
+       Right: live paper preview in the look of the school's
+              SCHOOL COMPREHENSIVE ASSESSMENT template
+       ============================================================ */
+    :root {
+      --xb-navy: #0f1b3d;
+      --xb-navy-soft: #1c2b52;
+      --xb-teal: #0d9488;
+      --xb-teal-soft: rgba(13, 148, 136, 0.12);
+      --xb-gold: #c9a227;
+      --xb-ink: #1f2937;
+      --xb-muted: #6b7280;
+      --xb-line: #d9dfec;
+      --xb-line-soft: #eceff6;
+      --xb-bg: #eff2f8;
+      --xb-card: #ffffff;
+      --xb-danger: #b42318;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; }
+    body.xb-body { font-family: 'Inter', system-ui, sans-serif; color: var(--xb-ink); background: var(--xb-bg); font-size: 14px; }
+
+    /* ---------- hero ---------- */
+    .xb-hero { background: linear-gradient(135deg, var(--xb-navy) 0%, var(--xb-navy-soft) 100%); color: #fff; padding: 0.9rem clamp(1rem, 3vw, 2.5rem) 1.3rem; }
+    .xb-hero-top { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.9rem; }
+    .xb-back { color: rgba(255, 255, 255, 0.82); text-decoration: none; font-size: 0.82rem; font-weight: 600; }
+    .xb-back:hover { color: #fff; }
+    .xb-eyebrow { font-size: 0.78rem; color: rgba(255, 255, 255, 0.72); margin-bottom: 0.3rem; }
+    .xb-hero h1 { font-family: 'Sora', 'Inter', sans-serif; font-size: clamp(1.4rem, 2.6vw, 1.9rem); font-weight: 800; margin: 0; }
+    .xb-hero p { margin: 0.35rem 0 0; color: rgba(255, 255, 255, 0.78); font-size: 0.88rem; max-width: 70ch; }
+
+    /* ---------- layout ---------- */
+    .xb-shell { max-width: 1680px; margin: 0 auto; padding: 1rem clamp(0.75rem, 2vw, 1.75rem) 3rem; }
+    .xb-mobile-tabs { display: none; }
+    .xb-grid { display: grid; grid-template-columns: minmax(420px, 46fr) minmax(380px, 54fr); gap: 1.25rem; align-items: start; }
+    .xb-builder { min-width: 0; }
+    .xb-preview-col { position: sticky; top: 0.75rem; min-width: 0; }
+
+    /* ---------- cards ---------- */
+    .xb-card { background: var(--xb-card); border: 1px solid var(--xb-line); border-radius: 14px; padding: 1.1rem 1.2rem; margin-bottom: 1rem; box-shadow: 0 2px 10px rgba(15, 27, 61, 0.05); }
+    .xb-card > h2 { display: flex; align-items: center; gap: 0.6rem; font-family: 'Sora', 'Inter', sans-serif; font-size: 1rem; font-weight: 700; color: var(--xb-navy); margin: 0 0 0.25rem; }
+    .xb-step { display: inline-grid; place-items: center; width: 1.6rem; height: 1.6rem; border-radius: 50%; background: var(--xb-navy); color: #fff; font-size: 0.78rem; font-weight: 800; flex: none; }
+    .xb-sub { color: var(--xb-muted); font-size: 0.82rem; margin: 0 0 0.9rem; }
+    .xb-label { display: block; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--xb-muted); margin-bottom: 0.3rem; }
+    .xb-in, .xb-sel, .xb-ta {
+      width: 100%; font: inherit; font-size: 0.88rem; color: var(--xb-ink); background: #fff; border: 1.5px solid var(--xb-line); border-radius: 9px; padding: 0.45rem 0.65rem;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .xb-ta { resize: vertical; min-height: 2.6rem; line-height: 1.4; }
+    .xb-in:focus, .xb-sel:focus, .xb-ta:focus { outline: none; border-color: var(--xb-teal); box-shadow: 0 0 0 3px var(--xb-teal-soft); }
+    .xb-num { width: 4.4rem; text-align: center; padding: 0.35rem 0.3rem; }
+    .xb-row { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+    .xb-row > * { flex: 1 1 200px; min-width: 0; }
+
+    .xb-check { display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer; font-size: 0.82rem; font-weight: 600; color: var(--xb-ink); margin: 0; user-select: none; }
+    .xb-check input { width: 1.05rem; height: 1.05rem; accent-color: var(--xb-teal); cursor: pointer; }
+    .xb-btn { display: inline-flex; align-items: center; gap: 0.4rem; font: inherit; font-size: 0.82rem; font-weight: 700; padding: 0.45rem 0.9rem; border-radius: 9px; border: 1.5px solid var(--xb-line); background: #fff; color: var(--xb-navy); cursor: pointer; transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease; }
+    .xb-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(15, 27, 61, 0.14); }
+    .xb-btn:disabled { opacity: 0.55; cursor: progress; }
+    .xb-btn-primary { background: var(--xb-navy); border-color: var(--xb-navy); color: #fff; }
+    .xb-btn-teal { background: var(--xb-teal); border-color: var(--xb-teal); color: #fff; }
+    .xb-btn-ai { background: linear-gradient(135deg, #6d28d9, #2563eb); border: none; color: #fff; }
+    .xb-btn-sm { padding: 0.28rem 0.6rem; font-size: 0.76rem; border-radius: 8px; }
+    .xb-btn-ghost { border-color: transparent; background: transparent; color: var(--xb-muted); padding: 0.28rem 0.5rem; }
+    .xb-btn-ghost:hover:not(:disabled) { background: var(--xb-line-soft); box-shadow: none; transform: none; color: var(--xb-navy); }
+    .xb-btn-danger:hover:not(:disabled) { color: var(--xb-danger); background: #fdecea; }
+
+    .xb-alert { display: none; border-radius: 10px; padding: 0.7rem 0.9rem; font-size: 0.84rem; margin-bottom: 0.9rem; white-space: pre-line; }
+    .xb-alert.on { display: block; }
+    .xb-alert-warn { background: #fff7e0; border: 1px solid #f1d98a; color: #7a5b00; }
+    .xb-alert-info { background: #e8f6f5; border: 1px solid #b4e0dc; color: #0f5f58; }
+
+    /* ---------- LO list ---------- */
+    .xb-lo-tools { display: flex; justify-content: space-between; align-items: center; margin: 0.8rem 0 0.4rem; gap: 0.5rem; flex-wrap: wrap; }
+    .xb-lo-list { display: grid; gap: 0.4rem; max-height: 17rem; overflow: auto; padding-right: 0.2rem; }
+    .xb-lo { display: flex; gap: 0.6rem; align-items: flex-start; padding: 0.5rem 0.65rem; border: 1.5px solid var(--xb-line); border-radius: 10px; cursor: pointer; transition: border-color 0.12s ease, background 0.12s ease; }
+    .xb-lo:hover { border-color: #b7c3e6; }
+    .xb-lo.on { border-color: var(--xb-teal); background: var(--xb-teal-soft); }
+    .xb-lo input { margin-top: 0.2rem; accent-color: var(--xb-teal); }
+    .xb-lo-text { flex: 1; font-size: 0.85rem; line-height: 1.35; }
+    .xb-lo-meta { font-size: 0.72rem; color: var(--xb-muted); margin-top: 0.15rem; }
+
+    /* ---------- logos ---------- */
+    .xb-logos { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 0.6rem; }
+    .xb-logo { position: relative; border: 1.5px solid var(--xb-line); border-radius: 10px; padding: 0.5rem; text-align: center; cursor: pointer; background: #fff; transition: border-color 0.12s ease, box-shadow 0.12s ease; }
+    .xb-logo:hover { border-color: #b7c3e6; }
+    .xb-logo.on { border-color: var(--xb-teal); box-shadow: 0 0 0 3px var(--xb-teal-soft); }
+    .xb-logo img { display: block; max-width: 100%; height: 56px; object-fit: contain; margin: 0 auto 0.35rem; }
+    .xb-logo span { display: block; font-size: 0.72rem; font-weight: 600; color: var(--xb-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .xb-logo input { position: absolute; top: 0.4rem; left: 0.4rem; accent-color: var(--xb-teal); }
+
+    /* ---------- header fields ---------- */
+    .xb-hrow { display: grid; grid-template-columns: 1.7rem 8.5rem 1fr; gap: 0.5rem; align-items: center; margin-bottom: 0.4rem; }
+    .xb-hrow.off .xb-in { opacity: 0.5; }
+    .xb-hrow input[type=checkbox] { width: 1.05rem; height: 1.05rem; accent-color: var(--xb-teal); justify-self: center; }
+
+    /* ---------- sections ---------- */
+    .xb-sec { border: 1.5px solid var(--xb-line); border-radius: 12px; margin-bottom: 0.9rem; background: #fbfcff; overflow: hidden; }
+    .xb-sec.off { opacity: 0.6; }
+    .xb-sec-head { display: flex; flex-wrap: wrap; gap: 0.5rem 0.75rem; align-items: center; padding: 0.7rem 0.85rem; background: #f3f6fc; border-bottom: 1px solid var(--xb-line); }
+    .xb-sec-badge { background: var(--xb-navy); color: #fff; font-weight: 800; font-size: 0.74rem; letter-spacing: 0.05em; border-radius: 7px; padding: 0.25rem 0.6rem; white-space: nowrap; }
+    .xb-sec-body { padding: 0.85rem; }
+    .xb-sec-opts { display: flex; flex-wrap: wrap; gap: 0.6rem 1rem; align-items: center; margin-bottom: 0.8rem; font-size: 0.82rem; }
+    .xb-sec-opts label.inline { display: inline-flex; align-items: center; gap: 0.4rem; font-weight: 600; margin: 0; }
+    .xb-types { display: grid; gap: 0.5rem; margin-bottom: 0.9rem; }
+    .xb-type { border: 1.5px solid var(--xb-line); border-radius: 10px; padding: 0.55rem 0.7rem; background: #fff; transition: border-color 0.12s ease, background 0.12s ease; }
+    .xb-type.on { border-color: var(--xb-teal); background: #f4fbfa; }
+    .xb-type-top { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.9rem; }
+    .xb-type-top .grow { flex: 1; min-width: 9rem; }
+    .xb-type-fields { display: none; margin-top: 0.5rem; gap: 0.5rem; align-items: center; flex-wrap: wrap; font-size: 0.78rem; color: var(--xb-muted); }
+    .xb-type.on .xb-type-fields { display: flex; }
+    .xb-type-fields .xb-in { padding: 0.3rem 0.5rem; font-size: 0.8rem; }
+
+    .xb-q { border: 1.5px solid var(--xb-line); border-radius: 10px; padding: 0.65rem 0.75rem; margin-bottom: 0.55rem; background: #fff; }
+    .xb-q.hidden-q { opacity: 0.55; }
+    .xb-q-head { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.45rem; flex-wrap: wrap; }
+    .xb-q-no { font-weight: 800; color: var(--xb-navy); font-size: 0.85rem; min-width: 2.3rem; }
+    .xb-q-kind { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--xb-teal); background: var(--xb-teal-soft); border-radius: 999px; padding: 0.12rem 0.55rem; }
+    .xb-q-marks { margin-left: auto; display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.76rem; color: var(--xb-muted); }
+    .xb-opt { display: flex; align-items: center; gap: 0.45rem; margin-top: 0.35rem; }
+    .xb-opt b { width: 1.3rem; text-align: center; color: var(--xb-navy); }
+    .xb-opt input[type=radio] { accent-color: var(--xb-teal); }
+    .xb-pair { display: grid; grid-template-columns: 1fr 1fr auto; gap: 0.4rem; margin-top: 0.35rem; align-items: center; }
+    .xb-help { font-size: 0.74rem; color: var(--xb-muted); margin-top: 0.3rem; }
+    .xb-empty { text-align: center; color: var(--xb-muted); font-size: 0.84rem; padding: 1.2rem 0.5rem; border: 1.5px dashed var(--xb-line); border-radius: 10px; }
+    .xb-sec-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; }
+
+    /* ---------- action bar ---------- */
+    .xb-actions { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; }
+    .xb-status { font-size: 0.8rem; color: var(--xb-muted); margin-left: auto; }
+    .xb-status.ok { color: var(--xb-teal); font-weight: 700; }
+
+    /* ---------- preview column ---------- */
+    .xb-prev-bar { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 0.6rem; }
+    .xb-prev-bar h3 { font-family: 'Sora', 'Inter', sans-serif; font-size: 0.95rem; margin: 0; color: var(--xb-navy); font-weight: 700; }
+    .xb-chip { font-size: 0.7rem; font-weight: 700; border-radius: 999px; padding: 0.15rem 0.6rem; background: #fff7e0; color: #7a5b00; border: 1px solid #f1d98a; }
+    .xb-chip.ok { background: var(--xb-teal-soft); color: var(--xb-teal); border-color: rgba(13, 148, 136, 0.4); }
+    .xb-scroll { max-height: calc(100vh - 7.5rem); overflow: auto; border-radius: 12px; background: #d7dce8; padding: 0.9rem; border: 1px solid var(--xb-line); }
+    .xb-paper-wrap { margin: 0 auto; }
+    .xb-paper {
+      background: #fff; color: #000; box-shadow: 0 6px 24px rgba(15, 27, 61, 0.22);
+      transform-origin: top left; width: 8.5in; min-height: 11in; padding: 1in 0.75in;
+      font-family: Aptos, 'Segoe UI', Calibri, Arial, Helvetica, sans-serif; font-size: 11pt; line-height: 1.32;
+    }
+    .xb-paper p { margin: 0 0 8pt; }
+    .xb-p-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16pt; }
+    .xb-p-head.logo-left { flex-direction: row-reverse; }
+    .xb-p-head.logo-center { flex-direction: column; align-items: stretch; }
+    .xb-p-lines { flex: 1 1 auto; min-width: 0; }
+    .xb-p-lines p { font-weight: 700; }
+    .xb-p-logos { flex: 0 0 auto; display: flex; gap: 8pt; align-items: flex-start; justify-content: flex-end; max-width: 46%; }
+    .xb-p-head.logo-left .xb-p-logos { justify-content: flex-start; }
+    .xb-p-head.logo-center .xb-p-logos { justify-content: center; max-width: none; margin-bottom: 8pt; }
+    .xb-p-logos img { max-height: 0.95in; max-width: 3.1in; object-fit: contain; }
+    .xb-p-rule { border-bottom: 1pt dashed #000; margin: 4pt 0 12pt; }
+    .xb-p-inst-h, .xb-p-section, .xb-p-key-h { font-weight: 700; margin: 12pt 0 6pt; break-after: avoid; }
+    .xb-p-inst ol { margin: 0 0 8pt; padding-left: 0.3in; }
+    .xb-p-inst li { margin-bottom: 3pt; }
+    .xb-p-typehead { font-weight: 700; font-style: italic; margin: 8pt 0 4pt; break-after: avoid; }
+    .xb-p-bank { font-weight: 700; margin: 0 0 6pt 0.3in; break-after: avoid; }
+    .xb-p-q { margin: 0 0 7pt; break-inside: avoid; }
+    .xb-p-qline { display: flex; justify-content: space-between; gap: 12pt; }
+    .xb-p-qline .t { flex: 1; min-width: 0; white-space: pre-wrap; }
+    .xb-p-qline .m { font-weight: 700; white-space: nowrap; }
+    .xb-p-qline .n { font-weight: 700; }
+    .xb-p-opt { margin-left: 0.4in; margin-top: 1pt; }
+    .xb-p-match { width: 100%; border-collapse: collapse; margin: 4pt 0 6pt; }
+    .xb-p-match th, .xb-p-match td { border: 0.75pt solid #808080; padding: 2pt 5pt; width: 50%; vertical-align: top; text-align: left; }
+    .xb-p-line { white-space: nowrap; overflow: hidden; margin-top: 3pt; }
+    .xb-p-key-row { display: flex; gap: 8pt; margin-bottom: 3pt; }
+    .xb-p-key-row .n { font-weight: 700; min-width: 0.5in; }
+    .xb-p-break { border-top: 1.5px dashed #9aa3b8; margin: 18pt -0.75in; position: relative; }
+    .xb-p-break::after { content: "page break"; position: absolute; right: 0.75in; top: -9px; font: 700 8pt Inter, sans-serif; color: #9aa3b8; background: #fff; padding: 0 4pt; }
+
+    /* ---------- mobile ---------- */
+    @media (max-width: 1100px) {
+      .xb-grid { grid-template-columns: 1fr; }
+      .xb-preview-col { position: static; }
+      .xb-mobile-tabs { display: flex; gap: 0.5rem; margin: 0 0 0.9rem; position: sticky; top: 0; z-index: 20; background: var(--xb-bg); padding: 0.5rem 0; }
+      .xb-mobile-tabs button { flex: 1; }
+      .xb-grid[data-view="build"] .xb-preview-col { display: none; }
+      .xb-grid[data-view="preview"] .xb-builder { display: none; }
+      .xb-scroll { max-height: none; }
+    }
+
+    /* ---------- print: only the paper, exactly as the template page ---------- */
+    @media print {
+      html, body, body.xb-body { background: #fff !important; }
+      .no-print, .xb-hero, .xb-mobile-tabs, .xb-builder, .xb-prev-bar { display: none !important; }
+      .xb-shell { padding: 0 !important; max-width: none !important; }
+      .xb-grid { display: block !important; }
+      .xb-preview-col { position: static !important; display: block !important; }
+      .xb-scroll { max-height: none !important; overflow: visible !important; background: none !important; padding: 0 !important; border: none !important; }
+      .xb-paper-wrap { width: auto !important; height: auto !important; margin: 0 !important; }
+      .xb-paper { transform: none !important; width: auto !important; min-height: 0 !important; padding: 0 !important; box-shadow: none !important; }
+      .xb-p-break { display: none !important; }
+    }
+  </style>
+</head>
+<body class="xb-body">
+
+  <!-- ==================== HERO ==================== -->
+  <header class="xb-hero no-print">
+    <div class="xb-hero-top">
+      <a href="{% url 'landing' %}" class="xb-back"><i class="fa-solid fa-arrow-left-long"></i> Back to home</a>
+      <a href="{% url 'dashboard' %}" class="xb-back"><i class="fa-solid fa-gauge"></i> Dashboard</a>
+    </div>
+    <div class="xb-eyebrow">
+      <i class="fa-solid fa-user-check"></i>
+      Signed in as {{ request.user|display_name }}
+      {% if is_trainer %}· {{ assigned_module_count }} module{{ assigned_module_count|pluralize }} assigned to you
+      {% else %}· {% if request.user.is_superuser %}Admin access{% else %}DOS access{% endif %} · {{ assigned_module_count }} module{{ assigned_module_count|pluralize }} in the system{% endif %}
+    </div>
+    <h1>Exam Builder</h1>
+    <p>Pick your module and learning outcomes, choose the logos, set up the sections and question types, then fill in the questions. The exam is assembled for you in the school's examination format.</p>
+  </header>
+
+  <div class="xb-shell">
+    <div class="xb-mobile-tabs no-print">
+      <button type="button" class="xb-btn xb-btn-primary" id="tabBuild"><i class="fa-solid fa-pen-ruler"></i> Build</button>
+      <button type="button" class="xb-btn" id="tabPreview"><i class="fa-solid fa-file-lines"></i> Preview</button>
+    </div>
+
+    <div class="xb-grid" id="xbGrid" data-view="build">
+      <!-- =============== BUILDER =============== -->
+      <div class="xb-builder no-print" id="xbBuilder">
+
+        <div class="xb-alert xb-alert-warn" id="blockedAlert"><span id="blockedMsg"></span></div>
+
+        <!-- 1. module + outcomes -->
+        <section class="xb-card">
+          <h2><span class="xb-step">1</span> Module &amp; learning outcomes</h2>
+          <p class="xb-sub">Choose your assigned module, then tick one or more learning outcomes the exam covers.</p>
+          <div class="xb-alert xb-alert-info" id="noModules">No active module is available to you yet. Please ask an administrator to assign a module to you.</div>
+          <div id="moduleBlock">
+            <label class="xb-label" for="moduleSelect">Module</label>
+            <select class="xb-sel" id="moduleSelect"><option value="">Select module…</option></select>
+            <div id="loBlock" style="display:none">
+              <div class="xb-lo-tools">
+                <span class="xb-label" style="margin:0">Learning outcomes <span id="loCount" style="text-transform:none;letter-spacing:0"></span></span>
+                <span>
+                  <button type="button" class="xb-btn xb-btn-sm" id="loAll">Select all</button>
+                  <button type="button" class="xb-btn xb-btn-sm" id="loNone">Clear</button>
+                </span>
+              </div>
+              <div class="xb-lo-list" id="loList"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 2. header + logos -->
+        <section class="xb-card">
+          <h2><span class="xb-step">2</span> Header &amp; logos</h2>
+          <p class="xb-sub">Choose the logos from the school's stored logos, and edit or hide any header line.</p>
+          <label class="xb-label">Logos in the header</label>
+          <div class="xb-logos" id="logoGrid"></div>
+          <div class="xb-row" style="margin:0.7rem 0 1rem">
+            <div>
+              <label class="xb-label" for="logoPos">Logo position</label>
+              <select class="xb-sel" id="logoPos" data-bind="logoPos">
+                <option value="right">Right of the header (as the template)</option>
+                <option value="left">Left of the header</option>
+                <option value="center">Centred above the header</option>
+              </select>
+            </div>
+          </div>
+          <label class="xb-label">Header lines <span style="text-transform:none;letter-spacing:0">(tick to show · edit label and text)</span></label>
+          <div id="headerRows"></div>
+          <div style="margin-top:0.6rem; display:flex; gap:1.2rem; flex-wrap:wrap">
+            <label class="xb-check"><input type="checkbox" data-bind="rule"> Dashed line under the header</label>
+            <label class="xb-check"><input type="checkbox" data-bind="showOutcomes"> List the learning outcomes covered</label>
+          </div>
+        </section>
+
+        <!-- 3. instructions -->
+        <section class="xb-card">
+          <h2><span class="xb-step">3</span> Instructions</h2>
+          <p class="xb-sub">One instruction per line. They are numbered automatically.</p>
+          <label class="xb-check" style="margin-bottom:0.6rem"><input type="checkbox" data-bind="instr.show"> Show the instructions</label>
+          <div class="xb-row">
+            <div style="flex-basis:220px">
+              <label class="xb-label" for="instrHead">Heading</label>
+              <input class="xb-in" id="instrHead" data-bind="instr.heading">
+            </div>
+          </div>
+          <label class="xb-label" for="instrText" style="margin-top:0.6rem">Instructions</label>
+          <textarea class="xb-ta" id="instrText" rows="5" data-bind="instr.text"></textarea>
+        </section>
+
+        <!-- 4. sections -->
+        <section class="xb-card">
+          <h2><span class="xb-step">4</span> Sections &amp; questions</h2>
+          <p class="xb-sub">In each section, first tick the question types and how many of each, then fill in the questions. Use <b>Draft with AI</b> to get a starting point from your learning outcomes.</p>
+          <div class="xb-row" style="align-items:flex-end; margin-bottom:0.9rem">
+            <div style="flex:0 1 180px">
+              <label class="xb-label" for="difficulty">AI difficulty</label>
+              <select class="xb-sel" id="difficulty" data-bind="opts.difficulty">
+                <option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option>
+              </select>
+            </div>
+            <div style="flex:0 0 auto">
+              <button type="button" class="xb-btn xb-btn-ai" id="aiAll"><i class="fa-solid fa-wand-magic-sparkles"></i> Draft all sections with AI</button>
+            </div>
+          </div>
+          <div id="sections"></div>
+          <button type="button" class="xb-btn xb-btn-teal" id="addSection"><i class="fa-solid fa-plus"></i> Add section</button>
+        </section>
+
+        <!-- 5. options + export -->
+        <section class="xb-card">
+          <h2><span class="xb-step">5</span> Options &amp; export</h2>
+          <div class="xb-row" style="margin-bottom:0.8rem">
+            <div style="flex:0 1 190px">
+              <label class="xb-label" for="paperSize">Paper</label>
+              <select class="xb-sel" id="paperSize" data-bind="opts.page">
+                <option value="letter">Letter (as the template)</option>
+                <option value="a4">A4</option>
+              </select>
+            </div>
+            <div style="flex:0 1 130px">
+              <label class="xb-label" for="fontSize">Text size</label>
+              <select class="xb-sel" id="fontSize" data-bind="opts.fontSize">
+                <option value="10">10 pt</option><option value="11">11 pt</option><option value="12">12 pt</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:flex; gap:1.2rem; flex-wrap:wrap; margin-bottom:1rem">
+            <label class="xb-check"><input type="checkbox" data-bind="opts.answerLines"> Answer lines under open questions</label>
+            <label class="xb-check"><input type="checkbox" data-bind="opts.answerKey"> Add a marking scheme / answer key page</label>
+          </div>
+          <div class="xb-actions">
+            <button type="button" class="xb-btn xb-btn-primary" id="btnGenerate"><i class="fa-solid fa-wand-magic-sparkles"></i> Generate exam</button>
+            <button type="button" class="xb-btn" id="btnDocx"><i class="fa-solid fa-file-word"></i> Download Word</button>
+            <button type="button" class="xb-btn" id="btnPrint"><i class="fa-solid fa-print"></i> Print / Save as PDF</button>
+            <span class="xb-status" id="xbStatus"></span>
+          </div>
+          <div class="xb-actions" style="margin-top:0.8rem">
+            <button type="button" class="xb-btn xb-btn-sm" id="btnSave"><i class="fa-solid fa-floppy-disk"></i> Save draft</button>
+            <button type="button" class="xb-btn xb-btn-sm" id="btnLoad"><i class="fa-solid fa-folder-open"></i> Load draft</button>
+            <button type="button" class="xb-btn xb-btn-sm xb-btn-ghost xb-btn-danger" id="btnReset"><i class="fa-solid fa-rotate-left"></i> Start over</button>
+          </div>
+        </section>
+      </div>
+
+      <!-- =============== PREVIEW =============== -->
+      <div class="xb-preview-col">
+        <div class="xb-prev-bar no-print">
+          <h3><i class="fa-solid fa-file-lines"></i> Exam preview</h3>
+          <span class="xb-chip" id="genChip">Draft preview</span>
+          <span style="margin-left:auto; display:flex; gap:0.35rem">
+            <button type="button" class="xb-btn xb-btn-sm" id="zoomOut" title="Zoom out"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
+            <button type="button" class="xb-btn xb-btn-sm" id="zoomFit" title="Fit to width">Fit</button>
+            <button type="button" class="xb-btn xb-btn-sm" id="zoomIn" title="Zoom in"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
+          </span>
+        </div>
+        <div class="xb-scroll" id="xbScroll">
+          <div class="xb-paper-wrap" id="xbPaperWrap">
+            <div class="xb-paper" id="xbPaper"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="application/json" id="tms-data">{{ tms_data_json|safe }}</script>
+
+  <script>
+  (function () {
+    'use strict';
+
+    var DATA = JSON.parse(document.getElementById('tms-data').textContent);
+    var IS_TRAINER = {{ is_trainer|yesno:"true,false" }};
+    var URLS = {
+      access: "{% url 'generation-check-access' %}",
+      draft: "{% url 'exam-ai-draft' %}",
+      docx: "{% url 'exam-export-docx' %}"
+    };
+    var DRAFT_KEY = 'tms-exam-builder-draft-v1';
+    var DOT = '\u2026';
+
+    // ------------------------------------------------------------------
+    // Small helpers
+    // ------------------------------------------------------------------
+    function $(id) { return document.getElementById(id); }
+    function esc(s) {
+      return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+    function getCookie(name) {
+      var m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+      return m ? decodeURIComponent(m[1]) : '';
+    }
+    var uidN = 0;
+    function uid(p) { uidN += 1; return p + Date.now().toString(36) + uidN; }
+    function clone(o) { return JSON.parse(JSON.stringify(o)); }
+    function toast(msg, ok) {
+      var s = $('xbStatus');
+      s.textContent = msg;
+      s.className = 'xb-status' + (ok ? ' ok' : '');
+      clearTimeout(toast._t);
+      toast._t = setTimeout(function () { s.textContent = ''; s.className = 'xb-status'; }, 4500);
+    }
+    function hash(str) {
+      var h = 2166136261;
+      for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+      return h >>> 0;
+    }
+    function rng(seed) {
+      return function () {
+        seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+        var t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+        t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+      };
+    }
+    // Deterministic shuffle: the preview and the Word file always agree.
+    function shuffled(n, seedStr) {
+      var a = [], i;
+      for (i = 0; i < n; i++) a.push(i);
+      var r = rng(hash(seedStr));
+      for (i = n - 1; i > 0; i--) {
+        var j = Math.floor(r() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t;
+      }
+      var same = a.every(function (v, k) { return v === k; });
+      if (same && n > 1) a.push(a.shift());
+      return a;
+    }
+    function letter(i) { return String.fromCharCode(65 + i); }
+
+    // ------------------------------------------------------------------
+    // Lookups into the (trainer-scoped) curriculum snapshot
+    // ------------------------------------------------------------------
+    function byId(list, id) {
+      for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
+      return null;
+    }
+    function moduleById(id) { return byId(DATA.modules || [], id); }
+    function outcomesOf(moduleId) { return (DATA.outcomes || []).filter(function (o) { return o.module_id === moduleId; }); }
+    function contentsOf(outcomeId) { return (DATA.contents || []).filter(function (c) { return c.outcome_id === outcomeId; }); }
+    function logoSrc(l) {
+      var s = (l.image || '').trim();
+      if (!s) return '';
+      if (/^data:/i.test(s) || /^https?:/i.test(s) || s.charAt(0) === '/') return s;
+      return 'data:image/png;base64,' + s;
+    }
+
+    // ------------------------------------------------------------------
+    // The exam state
+    // ------------------------------------------------------------------
+    var TYPES = [
+      { k: 'mcq',   name: 'Multiple choice',        icon: 'fa-list-ul',        count: 5, marks: 2, head: 'Multiple choice: choose the correct answer (A, B, C or D).' },
+      { k: 'tf',    name: 'True / False',           icon: 'fa-circle-check',   count: 5, marks: 1, head: 'True or False: write TRUE or FALSE for each statement.' },
+      { k: 'fill',  name: 'Fill in (from brackets)', icon: 'fa-pen-to-square', count: 5, marks: 1, head: 'Fill in the blanks using the words in the brackets.' },
+      { k: 'match', name: 'Matching',               icon: 'fa-shuffle',        count: 1, marks: 4, head: 'Matching: match each item in Column A with its answer in Column B.' },
+      { k: 'open',  name: 'Open questions',         icon: 'fa-align-left',     count: 3, marks: 5, head: 'Open questions: answer in full.' }
+    ];
+    function typeMeta(k) { return TYPES.filter(function (t) { return t.k === k; })[0]; }
+
+    var DEFAULT_INSTRUCTIONS = [
+      'Read all the questions carefully before you start answering.',
+      'Answer all questions in the compulsory section. In the other sections, attempt only the number of questions required.',
+      'Write your names and class clearly on every answer sheet.',
+      'Use a blue or black pen only. Any form of cheating leads to disqualification.'
+    ].join('\n');
+
+    function newSection(title, types) {
+      var sec = {
+        id: uid('s'), show: true, title: '', titleAuto: true, attempt: '', marksOverride: '',
+        showMarks: true, typeHeads: true, types: {}, questions: []
+      };
+      TYPES.forEach(function (t) {
+        sec.types[t.k] = { on: false, count: t.count, marks: t.marks, heading: t.head, bank: true };
+      });
+      (types || []).forEach(function (spec) {
+        var tt = sec.types[spec.k];
+        tt.on = true; tt.count = spec.count; tt.marks = spec.marks;
+      });
+      if (title) { sec.title = title; sec.titleAuto = false; }
+      syncSection(sec);
+      return sec;
+    }
+
+    function newQuestion(kind) {
+      var t = typeMeta(kind);
+      var q = { id: uid('q'), kind: kind, show: true, text: '', marks: t.marks };
+      if (kind === 'mcq') { q.options = ['', '', '', '']; q.answer = 0; }
+      if (kind === 'tf') { q.answer = true; }
+      if (kind === 'match') { q.pairs = [{ l: '', r: '' }, { l: '', r: '' }, { l: '', r: '' }, { l: '', r: '' }]; q.salt = 0; q.marksAuto = true; }
+      if (kind === 'open') { q.lines = 4; q.answerText = ''; }
+      return q;
+    }
+
+    function defaultState() {
+      var secA = newSection('', [{ k: 'mcq', count: 5, marks: 2 }, { k: 'tf', count: 5, marks: 1 }, { k: 'fill', count: 5, marks: 1 }]);
+      var secB = newSection('', [{ k: 'open', count: 6, marks: 10 }]);
+      secB.attempt = 4;
+      return {
+        moduleId: null, outcomeIds: [],
+        logoIds: [], logoPos: 'right',
+        header: [
+          { k: 'sector', label: 'SECTOR:', value: '', show: true, touched: false },
+          { k: 'trade', label: 'TRADE:', value: '', show: true, touched: false },
+          { k: 'level', label: 'LEVEL:', value: '', show: false, touched: false },
+          { k: 'module', label: 'MODULE:', value: 'CODE & NAME', show: true, touched: false },
+          { k: 'title', label: '', value: 'SCHOOL COMPREHENSIVE EXAMINATION', show: true, touched: true },
+          { k: 'year', label: 'ACADEMIC YEAR:', value: '', show: false, touched: true },
+          { k: 'date', label: 'DATE:', value: '', show: false, touched: true },
+          { k: 'time', label: 'DURATION:', value: '', show: false, touched: true },
+          { k: 'total', label: 'TOTAL MARKS:', value: '', show: false, touched: true, auto: true },
+          { k: 'name', label: 'NAMES:', value: DOT.repeat(28), show: false, touched: true },
+          { k: 'reg', label: 'REG. NO:', value: DOT.repeat(14), show: false, touched: true },
+          { k: 'class', label: 'CLASS:', value: DOT.repeat(14), show: false, touched: true }
+        ],
+        rule: true, showOutcomes: false,
+        instr: { show: true, heading: 'INSTRUCTIONS', text: DEFAULT_INSTRUCTIONS },
+        sections: [secA, secB],
+        opts: { page: 'letter', fontSize: '11', answerLines: true, answerKey: false, difficulty: 'medium' }
+      };
+    }
+
+    var S = defaultState();
+    var generated = false;
+    var accessOk = false;
+
+    // Keeps a section's question list in step with its ticked types and counts.
+    function syncSection(sec) {
+      TYPES.forEach(function (t) {
+        var cfg = sec.types[t.k];
+        var mine = sec.questions.filter(function (q) { return q.kind === t.k; });
+        if (!cfg.on) return;
+        var want = Math.max(0, Math.min(40, parseInt(cfg.count, 10) || 0));
+        cfg.count = want;
+        while (mine.length < want) { var q = newQuestion(t.k); q.marks = Number(cfg.marks) || t.marks; mine.push(q); }
+        while (mine.length > want) mine.pop();
+        sec.questions = sec.questions.filter(function (q) { return q.kind !== t.k; }).concat(mine);
+      });
+      // stable order: by TYPES order, keeping each type's own order
+      var order = TYPES.map(function (t) { return t.k; });
+      var ranked = sec.questions.map(function (q, i) { return { q: q, i: i }; });
+      ranked.sort(function (a, b) { return order.indexOf(a.q.kind) - order.indexOf(b.q.kind) || a.i - b.i; });
+      sec.questions = ranked.map(function (r) { return r.q; });
+    }
+
+    function sectionTitle(sec) {
+      if (!sec.titleAuto) return sec.title;
+      var n = parseInt(sec.attempt, 10);
+      return n > 0 ? 'ATTEMPT ONLY ' + n + ' QUESTIONS' : 'COMPULSORY QUESTIONS';
+    }
+
+    function activeQuestions(sec) {
+      return sec.questions.filter(function (q) { return sec.types[q.kind] && sec.types[q.kind].on; });
+    }
+    function sectionMarks(sec) {
+      var manual = parseFloat(sec.marksOverride);
+      if (!isNaN(manual)) return manual;
+      var marks = activeQuestions(sec).filter(function (q) { return q.show; }).map(function (q) { return Number(q.marks) || 0; });
+      var n = parseInt(sec.attempt, 10);
+      if (n > 0) {
+        marks.sort(function (a, b) { return b - a; });
+        marks = marks.slice(0, n);
+      }
+      return marks.reduce(function (a, b) { return a + b; }, 0);
+    }
+    function fmtMarks(n) { return (Math.round(n * 100) / 100).toString(); }
+
+    // ------------------------------------------------------------------
+    // Document model  (drives BOTH the preview and the Word export)
+    // ------------------------------------------------------------------
+    function fillParts(text) {
+      var answers = [];
+      var out = String(text || '').replace(/\[([^\]]+)\]/g, function (m, ans) {
+        answers.push(ans.trim());
+        return DOT.repeat(Math.max(8, Math.min(18, ans.trim().length + 4)));
+      });
+      if (!answers.length && out.trim()) out = out.trim() + ' ' + DOT.repeat(10);
+      return { text: out, answers: answers };
+    }
+
+    function buildDoc() {
+      var logos = S.logoIds.map(function (id) { return byId(DATA.logos || [], id); }).filter(Boolean)
+        .map(function (l) { return { src: logoSrc(l), alt: l.name }; });
+
+      var visibleSections = S.sections.filter(function (s) { return s.show; });
+      var grand = visibleSections.reduce(function (a, s) { return a + sectionMarks(s); }, 0);
+
+      var lines = [];
+      S.header.forEach(function (h) {
+        if (!h.show) return;
+        var value = h.auto && !String(h.value).trim() ? fmtMarks(grand) : h.value;
+        var text = (h.label ? h.label + ' ' : '') + value;
+        if (text.trim()) lines.push({ text: text.trim(), key: h.k });
+      });
+
+      var blocks = [];
+      var meta = [];
+      if (S.showOutcomes) {
+        var items = S.outcomeIds.map(function (id) { return byId(DATA.outcomes || [], id); }).filter(Boolean).map(function (o) { return o.outcome_text; });
+        if (items.length) blocks.push({ t: 'instructions', heading: 'LEARNING OUTCOMES COVERED', items: items });
+      }
+      if (S.instr.show) {
+        var instrItems = S.instr.text.split('\n').map(function (l) { return l.trim(); }).filter(Boolean);
+        if (instrItems.length || S.instr.heading.trim()) blocks.push({ t: 'instructions', heading: S.instr.heading.trim(), items: instrItems });
+      }
+
+      var key = [];
+      visibleSections.forEach(function (sec, si) {
+        var marks = sectionMarks(sec);
+        var head = 'SECTION ' + letter(si) + ': ' + String(sectionTitle(sec)).toUpperCase();
+        if (sec.showMarks) head += ' /' + fmtMarks(marks) + ' - Marks';
+        blocks.push({ t: 'section', text: head });
+        key.push({ t: 'keyhead', text: 'SECTION ' + letter(si) });
+
+        var n = 0;
+        TYPES.forEach(function (t) {
+          var cfg = sec.types[t.k];
+          if (!cfg.on) return;
+          var qs = sec.questions.filter(function (q) { return q.kind === t.k && q.show; });
+          if (!qs.length) return;
+          if (sec.typeHeads && cfg.heading.trim()) blocks.push({ t: 'typehead', text: cfg.heading.trim() });
+
+          if (t.k === 'fill' && cfg.bank) {
+            var words = [];
+            qs.forEach(function (q) { words = words.concat(fillParts(q.text).answers); });
+            var order = shuffled(words.length, sec.id + 'bank');
+            if (words.length) blocks.push({ t: 'wordbank', words: order.map(function (i) { return words[i]; }) });
+          }
+
+          qs.forEach(function (q) {
+            n += 1;
+            var num = 'Q' + n + '.';
+            var b = { t: 'q', num: num, kind: q.kind, marks: fmtMarks(Number(q.marks) || 0), text: '' };
+            var keyText = '';
+            var empty = false;
+            if (q.kind === 'mcq') {
+              empty = !q.text.trim();
+              b.text = q.text.trim();
+              b.options = q.options.map(function (o, i) { return letter(i) + '. ' + (o.trim() || DOT.repeat(6)); });
+              keyText = letter(q.answer || 0) + '. ' + (q.options[q.answer || 0] || '').trim();
+            } else if (q.kind === 'tf') {
+              empty = !q.text.trim();
+              b.text = q.text.trim() ? q.text.trim() + ' ' + DOT.repeat(8) : '';
+              keyText = q.answer ? 'TRUE' : 'FALSE';
+            } else if (q.kind === 'fill') {
+              empty = !q.text.trim();
+              var fp = fillParts(q.text);
+              b.text = fp.text;
+              keyText = fp.answers.join(', ');
+            } else if (q.kind === 'match') {
+              var pairs = q.pairs.filter(function (p) { return p.l.trim() || p.r.trim(); });
+              empty = !pairs.length;
+              b.text = q.text.trim() || 'Match each item in Column A with its correct answer in Column B.';
+              var ord = shuffled(pairs.length, q.id + ':' + (q.salt || 0));
+              b.left = pairs.map(function (p, i) { return (i + 1) + '. ' + p.l.trim(); });
+              b.right = ord.map(function (idx, pos) { return letter(pos) + '. ' + pairs[idx].r.trim(); });
+              keyText = pairs.map(function (p, i) { return (i + 1) + '-' + letter(ord.indexOf(i)); }).join(', ');
+            } else if (q.kind === 'open') {
+              empty = !q.text.trim();
+              b.text = q.text.trim();
+              b.lines = Math.max(0, parseInt(q.lines, 10) || 0);
+              keyText = q.answerText.trim() || '-';
+            }
+            if (empty) { b.kind = 'blank'; b.text = ''; }
+            blocks.push(b);
+            key.push({ t: 'keyrow', num: num, text: keyText, marks: fmtMarks(Number(q.marks) || 0) });
+          });
+        });
+      });
+
+      if (S.opts.answerKey) {
+        blocks.push({ t: 'pagebreak' });
+        blocks.push({ t: 'keyhead', text: 'MARKING SCHEME / ANSWER KEY' });
+        key.forEach(function (k) { blocks.push(k); });
+      }
+
+      var modLine = (S.header.filter(function (h) { return h.k === 'module'; })[0] || {}).value || '';
+      meta.push(['Module', modLine]);
+      var trade = (S.header.filter(function (h) { return h.k === 'trade'; })[0] || {}).value || '';
+      if (trade) meta.push(['Trade', trade]);
+      meta.push(['Total marks', fmtMarks(grand)]);
+
+      return {
+        title: 'School Comprehensive Examination' + (modLine ? ' - ' + modLine.split(' - ')[0] : ''),
+        page: S.opts.page, fontSize: Number(S.opts.fontSize) || 11,
+        answerLines: !!S.opts.answerLines, rule: !!S.rule,
+        header: { logos: logos, logoPosition: S.logoPos, lines: lines },
+        blocks: blocks, meta: meta
+      };
+    }
+
+    // ------------------------------------------------------------------
+    // Preview rendering (same model as the Word export)
+    // ------------------------------------------------------------------
+    var PAGE_IN = { letter: [8.5, 11], a4: [8.27, 11.69] };
+    var zoom = null;   // null = fit
+
+    function renderPreview() {
+      var d = buildDoc();
+      var h = '';
+      var logoHtml = d.header.logos.map(function (l) { return l.src ? '<img src="' + esc(l.src) + '" alt="' + esc(l.alt) + '">' : ''; }).join('');
+      var linesHtml = d.header.lines.map(function (l) { return '<p>' + esc(l.text) + '</p>'; }).join('');
+      h += '<div class="xb-p-head logo-' + esc(d.header.logoPosition) + '">' +
+        '<div class="xb-p-lines">' + linesHtml + '</div>' +
+        (logoHtml ? '<div class="xb-p-logos">' + logoHtml + '</div>' : '') + '</div>';
+      if (d.rule) h += '<div class="xb-p-rule"></div>';
+
+      d.blocks.forEach(function (b) {
+        if (b.t === 'instructions') {
+          h += '<div class="xb-p-inst">' + (b.heading ? '<div class="xb-p-inst-h">' + esc(b.heading) + '</div>' : '') +
+            '<ol>' + b.items.map(function (i) { return '<li>' + esc(i) + '</li>'; }).join('') + '</ol></div>';
+        } else if (b.t === 'section') {
+          h += '<div class="xb-p-section">' + esc(b.text) + '</div>';
+        } else if (b.t === 'typehead') {
+          h += '<div class="xb-p-typehead">' + esc(b.text) + '</div>';
+        } else if (b.t === 'wordbank') {
+          h += '<div class="xb-p-bank">(' + b.words.map(esc).join('&nbsp; / &nbsp;') + ')</div>';
+        } else if (b.t === 'q') {
+          h += renderQuestionHtml(b, d);
+        } else if (b.t === 'pagebreak') {
+          h += '<div class="xb-p-break"></div>';
+        } else if (b.t === 'keyhead') {
+          h += '<div class="xb-p-key-h">' + esc(b.text) + '</div>';
+        } else if (b.t === 'keyrow') {
+          h += '<div class="xb-p-key-row"><span class="n">' + esc(b.num) + '</span><span>' + esc(b.text) +
+            '</span><b>[' + esc(b.marks) + ']</b></div>';
+        }
+      });
+      $('xbPaper').innerHTML = h;
+      applyPaperGeometry(d);
+    }
+
+    function renderQuestionHtml(b, d) {
+      if (b.kind === 'blank') {
+        return '<div class="xb-p-q"><div class="xb-p-qline"><span class="t"><span class="n">' + esc(b.num) + '</span> <b>' + DOT.repeat(6) + '?</b></span></div></div>';
+      }
+      var marks = (b.marks && b.marks !== '0') ? '<span class="m">[' + esc(b.marks) + ' ' + (b.marks === '1' ? 'Mark' : 'Marks') + ']</span>' : '';
+      var h = '<div class="xb-p-q"><div class="xb-p-qline"><span class="t"><span class="n">' + esc(b.num) + '</span> ' + esc(b.text) + '</span>' + marks + '</div>';
+      if (b.kind === 'mcq') {
+        h += b.options.map(function (o) { return '<div class="xb-p-opt">' + esc(o) + '</div>'; }).join('');
+      } else if (b.kind === 'match') {
+        var rows = Math.max(b.left.length, b.right.length), r = '';
+        for (var i = 0; i < rows; i++) r += '<tr><td>' + esc(b.left[i] || '') + '</td><td>' + esc(b.right[i] || '') + '</td></tr>';
+        h += '<table class="xb-p-match"><thead><tr><th>COLUMN A</th><th>COLUMN B</th></tr></thead><tbody>' + r + '</tbody></table>';
+      } else if (b.kind === 'open' && d.answerLines) {
+        for (var k = 0; k < Math.min(20, b.lines || 0); k++) h += '<div class="xb-p-line">' + DOT.repeat(120) + '</div>';
+      }
+      return h + '</div>';
+    }
+
+    function applyPaperGeometry(d) {
+      var dims = PAGE_IN[d.page] || PAGE_IN.letter;
+      var paper = $('xbPaper'), wrap = $('xbPaperWrap'), scroll = $('xbScroll');
+      paper.style.width = dims[0] + 'in';
+      paper.style.minHeight = dims[1] + 'in';
+      paper.style.fontSize = d.fontSize + 'pt';
+      var paperPx = dims[0] * 96;
+      var avail = scroll.clientWidth - 28;
+      var scale = zoom === null ? Math.min(1, Math.max(0.3, avail / paperPx)) : zoom;
+      paper.style.transform = 'scale(' + scale + ')';
+      wrap.style.width = (paperPx * scale) + 'px';
+      wrap.style.height = (paper.offsetHeight * scale) + 'px';
+      $('xbPageStyle').textContent = '@page { size: ' + (d.page === 'a4' ? 'A4' : 'letter') + '; margin: 1in 0.75in; }';
+    }
+
+    var previewTimer = null;
+    function schedulePreview() {
+      clearTimeout(previewTimer);
+      previewTimer = setTimeout(renderPreview, 50);
+      scheduleSave();
+    }
+
+    // ------------------------------------------------------------------
+    // Builder UI
+    // ------------------------------------------------------------------
+    function getPath(obj, path) {
+      return path.split('.').reduce(function (o, k) { return o == null ? o : o[k]; }, obj);
+    }
+    function setPath(obj, path, value) {
+      var parts = path.split('.'), last = parts.pop();
+      var target = parts.reduce(function (o, k) { return o[k]; }, obj);
+      target[last] = value;
+    }
+
+    function initModuleSelect() {
+      var sel = $('moduleSelect');
+      var mods = (DATA.modules || []).slice().sort(function (a, b) { return a.mod_code.localeCompare(b.mod_code); });
+      if (!mods.length) {
+        $('noModules').classList.add('on');
+        $('moduleBlock').style.display = 'none';
+        return;
+      }
+      mods.forEach(function (m) {
+        var trade = byId(DATA.trades || [], m.trade_id), level = byId(DATA.levels || [], m.level_id);
+        var o = document.createElement('option');
+        o.value = m.id;
+        o.textContent = m.mod_code + ' \u2014 ' + m.mod_name + (trade || level ? ' (' + (trade ? trade.trade_name : '') + (level ? ' \u00b7 ' + level.class_level : '') + ')' : '');
+        sel.appendChild(o);
+      });
+      if (mods.length === 1) { sel.value = mods[0].id; onModuleChange(); }
+    }
+
+    function onModuleChange() {
+      var id = parseInt($('moduleSelect').value, 10);
+      S.moduleId = isNaN(id) ? null : id;
+      var m = moduleById(S.moduleId);
+      var outs = m ? outcomesOf(m.id) : [];
+      S.outcomeIds = outs.map(function (o) { return o.id; });
+      if (m) autoFillHeader(m);
+      renderLOs();
+      schedulePreview();
+    }
+
+    function headerField(k) { return S.header.filter(function (h) { return h.k === k; })[0]; }
+
+    function autoFillHeader(m) {
+      var trade = byId(DATA.trades || [], m.trade_id), level = byId(DATA.levels || [], m.level_id);
+      var sector = trade ? byId(DATA.sectors || [], trade.sector_id) : null;
+      var auto = {
+        sector: sector ? sector.sector_name : '',
+        trade: trade ? trade.trade_name : '',
+        level: level ? level.class_level : '',
+        module: m.mod_code + ' - ' + m.mod_name
+      };
+      Object.keys(auto).forEach(function (k) {
+        var f = headerField(k);
+        if (f && !f.touched) f.value = auto[k];
+      });
+      renderHeaderRows();
+    }
+
+    function renderLOs() {
+      var m = moduleById(S.moduleId);
+      var block = $('loBlock');
+      if (!m) { block.style.display = 'none'; return; }
+      block.style.display = '';
+      var outs = outcomesOf(m.id);
+      $('loCount').textContent = '(' + S.outcomeIds.length + ' of ' + outs.length + ' selected)';
+      $('loList').innerHTML = outs.length ? outs.map(function (o, i) {
+        var on = S.outcomeIds.indexOf(o.id) > -1;
+        return '<label class="xb-lo' + (on ? ' on' : '') + '"><input type="checkbox" data-lo="' + o.id + '"' + (on ? ' checked' : '') + '>' +
+          '<span class="xb-lo-text">LO' + (i + 1) + '. ' + esc(o.outcome_text) +
+          '<div class="xb-lo-meta">' + o.learning_hours + 'h \u00b7 ' + contentsOf(o.id).length + ' indicative content item(s)</div></span></label>';
+      }).join('') : '<div class="xb-empty">This module has no learning outcomes yet.</div>';
+    }
+
+    function renderLogos() {
+      var logos = DATA.logos || [];
+      $('logoGrid').innerHTML = logos.length ? logos.map(function (l) {
+        var on = S.logoIds.indexOf(l.id) > -1;
+        return '<label class="xb-logo' + (on ? ' on' : '') + '"><input type="checkbox" data-logo="' + l.id + '"' + (on ? ' checked' : '') + '>' +
+          '<img src="' + esc(logoSrc(l)) + '" alt="' + esc(l.name) + '"><span title="' + esc(l.name) + '">' + esc(l.name) + '</span></label>';
+      }).join('') : '<div class="xb-empty" style="grid-column:1/-1">No logos are stored in the system yet. An administrator can add them under Logos.</div>';
+    }
+
+    function renderHeaderRows() {
+      $('headerRows').innerHTML = S.header.map(function (h, i) {
+        var isTitle = h.k === 'title';
+        return '<div class="xb-hrow' + (h.show ? '' : ' off') + '">' +
+          '<input type="checkbox" data-bind="header.' + i + '.show" title="Show this line"' + (h.show ? ' checked' : '') + '>' +
+          (isTitle ? '<span class="xb-label" style="margin:0">Exam title</span>'
+                   : '<input class="xb-in" data-bind="header.' + i + '.label" value="' + esc(h.label) + '" aria-label="Label">') +
+          '<input class="xb-in" data-bind="header.' + i + '.value" data-touch="' + i + '" value="' + esc(h.value) + '" ' +
+          (h.auto ? 'placeholder="automatic (sum of the sections)" ' : '') + 'aria-label="Text"></div>';
+      }).join('');
+    }
+
+    function renderSections() {
+      var host = $('sections');
+      var visibleIdx = 0;
+      host.innerHTML = S.sections.map(function (sec, si) {
+        var lettr = sec.show ? letter(visibleIdx++) : '\u2013';
+        return sectionHtml(sec, si, lettr);
+      }).join('') || '<div class="xb-empty">No sections yet. Add your first section.</div>';
+    }
+
+    function sectionHtml(sec, si, lettr) {
+      var marks = sectionMarks(sec);
+      var h = '<div class="xb-sec' + (sec.show ? '' : ' off') + '" data-si="' + si + '">';
+      h += '<div class="xb-sec-head">' +
+        '<label class="xb-check" title="Show this section in the exam"><input type="checkbox" data-bind="sections.' + si + '.show"' + (sec.show ? ' checked' : '') + '></label>' +
+        '<span class="xb-sec-badge">SECTION ' + lettr + '</span>' +
+        '<input class="xb-in" style="flex:1; min-width:10rem" data-bind="sections.' + si + '.title" data-title="' + si + '" value="' + esc(sectionTitle(sec)) + '" aria-label="Section title">' +
+        '<button type="button" class="xb-btn xb-btn-sm xb-btn-ghost" data-act="title-auto" data-si="' + si + '" title="Use the automatic title"><i class="fa-solid fa-arrows-rotate"></i></button>' +
+        '<button type="button" class="xb-btn xb-btn-sm xb-btn-ghost" data-act="sec-up" data-si="' + si + '" title="Move up"><i class="fa-solid fa-arrow-up"></i></button>' +
+        '<button type="button" class="xb-btn xb-btn-sm xb-btn-ghost" data-act="sec-down" data-si="' + si + '" title="Move down"><i class="fa-solid fa-arrow-down"></i></button>' +
+        '<button type="button" class="xb-btn xb-btn-sm xb-btn-ghost xb-btn-danger" data-act="sec-del" data-si="' + si + '" title="Delete section"><i class="fa-solid fa-trash"></i></button>' +
+        '</div><div class="xb-sec-body">';
+
+      h += '<div class="xb-sec-opts">' +
+        '<label class="inline">Attempt only <input class="xb-in xb-num" type="number" min="0" max="40" placeholder="all" data-bind="sections.' + si + '.attempt" data-struct="1" value="' + esc(sec.attempt) + '"> questions</label>' +
+        '<label class="inline">Total marks <input class="xb-in xb-num" type="number" min="0" placeholder="' + fmtMarks(marks) + '" data-bind="sections.' + si + '.marksOverride" data-struct="1" value="' + esc(sec.marksOverride) + '"></label>' +
+        '<label class="xb-check"><input type="checkbox" data-bind="sections.' + si + '.showMarks"' + (sec.showMarks ? ' checked' : '') + '> Show marks in the title</label>' +
+        '<label class="xb-check"><input type="checkbox" data-bind="sections.' + si + '.typeHeads"' + (sec.typeHeads ? ' checked' : '') + '> Show question-type headings</label>' +
+        '</div>';
+
+      h += '<label class="xb-label">Question types in this section</label><div class="xb-types">';
+      TYPES.forEach(function (t) {
+        var cfg = sec.types[t.k];
+        h += '<div class="xb-type' + (cfg.on ? ' on' : '') + '"><div class="xb-type-top">' +
+          '<label class="xb-check grow"><input type="checkbox" data-type-on="' + si + ':' + t.k + '"' + (cfg.on ? ' checked' : '') + '> <i class="fa-solid ' + t.icon + '"></i> ' + t.name + '</label>' +
+          '<span style="font-size:0.78rem;color:var(--xb-muted)">Questions <input class="xb-in xb-num" type="number" min="0" max="40" data-bind="sections.' + si + '.types.' + t.k + '.count" data-struct="1" value="' + cfg.count + '" ' + (cfg.on ? '' : 'disabled') + '></span>' +
+          '<span style="font-size:0.78rem;color:var(--xb-muted)">Marks each <input class="xb-in xb-num" type="number" min="0" step="0.5" data-marks-type="' + si + ':' + t.k + '" value="' + cfg.marks + '" ' + (cfg.on ? '' : 'disabled') + '></span>' +
+          '</div><div class="xb-type-fields"><span>Heading:</span><input class="xb-in" style="flex:1; min-width:12rem" data-bind="sections.' + si + '.types.' + t.k + '.heading" value="' + esc(cfg.heading) + '">' +
+          (t.k === 'fill' ? '<label class="xb-check"><input type="checkbox" data-bind="sections.' + si + '.types.fill.bank"' + (cfg.bank ? ' checked' : '') + '> Show the word bank in brackets</label>' : '') +
+          '</div></div>';
+      });
+      h += '</div>';
+
+      var qs = activeQuestions(sec);
+      h += '<label class="xb-label">Questions <span style="text-transform:none;letter-spacing:0">(' + qs.length + ' in total)</span></label>';
+      if (!qs.length) {
+        h += '<div class="xb-empty">Tick at least one question type above, then fill in the questions here.</div>';
+      } else {
+        var counters = {};
+        qs.forEach(function (q) {
+          counters[q.kind] = true;
+          h += questionHtml(sec, si, q, qs.indexOf(q) + 1);
+        });
+      }
+      h += '<div class="xb-sec-actions">' +
+        '<button type="button" class="xb-btn xb-btn-sm xb-btn-ai" data-act="sec-ai" data-si="' + si + '"><i class="fa-solid fa-wand-magic-sparkles"></i> Draft this section with AI</button>' +
+        '</div></div></div>';
+      return h;
+    }
+
+    function questionHtml(sec, si, q, number) {
+      var t = typeMeta(q.kind);
+      var qi = sec.questions.indexOf(q);
+      var base = 'sections.' + si + '.questions.' + qi + '.';
+      var h = '<div class="xb-q' + (q.show ? '' : ' hidden-q') + '" data-si="' + si + '" data-qi="' + qi + '">' +
+        '<div class="xb-q-head">' +
+        '<input type="checkbox" data-bind="' + base + 'show" title="Show this question"' + (q.show ? ' checked' : '') + '>' +
+        '<span class="xb-q-no">Q' + number + '.</span><span class="xb-q-kind">' + t.name + '</span>' +
+        '<span class="xb-q-marks">Marks <input class="xb-in xb-num" type="number" min="0" step="0.5" data-bind="' + base + 'marks" data-struct="1" data-nomarksauto="1" value="' + esc(q.marks) + '"></span>' +
+        '<button type="button" class="xb-btn xb-btn-sm xb-btn-ghost xb-btn-danger" data-act="q-del" data-si="' + si + '" data-qi="' + qi + '" title="Remove this question"><i class="fa-solid fa-xmark"></i></button>' +
+        '</div>';
+      if (q.kind === 'mcq') {
+        h += '<textarea class="xb-ta" rows="2" placeholder="Type the question…" data-bind="' + base + 'text">' + esc(q.text) + '</textarea>';
+        for (var i = 0; i < 4; i++) {
+          h += '<div class="xb-opt"><input type="radio" name="ans_' + q.id + '" data-radio="' + base + 'answer" value="' + i + '"' + (q.answer === i ? ' checked' : '') + ' title="Correct answer"><b>' + letter(i) + '</b>' +
+            '<input class="xb-in" placeholder="Option ' + letter(i) + '" data-bind="' + base + 'options.' + i + '" value="' + esc(q.options[i]) + '"></div>';
+        }
+        h += '<div class="xb-help">Select the round button next to the correct option (used for the answer key).</div>';
+      } else if (q.kind === 'tf') {
+        h += '<textarea class="xb-ta" rows="2" placeholder="Type the statement…" data-bind="' + base + 'text">' + esc(q.text) + '</textarea>' +
+          '<div style="margin-top:0.4rem; display:flex; gap:1rem"><label class="xb-check"><input type="radio" name="tf_' + q.id + '" data-radio-bool="' + base + 'answer" value="1"' + (q.answer ? ' checked' : '') + '> True</label>' +
+          '<label class="xb-check"><input type="radio" name="tf_' + q.id + '" data-radio-bool="' + base + 'answer" value="0"' + (!q.answer ? ' checked' : '') + '> False</label></div>';
+      } else if (q.kind === 'fill') {
+        h += '<textarea class="xb-ta" rows="2" placeholder="e.g. A [router] connects different networks." data-bind="' + base + 'text">' + esc(q.text) + '</textarea>' +
+          '<div class="xb-help">Put the missing word(s) in <b>[square brackets]</b>. They become blanks in the exam, and the bracketed words are listed as the word bank.</div>';
+      } else if (q.kind === 'match') {
+        h += '<input class="xb-in" placeholder="Instruction (optional)" data-bind="' + base + 'text" value="' + esc(q.text) + '">';
+        h += '<div class="xb-pair" style="margin-top:0.5rem"><span class="xb-label" style="margin:0">Column A</span><span class="xb-label" style="margin:0">Column B (its match)</span><span></span></div>';
+        q.pairs.forEach(function (p, pi) {
+          h += '<div class="xb-pair"><input class="xb-in" placeholder="Item ' + (pi + 1) + '" data-bind="' + base + 'pairs.' + pi + '.l" data-pair="1" value="' + esc(p.l) + '">' +
+            '<input class="xb-in" placeholder="Matching answer" data-bind="' + base + 'pairs.' + pi + '.r" data-pair="1" value="' + esc(p.r) + '">' +
+            '<button type="button" class="xb-btn xb-btn-sm xb-btn-ghost xb-btn-danger" data-act="pair-del" data-si="' + si + '" data-qi="' + qi + '" data-pi="' + pi + '" title="Remove pair"><i class="fa-solid fa-xmark"></i></button></div>';
+        });
+        h += '<div class="xb-sec-actions"><button type="button" class="xb-btn xb-btn-sm" data-act="pair-add" data-si="' + si + '" data-qi="' + qi + '"><i class="fa-solid fa-plus"></i> Add pair</button>' +
+          '<button type="button" class="xb-btn xb-btn-sm" data-act="pair-shuffle" data-si="' + si + '" data-qi="' + qi + '"><i class="fa-solid fa-shuffle"></i> Re-shuffle Column B</button></div>' +
+          '<div class="xb-help">Column B is shuffled automatically in the exam; the pairs here form the answer key.</div>';
+      } else if (q.kind === 'open') {
+        h += '<textarea class="xb-ta" rows="2" placeholder="Type the question…" data-bind="' + base + 'text">' + esc(q.text) + '</textarea>' +
+          '<div class="xb-row" style="margin-top:0.4rem"><div style="flex:0 1 150px"><label class="xb-label">Answer lines</label><input class="xb-in xb-num" style="width:100%" type="number" min="0" max="20" data-bind="' + base + 'lines" value="' + esc(q.lines) + '"></div>' +
+          '<div><label class="xb-label">Model answer (answer key only)</label><input class="xb-in" data-bind="' + base + 'answerText" value="' + esc(q.answerText) + '"></div></div>';
+      }
+      return h + '</div>';
+    }
+
+    // ---------- generic input handling (event delegation) ----------
+    function coerce(el) {
+      if (el.type === 'checkbox') return el.checked;
+      if (el.type === 'number') return el.value === '' ? '' : Number(el.value);
+      return el.value;
+    }
+
+    $('xbBuilder').addEventListener('input', function (e) {
+      var el = e.target;
+      var path = el.getAttribute && el.getAttribute('data-bind');
+      if (!path || el.type === 'checkbox') return;
+      var value = coerce(el);
+      if (path === 'opts.fontSize') value = String(value);
+      setPath(S, path, value);
+      if (el.hasAttribute('data-touch')) { S.header[+el.getAttribute('data-touch')].touched = true; }
+      if (el.hasAttribute('data-title')) { S.sections[+el.getAttribute('data-title')].titleAuto = false; }
+      if (el.hasAttribute('data-pair')) { autoPairMarks(path); }
+      schedulePreview();
+    });
+
+    function autoPairMarks(path) {
+      var m = /^sections\.(\d+)\.questions\.(\d+)\./.exec(path);
+      if (!m) return;
+      var q = S.sections[+m[1]].questions[+m[2]];
+      if (q && q.kind === 'match' && q.marksAuto) q.marks = q.pairs.filter(function (p) { return p.l.trim() || p.r.trim(); }).length || q.pairs.length;
+    }
+
+    $('xbBuilder').addEventListener('change', function (e) {
+      var el = e.target;
+      var path = el.getAttribute && el.getAttribute('data-bind');
+      if (path && el.type === 'checkbox') {
+        setPath(S, path, el.checked);
+        var row = el.closest('.xb-hrow'); if (row) row.classList.toggle('off', !el.checked);
+        if (/^sections\.\d+\.show$/.test(path)) renderSections();
+        schedulePreview();
+        return;
+      }
+      if (path && (el.hasAttribute('data-struct') || path === 'opts.page' || path === 'opts.fontSize' || path === 'logoPos')) {
+        var value = coerce(el);
+        if (path === 'opts.fontSize') value = String(value);
+        setPath(S, path, value);
+        var mm = /^sections\.(\d+)\.questions\.(\d+)\.marks$/.exec(path);
+        if (mm) { var qq = S.sections[+mm[1]].questions[+mm[2]]; if (qq) qq.marksAuto = false; }
+        var sm = /^sections\.(\d+)\./.exec(path);
+        if (sm && /types\.\w+\.count$/.test(path)) { syncSection(S.sections[+sm[1]]); }
+        if (sm) renderSections();
+        schedulePreview();
+        return;
+      }
+      if (el.hasAttribute('data-radio')) { setPath(S, el.getAttribute('data-radio'), parseInt(el.value, 10)); schedulePreview(); return; }
+      if (el.hasAttribute('data-radio-bool')) { setPath(S, el.getAttribute('data-radio-bool'), el.value === '1'); schedulePreview(); return; }
+      if (el.hasAttribute('data-type-on')) {
+        var parts = el.getAttribute('data-type-on').split(':'), sec = S.sections[+parts[0]], cfg = sec.types[parts[1]];
+        cfg.on = el.checked;
+        if (cfg.on) {
+          var existing = sec.questions.filter(function (q) { return q.kind === parts[1]; }).length;
+          if (existing) cfg.count = existing; else if (!cfg.count) cfg.count = typeMeta(parts[1]).count;
+        }
+        syncSection(sec);
+        renderSections(); schedulePreview();
+        return;
+      }
+      if (el.hasAttribute('data-marks-type')) {
+        var p2 = el.getAttribute('data-marks-type').split(':'), s2 = S.sections[+p2[0]];
+        s2.types[p2[1]].marks = Number(el.value) || 0;
+        s2.questions.forEach(function (q) { if (q.kind === p2[1] && !(q.kind === 'match' && q.marksAuto)) q.marks = s2.types[p2[1]].marks; });
+        renderSections(); schedulePreview();
+        return;
+      }
+      if (el.hasAttribute('data-lo')) {
+        var id = parseInt(el.getAttribute('data-lo'), 10), at = S.outcomeIds.indexOf(id);
+        if (el.checked && at < 0) S.outcomeIds.push(id);
+        if (!el.checked && at > -1) S.outcomeIds.splice(at, 1);
+        renderLOs(); schedulePreview();
+        return;
+      }
+      if (el.hasAttribute('data-logo')) {
+        var lid = parseInt(el.getAttribute('data-logo'), 10), li = S.logoIds.indexOf(lid);
+        if (el.checked && li < 0) S.logoIds.push(lid);
+        if (!el.checked && li > -1) S.logoIds.splice(li, 1);
+        renderLogos(); schedulePreview();
+      }
+    });
+
+    $('xbBuilder').addEventListener('click', function (e) {
+      var btn = e.target.closest ? e.target.closest('[data-act]') : null;
+      if (!btn) return;
+      var act = btn.getAttribute('data-act');
+      var si = parseInt(btn.getAttribute('data-si'), 10), qi = parseInt(btn.getAttribute('data-qi'), 10), pi = parseInt(btn.getAttribute('data-pi'), 10);
+      var sec = S.sections[si];
+      if (act === 'sec-up' && si > 0) { S.sections.splice(si - 1, 0, S.sections.splice(si, 1)[0]); }
+      else if (act === 'sec-down' && si < S.sections.length - 1) { S.sections.splice(si + 1, 0, S.sections.splice(si, 1)[0]); }
+      else if (act === 'sec-del') { if (!confirm('Delete this section and all its questions?')) return; S.sections.splice(si, 1); }
+      else if (act === 'title-auto') { sec.titleAuto = true; }
+      else if (act === 'q-del') {
+        var q = sec.questions[qi];
+        sec.questions.splice(qi, 1);
+        var cfg = sec.types[q.kind]; cfg.count = sec.questions.filter(function (x) { return x.kind === q.kind; }).length;
+        if (!cfg.count) cfg.on = false;
+      }
+      else if (act === 'pair-add') { var mq = sec.questions[qi]; if (mq.pairs.length < 8) { mq.pairs.push({ l: '', r: '' }); autoPairMarks('sections.' + si + '.questions.' + qi + '.x'); } }
+      else if (act === 'pair-del') { var mq2 = sec.questions[qi]; if (mq2.pairs.length > 2) { mq2.pairs.splice(pi, 1); autoPairMarks('sections.' + si + '.questions.' + qi + '.x'); } }
+      else if (act === 'pair-shuffle') { sec.questions[qi].salt = (sec.questions[qi].salt || 0) + 1; }
+      else if (act === 'sec-ai') { draftSection(si, btn); return; }
+      renderSections(); schedulePreview();
+    });
+
+    $('addSection').addEventListener('click', function () {
+      S.sections.push(newSection('', []));
+      renderSections(); schedulePreview();
+      var last = $('sections').lastElementChild; if (last) last.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+
+    // ---------- learning outcomes quick-selects ----------
+    $('moduleSelect').addEventListener('change', onModuleChange);
+    $('loAll').addEventListener('click', function () {
+      S.outcomeIds = outcomesOf(S.moduleId).map(function (o) { return o.id; }); renderLOs(); schedulePreview();
+    });
+    $('loNone').addEventListener('click', function () { S.outcomeIds = []; renderLOs(); schedulePreview(); });
+
+    // ------------------------------------------------------------------
+    // AI drafting
+    // ------------------------------------------------------------------
+    function aiContext() {
+      var m = moduleById(S.moduleId) || {};
+      return {
+        sector: (headerField('sector') || {}).value, trade: (headerField('trade') || {}).value, level: (headerField('level') || {}).value,
+        module_code: m.mod_code, module_name: m.mod_name
+      };
+    }
+    function selectedOutcomePayload() {
+      return S.outcomeIds.map(function (id) { return byId(DATA.outcomes || [], id); }).filter(Boolean).map(function (o) {
+        return { text: o.outcome_text, contents: contentsOf(o.id).map(function (c) { return c.indic_name; }) };
+      });
+    }
+    function questionIsFilled(q) {
+      return !!(q.text && q.text.trim()) || (q.pairs && q.pairs.some(function (p) { return p.l || p.r; }));
+    }
+
+    function draftSection(si, btn, silent) {
+      var sec = S.sections[si];
+      if (!S.moduleId || !S.outcomeIds.length) { toast('Select a module and at least one learning outcome first.'); return Promise.resolve(false); }
+      var requests = TYPES.filter(function (t) { return sec.types[t.k].on && sec.types[t.k].count > 0; })
+        .map(function (t) { return { type: t.k, count: sec.types[t.k].count }; });
+      if (!requests.length) { toast('Tick at least one question type in this section first.'); return Promise.resolve(false); }
+      var anyFilled = activeQuestions(sec).some(questionIsFilled);
+      if (!silent && anyFilled && !confirm('This will replace the questions already typed in this section. Continue?')) return Promise.resolve(false);
+
+      var original = btn ? btn.innerHTML : '';
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Drafting…'; }
+      return fetch(URLS.draft, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken'), 'X-Requested-With': 'XMLHttpRequest' },
+        body: JSON.stringify({ context: aiContext(), outcomes: selectedOutcomePayload(), requests: requests, difficulty: S.opts.difficulty })
+      }).then(function (r) {
+        return r.json().then(function (d) { if (!r.ok) throw new Error(d.error || ('Request failed (' + r.status + ')')); return d; });
+      }).then(function (d) {
+        TYPES.forEach(function (t) {
+          var list = (d.questions || {})[t.k];
+          if (!list) return;
+          var mine = sec.questions.filter(function (q) { return q.kind === t.k; });
+          list.forEach(function (src, i) {
+            var q = mine[i]; if (!q) return;
+            q.text = src.text || '';
+            if (t.k === 'mcq') { q.options = (src.options || ['', '', '', '']).slice(0, 4); while (q.options.length < 4) q.options.push(''); q.answer = src.answer || 0; }
+            if (t.k === 'tf') q.answer = !!src.answer;
+            if (t.k === 'match' && src.pairs) { q.pairs = src.pairs.map(function (p) { return { l: p.l, r: p.r }; }); if (q.marksAuto) q.marks = q.pairs.length; }
+            if (t.k === 'open') q.answerText = src.answerText || '';
+          });
+        });
+        renderSections(); schedulePreview();
+        if (!silent) toast(d.source === 'ai' ? 'Section drafted. Review and edit the questions.' : (d.notice || 'AI unavailable - blank questions kept for you to fill in.'), d.source === 'ai');
+        return d.source === 'ai';
+      }).catch(function (err) {
+        toast('Could not draft questions: ' + err.message);
+        return false;
+      }).then(function (res) {
+        if (btn) { btn.disabled = false; btn.innerHTML = original; }
+        return res;
+      });
+    }
+
+    $('aiAll').addEventListener('click', function () {
+      var btn = $('aiAll');
+      if (!S.moduleId || !S.outcomeIds.length) { toast('Select a module and at least one learning outcome first.'); return; }
+      var shown = S.sections.map(function (s, i) { return i; }).filter(function (i) { return S.sections[i].show; });
+      var filled = shown.some(function (i) { return activeQuestions(S.sections[i]).some(questionIsFilled); });
+      if (filled && !confirm('This will replace the questions already typed in all sections. Continue?')) return;
+      var original = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Drafting…';
+      var chain = Promise.resolve(true);
+      shown.forEach(function (i) { chain = chain.then(function () { return draftSection(i, null, true); }); });
+      chain.then(function () { btn.disabled = false; btn.innerHTML = original; toast('All sections drafted. Review and edit the questions.', true); });
+    });
+
+    // ------------------------------------------------------------------
+    // Access gating (same free-generation rule as the other generators)
+    // ------------------------------------------------------------------
+    function showBlocked(msg) {
+      $('blockedMsg').textContent = msg || 'You need active paid access to generate this document.';
+      $('blockedAlert').classList.add('on');
+      $('blockedAlert').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    function ensureAccess() {
+      if (accessOk || !IS_TRAINER) return Promise.resolve(true);
+      return fetch(URLS.access, {
+        method: 'POST', headers: { 'X-CSRFToken': getCookie('csrftoken'), 'X-Requested-With': 'XMLHttpRequest' }
+      }).then(function (r) { return r.json(); }).then(function (d) {
+        if (d.allowed) { accessOk = true; return true; }
+        showBlocked(d.message || d.error);
+        return false;
+      }).catch(function () { toast('Could not check your access. Please try again.'); return false; });
+    }
+    function generate() {
+      return ensureAccess().then(function (ok) {
+        if (!ok) return false;
+        if (!S.moduleId) { toast('Please select a module first.'); return false; }
+        generated = true;
+        $('blockedAlert').classList.remove('on');
+        var chip = $('genChip'); chip.textContent = 'Generated'; chip.classList.add('ok');
+        renderPreview();
+        return true;
+      });
+    }
+
+    $('btnGenerate').addEventListener('click', function () {
+      generate().then(function (ok) {
+        if (ok) { toast('Exam generated - download or print it below.', true); setView('preview'); $('xbScroll').scrollTop = 0; }
+      });
+    });
+
+    $('btnDocx').addEventListener('click', function () {
+      var btn = $('btnDocx');
+      generate().then(function (ok) {
+        if (!ok) return;
+        var original = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Preparing…';
+        fetch(URLS.docx, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken'), 'X-Requested-With': 'XMLHttpRequest' },
+          body: JSON.stringify(buildDoc())
+        }).then(function (r) {
+          if (!r.ok) return r.json().then(function (d) { throw new Error(d.error || ('Export failed (' + r.status + ')')); });
+          var name = 'Exam.docx', cd = r.headers.get('Content-Disposition') || '';
+          var m = /filename\*=UTF-8''([^;]+)/i.exec(cd) || /filename="([^"]+)"/i.exec(cd);
+          if (m) { try { name = decodeURIComponent(m[1]); } catch (x) { name = m[1]; } }
+          return r.blob().then(function (b) { return { blob: b, name: name }; });
+        }).then(function (f) {
+          var a = document.createElement('a'); a.href = URL.createObjectURL(f.blob); a.download = f.name;
+          document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+          toast('Word file downloaded.', true);
+        }).catch(function (err) { toast(err.message); })
+          .then(function () { btn.disabled = false; btn.innerHTML = original; });
+      });
+    });
+
+    $('btnPrint').addEventListener('click', function () {
+      generate().then(function (ok) {
+        if (!ok) return;
+        var d = buildDoc();
+        var prev = document.title;
+        document.title = d.title;
+        renderPreview();
+        setTimeout(function () { window.print(); document.title = prev; }, 80);
+      });
+    });
+
+    // ------------------------------------------------------------------
+    // Drafts (saved in this browser) and reset
+    // ------------------------------------------------------------------
+    var saveTimer = null;
+    function scheduleSave() {
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(function () { try { localStorage.setItem(DRAFT_KEY, JSON.stringify(S)); } catch (e) {} }, 800);
+    }
+    $('btnSave').addEventListener('click', function () {
+      try { localStorage.setItem(DRAFT_KEY, JSON.stringify(S)); toast('Draft saved in this browser.', true); }
+      catch (e) { toast('Could not save the draft in this browser.'); }
+    });
+    function applyState(saved) {
+      var base = defaultState();
+      S = Object.assign(base, saved);
+      S.opts = Object.assign(base.opts, saved.opts || {});
+      S.instr = Object.assign(base.instr, saved.instr || {});
+      // keep only logos/outcomes the trainer can still see
+      S.logoIds = (S.logoIds || []).filter(function (id) { return byId(DATA.logos || [], id); });
+      if (S.moduleId && !moduleById(S.moduleId)) { S.moduleId = null; S.outcomeIds = []; }
+      S.outcomeIds = (S.outcomeIds || []).filter(function (id) { return byId(DATA.outcomes || [], id); });
+      $('moduleSelect').value = S.moduleId || '';
+      refreshAll();
+    }
+    $('btnLoad').addEventListener('click', function () {
+      var raw = null; try { raw = localStorage.getItem(DRAFT_KEY); } catch (e) {}
+      if (!raw) { toast('No saved draft was found in this browser.'); return; }
+      if (!confirm('Load the saved draft? Your current work on this page will be replaced.')) return;
+      try { applyState(JSON.parse(raw)); toast('Draft loaded.', true); } catch (e) { toast('The saved draft could not be read.'); }
+    });
+    $('btnReset').addEventListener('click', function () {
+      if (!confirm('Start over? This clears everything you have entered on this page.')) return;
+      S = defaultState(); generated = false;
+      $('genChip').textContent = 'Draft preview'; $('genChip').classList.remove('ok');
+      $('moduleSelect').value = '';
+      var mods = DATA.modules || []; if (mods.length === 1) { $('moduleSelect').value = mods[0].id; onModuleChange(); }
+      refreshAll();
+    });
+
+    // ------------------------------------------------------------------
+    // Bind static controls + first render
+    // ------------------------------------------------------------------
+    function syncStaticInputs() {
+      document.querySelectorAll('#xbBuilder [data-bind]').forEach(function (el) {
+        if (el.closest('#headerRows') || el.closest('#sections')) return;
+        var v = getPath(S, el.getAttribute('data-bind'));
+        if (el.type === 'checkbox') el.checked = !!v; else if (v != null) el.value = v;
+      });
+    }
+    function refreshAll() {
+      syncStaticInputs(); renderLogos(); renderLOs(); renderHeaderRows(); renderSections(); renderPreview();
+    }
+
+    // zoom
+    function setZoom(z) { zoom = z; renderPreview(); }
+    $('zoomIn').addEventListener('click', function () { var cur = parseFloat($('xbPaper').style.transform.replace(/[^0-9.]/g, '')) || 1; setZoom(Math.min(1.5, cur + 0.1)); });
+    $('zoomOut').addEventListener('click', function () { var cur = parseFloat($('xbPaper').style.transform.replace(/[^0-9.]/g, '')) || 1; setZoom(Math.max(0.3, cur - 0.1)); });
+    $('zoomFit').addEventListener('click', function () { setZoom(null); });
+    window.addEventListener('resize', function () { if (zoom === null) renderPreview(); });
+
+    // mobile tabs
+    function setView(v) {
+      $('xbGrid').setAttribute('data-view', v);
+      $('tabBuild').classList.toggle('xb-btn-primary', v === 'build');
+      $('tabPreview').classList.toggle('xb-btn-primary', v === 'preview');
+      if (v === 'preview') renderPreview();
+    }
+    $('tabBuild').addEventListener('click', function () { setView('build'); });
+    $('tabPreview').addEventListener('click', function () { setView('preview'); });
+
+    initModuleSelect();
+    // restore an autosaved draft, if any
+    (function restoreDraft() {
+      var raw = null; try { raw = localStorage.getItem(DRAFT_KEY); } catch (e) {}
+      if (raw) {
+        try { var saved = JSON.parse(raw); if (saved && saved.sections) { applyState(saved); return; } } catch (e) {}
+      }
+      refreshAll();
+    })();
+  })();
+  </script>
+</body>
+</html>

@@ -6,6 +6,8 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     path('django-admin/', admin.site.urls),
+    # Exam Builder (kept in its own urls module; listed first so it is matched before core.urls)
+    path('', include('core.exam_urls')),
     path('', include('core.urls')),
 ]
 

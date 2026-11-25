@@ -664,6 +664,9 @@
           <a href="{% url 'assessmentplan-user' %}" class="btn btn-outline">
             Assessment Plan
           </a>
+          <a href="{% url 'exam-builder' %}" class="btn btn-outline">
+            Exam Builder
+          </a>
         </div>
       </div>
 
@@ -752,6 +755,15 @@
             <p>Comprehensive overview specifying evaluation methods, resource requirements, and practical notes per outcome.</p>
           </div>
           <a href="{% url 'assessmentplan-user' %}" class="card-link">Generate Document <i class="fa-solid fa-chevron-right"></i></a>
+        </div>
+
+        <div class="card">
+          <div>
+            <div class="card-icon"><i class="fa-solid fa-file-pen"></i></div>
+            <h3>Exam Builder</h3>
+            <p>Choose your module and learning outcomes, set the sections and question types, and get a ready-to-print exam in the school's examination format.</p>
+          </div>
+          <a href="{% url 'exam-builder' %}" class="card-link">Build an Exam <i class="fa-solid fa-chevron-right"></i></a>
         </div>
       </div>
     </section>
